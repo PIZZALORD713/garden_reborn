@@ -68,6 +68,129 @@ renderer.physicallyCorrectLights = true;
 
 document.body.appendChild(renderer.domElement);
 
+// ----------------------------
+// Look controls + presets
+// ----------------------------
+const LOOK_CONTROLS = {
+  toneMapping: "ACES",
+  toneMappingExposure: 1.05,
+  ambientIntensity: 0.18,
+  hemiIntensity: 0.25,
+  keyIntensity: 0.75,
+  rimIntensity: 0.35,
+  envMapIntensity: 1.2,
+  emissiveIntensity: 1.6
+};
+
+const LOOK_PRESETS = {
+  Cinematic: {
+    toneMapping: "ACES",
+    toneMappingExposure: 1.05,
+    ambientIntensity: 0.18,
+    hemiIntensity: 0.25,
+    keyIntensity: 0.75,
+    rimIntensity: 0.35,
+    envMapIntensity: 1.2,
+    emissiveIntensity: 1.6
+  },
+  "Punchy Toybox": {
+    toneMapping: "ACES",
+    toneMappingExposure: 1.2,
+    ambientIntensity: 0.12,
+    hemiIntensity: 0.2,
+    keyIntensity: 1.0,
+    rimIntensity: 0.45,
+    envMapIntensity: 1.5,
+    emissiveIntensity: 2.0
+  },
+  "Soft Pastel": {
+    toneMapping: "Reinhard",
+    toneMappingExposure: 0.95,
+    ambientIntensity: 0.25,
+    hemiIntensity: 0.35,
+    keyIntensity: 0.55,
+    rimIntensity: 0.22,
+    envMapIntensity: 0.9,
+    emissiveIntensity: 1.1
+  }
+};
+
+function resolveToneMapping(name) {
+  switch (String(name).toLowerCase()) {
+    case "reinhard":
+      return THREE.ReinhardToneMapping;
+    case "aces":
+    case "acesfilmic":
+    default:
+      return THREE.ACESFilmicToneMapping;
+  }
+}
+
+function registerMaterialDefaults(m) {
+  if (!m) return;
+  m.userData = m.userData || {};
+
+  if (m.userData.baseEnvMapIntensity === undefined) {
+    const base =
+      typeof m.envMapIntensity === "number" ? m.envMapIntensity : 1.0;
+    m.userData.baseEnvMapIntensity = base;
+  }
+
+  if (m.emissiveMap && m.userData.baseEmissiveIntensity === undefined) {
+    const base =
+      typeof m.emissiveIntensity === "number" ? m.emissiveIntensity : 1.0;
+    m.userData.baseEmissiveIntensity = base;
+  }
+}
+
+function applyLookToMaterials(root) {
+  if (!root) return;
+  root.traverse((child) => {
+    if (!child.isMesh) return;
+
+    const mats = Array.isArray(child.material) ? child.material : [child.material];
+    for (const m of mats) {
+      if (!m) continue;
+      registerMaterialDefaults(m);
+
+      if ("envMapIntensity" in m) {
+        m.envMapIntensity =
+          m.userData.baseEnvMapIntensity * LOOK_CONTROLS.envMapIntensity;
+      }
+
+      if (m.emissiveMap) {
+        m.emissive = new THREE.Color(0xffffff);
+        const base = m.userData.baseEmissiveIntensity ?? 1.0;
+        m.emissiveIntensity = base * LOOK_CONTROLS.emissiveIntensity;
+      }
+
+      m.needsUpdate = true;
+    }
+  });
+}
+
+function applyLookControls() {
+  renderer.toneMapping = resolveToneMapping(LOOK_CONTROLS.toneMapping);
+  renderer.toneMappingExposure = LOOK_CONTROLS.toneMappingExposure;
+
+  hemisphereLight.intensity = LOOK_CONTROLS.hemiIntensity;
+  ambientLight.intensity = LOOK_CONTROLS.ambientIntensity;
+  keyLight.intensity = LOOK_CONTROLS.keyIntensity;
+  rim.intensity = LOOK_CONTROLS.rimIntensity;
+
+  applyLookToMaterials(avatarGroup);
+}
+
+function applyLookPreset(name) {
+  const preset = LOOK_PRESETS[name];
+  if (!preset) return;
+  Object.assign(LOOK_CONTROLS, preset);
+  applyLookControls();
+  const msg = `🎨 Look preset applied: ${name}`;
+  console.log(msg, { ...LOOK_CONTROLS });
+  logLine(msg);
+}
+
 // OrbitControls (debug camera)
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -194,13 +317,19 @@ document.addEventListener("keydown", (e) => {
   if (e.key.toLowerCase() === "l") {
     applyLogCollapsed(!uiRoot.classList.contains("logCollapsed"));
   }
+  if (e.key === "1") applyLookPreset("Cinematic");
+  if (e.key === "2") applyLookPreset("Punchy Toybox");
+  if (e.key === "3") applyLookPreset("Soft Pastel");
 });
 
 // ----------------------------
 // Lights (plus a tiny rim for metals)
 // ----------------------------
-scene.add(new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35));
-scene.add(new THREE.AmbientLight(0xffffff, 0.20));
+const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35);
+scene.add(hemisphereLight);
+
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+scene.add(ambientLight);
 
 const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
 keyLight.position.set(-0.5, 2.5, 5);
@@ -249,6 +378,7 @@ async function loadPanoramaSphere() {
           depthWrite: false,
           depthTest: false
         });
+        mat.toneMapped = false;
 
         const mesh = new THREE.Mesh(geo, mat);
         mesh.name = "PANORAMA_SPHERE";
@@ -299,6 +429,8 @@ const avatarGroup = new THREE.Group();
 avatarGroup.scale.setScalar(15);
 avatarGroup.position.y = -2.5;
 scene.add(avatarGroup);
+
+applyLookPreset("Cinematic");
 
 // ----------------------------
 // State
@@ -631,14 +763,23 @@ function boostMaterialsForPop(root) {
       // bring back head glow behavior if emissiveMap exists
       if (m.emissiveMap) {
         m.emissive = new THREE.Color(0xffffff);
-        m.emissiveIntensity = 2.3;
+        if (m.userData?.baseEmissiveIntensity === undefined) {
+          m.userData = m.userData || {};
+          m.userData.baseEmissiveIntensity = 2.3;
+        }
       }
 
       // slightly stronger env response for metalness
       if (typeof m.metalness === "number" && m.metalness > 0.1) {
-        m.envMapIntensity = Math.max(m.envMapIntensity || 1.0, 1.35);
+        m.userData = m.userData || {};
+        const base = Math.max(
+          m.userData.baseEnvMapIntensity ?? m.envMapIntensity ?? 1.0,
+          1.35
+        );
+        m.userData.baseEnvMapIntensity = base;
       }
 
+      registerMaterialDefaults(m);
       m.needsUpdate = true;
     }
   });
@@ -842,6 +983,7 @@ async function loadFriendsies(id) {
     }
   }
 
+  applyLookControls();
   controls.target.set(0, 1.0, 0);
 
   setStatus(
