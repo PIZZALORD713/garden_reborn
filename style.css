@@ -5,32 +5,70 @@ html, body {
   height: 100%;
   overflow: hidden;
   background: #ffffff;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+    "Apple Color Emoji", "Segoe UI Emoji";
 }
 
-canvas {
-  display: block;
-}
+canvas { display: block; }
 
 /* UI overlay */
 #ui {
   position: fixed;
   inset: 0;
-  pointer-events: none; /* allow orbit on the canvas */
+  pointer-events: none; /* orbit still works on canvas */
 }
 
-.panel {
+/* “Hide UI” state */
+#ui.uiHidden .panel,
+#ui.uiHidden .logPanel {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+/* Transcript collapsed state */
+#ui.logCollapsed #log {
+  display: none;
+}
+#ui.logCollapsed #logChevron {
+  transform: rotate(-90deg);
+  display: inline-block;
+}
+
+/* Gear toggle button (always available) */
+.uiToggle {
   pointer-events: auto;
   position: absolute;
   left: 14px;
   top: 14px;
-  width: min(760px, calc(100vw - 28px));
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.10);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.uiToggle:hover { transform: translateY(-1px); }
+.uiToggle:active { transform: translateY(0); }
+
+/* Main panel */
+.panel {
+  pointer-events: auto;
+  position: absolute;
+  left: 66px; /* leaves room for gear */
+  top: 14px;
+  width: min(760px, calc(100vw - 80px));
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(10px);
   box-shadow: 0 10px 30px rgba(0,0,0,0.12);
   border: 1px solid rgba(255,255,255,0.55);
   padding: 12px;
+  transition: opacity 140ms ease, transform 140ms ease;
 }
 
 .panelHeader {
@@ -88,11 +126,7 @@ canvas {
   gap: 8px;
   margin-top: 8px;
 }
-
-.row.tiny {
-  margin-top: 10px;
-  gap: 8px;
-}
+.row.tiny { margin-top: 10px; gap: 10px; }
 
 .pill {
   display: inline-flex;
@@ -109,10 +143,7 @@ canvas {
   min-width: 260px;
 }
 
-.pillLabel {
-  font-size: 12px;
-  opacity: 0.7;
-}
+.pillLabel { font-size: 12px; opacity: 0.7; }
 
 .pill input[type="number"],
 .pill select {
@@ -120,7 +151,7 @@ canvas {
   outline: none;
   background: transparent;
   font-size: 13px;
-  width: 120px;
+  width: 130px;
 }
 
 .pill.wide select {
@@ -136,7 +167,6 @@ canvas {
   font-size: 13px;
   cursor: pointer;
 }
-
 .btn:hover { transform: translateY(-1px); }
 .btn:active { transform: translateY(0); }
 
@@ -145,17 +175,10 @@ canvas {
   border-color: rgba(33, 150, 83, 0.95);
   color: #fff;
 }
-
 .btn.danger {
   background: rgba(235, 87, 87, 0.92);
   border-color: rgba(235, 87, 87, 0.95);
   color: #fff;
-}
-
-.btn.ghost {
-  background: transparent;
-  border-color: rgba(0,0,0,0.10);
-  opacity: 0.8;
 }
 
 .chip {
@@ -169,21 +192,78 @@ canvas {
   font-size: 12px;
   user-select: none;
 }
-
 .chip input { accent-color: #2d9cdb; }
 
-/* Pseudo console log */
+.hintText {
+  font-size: 12px;
+  opacity: 0.65;
+}
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.7);
+}
+
+/* Transcript panel */
+.logPanel {
+  pointer-events: auto;
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  width: min(760px, calc(100vw - 28px));
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  border: 1px solid rgba(255,255,255,0.55);
+  overflow: hidden;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.logHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.logTitle {
+  font-weight: 700;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.logActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconBtn {
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.70);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.iconBtn:hover { transform: translateY(-1px); }
+.iconBtn:active { transform: translateY(0); }
+
+/* Pseudo console log body */
 .log {
-  margin-top: 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.08);
-  background: rgba(0,0,0,0.035);
-  padding: 10px;
+  padding: 10px 12px;
   max-height: 180px;
   overflow: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 12px;
   line-height: 1.35;
+  background: rgba(0,0,0,0.03);
 }
 
 .logLine {
@@ -192,12 +272,13 @@ canvas {
   padding: 2px 0;
   opacity: 0.92;
 }
-
-.logLine.dim { opacity: 0.70; }
+.logLine.dim  { opacity: 0.70; }
 .logLine.warn { opacity: 0.92; }
 .logLine.err  { opacity: 0.95; }
 
 @media (max-width: 520px) {
   .subtitle { display: none; }
-  .panel { left: 10px; top: 10px; width: calc(100vw - 20px); }
+  .panel { left: 10px; top: 60px; width: calc(100vw - 20px); }
+  .uiToggle { left: 10px; top: 10px; }
+  .logPanel { left: 10px; bottom: 10px; width: calc(100vw - 20px); }
 }
