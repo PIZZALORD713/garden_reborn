@@ -1,4 +1,42 @@
-// JS (CodePen) — full file (r128 globals)
+// JS (CodePen / GitHub)
+// ------------------------------------------------------------
+// fRiENDSiES Loader + Mixamo Anim Test
+//
+// Core idea:
+//   1) Load BODY first → treat it as the "master rig" (skeleton source)
+//   2) Load HEAD + trait parts → bind any SkinnedMeshes to the BODY skeleton
+//   3) IMPORTANT FIX: retarget rigid (non-skinned) meshes that were parented
+//      under the part's old bones, so they attach to BODY bones.
+//   4) Apply "face" texture as an overlay mesh, anchored to BODY Head bone.
+//
+// Why the face/vibe sometimes doesn't follow the head:
+//   - Many "vibe/face/decal" meshes are NOT skinned; they are plain Mesh nodes
+//     parented under the head-part’s own bone hierarchy.
+//   - If you only re-bind SkinnedMesh, those plain meshes stay attached to a
+//     dead armature → they lag or freeze.
+// ------------------------------------------------------------
+
+// ----------------------------
+// UI: gear + drawer
+// ----------------------------
+const gearBtn = document.getElementById("gearBtn");
+const controlsWrap = document.getElementById("controls");
+const debugDrawer = document.getElementById("debugDrawer");
+
+function setDrawer(open) {
+  if (!controlsWrap) return;
+  controlsWrap.classList.toggle("open", open);
+  controlsWrap.classList.toggle("collapsed", !open);
+  if (gearBtn) gearBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  if (debugDrawer) debugDrawer.setAttribute("aria-hidden", open ? "false" : "true");
+}
+
+if (gearBtn) {
+  gearBtn.addEventListener("click", () => {
+    const open = controlsWrap?.classList.contains("open");
+    setDrawer(!open);
+  });
+}
 
 // ----------------------------
 // Scene / Camera / Renderer
@@ -6,7 +44,7 @@
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(
-  45, // slightly narrower FOV helps the pano feel less "stretched"
+  75,
   window.innerWidth / window.innerHeight,
   0.1,
   1000
@@ -17,15 +55,12 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setClearColor(0xffffff);
-
-// Better looking PBR response
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
-
+renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
-// OrbitControls
+// OrbitControls (debug camera)
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
@@ -34,7 +69,7 @@ controls.maxDistance = 14;
 controls.target.set(0, 1.0, 0);
 
 // ----------------------------
-// UI
+// UI helpers (checkbox state)
 // ----------------------------
 const statusEl = document.getElementById("status");
 const setStatus = (s) => (statusEl.textContent = s);
@@ -50,29 +85,20 @@ const allowHipsPosOn = () =>
   document.getElementById("allowHipsPosOn")?.checked ?? true;
 const bobOn = () => document.getElementById("bobOn")?.checked ?? true;
 
-// Drawer toggle
-const controlsEl = document.getElementById("controls");
-const gearBtn = document.getElementById("gearBtn");
-gearBtn?.addEventListener("click", () => {
-  const collapsed = controlsEl.classList.toggle("collapsed");
-  gearBtn.setAttribute("aria-expanded", String(!collapsed));
-});
-
 // ----------------------------
-// Lights (add subtle rim to fix dark backs)
+// Lights (kept subtle because EXR env does most of the work)
 // ----------------------------
-scene.add(new THREE.HemisphereLight(0xffffff, 0xffffff, 0.22));
-scene.add(new THREE.AmbientLight(0xffffff, 0.12));
+scene.add(new THREE.HemisphereLight(0xffffff, 0xffffff, 0.25));
+scene.add(new THREE.AmbientLight(0xffffff, 0.15));
 
-// Key light (front-ish)
-const keyLight = new THREE.DirectionalLight(0xffffff, 0.55);
-keyLight.position.set(-0.5, 2.5, 5);
-scene.add(keyLight);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.45);
+directionalLight.position.set(-0.5, 2.5, 5);
+scene.add(directionalLight);
 
-// Rim light (behind) — helps metallic wings/backs not go black
-const rimLight = new THREE.DirectionalLight(0xffffff, 0.35);
-rimLight.position.set(0.8, 2.0, -5);
-scene.add(rimLight);
+// Rim light to pop silhouettes a bit (helps “toy box” look)
+const rim = new THREE.DirectionalLight(0xffffff, 0.35);
+rim.position.set(2.5, 2.0, -3.0);
+scene.add(rim);
 
 // ----------------------------
 // Loaders
@@ -87,94 +113,70 @@ const textureLoader = new THREE.TextureLoader();
 textureLoader.setCrossOrigin("anonymous");
 
 // ----------------------------
-// ENV: Sphere pano background + EXR environment
+// Background (pano sphere) + EXR environment
 // ----------------------------
+// Using jsDelivr (works on CodePen + Vercel). You can swap to local "./file.png" later.
 const LDR_BG_URL =
   "https://cdn.jsdelivr.net/gh/PIZZALORD713/garden_reborn@main/garden-cotton-clouds.png";
-const HDR_EXR_URL =
+const EXR_ENV_URL =
   "https://cdn.jsdelivr.net/gh/PIZZALORD713/garden_reborn@main/friendsies_cloud_overcast_studio_v1.exr";
 
-const pmrem = new THREE.PMREMGenerator(renderer);
-pmrem.compileEquirectangularShader();
+const PMREM = new THREE.PMREMGenerator(renderer);
+PMREM.compileEquirectangularShader();
 
-// Background sphere (reduces “edge exaggeration” vs scene.background)
-let panoSphere = null;
-function setPanoSphere(tex) {
-  if (panoSphere?.parent) panoSphere.parent.remove(panoSphere);
+function buildPanoSphere(url) {
+  return new Promise((resolve) => {
+    textureLoader.load(
+      url,
+      (tex) => {
+        tex.encoding = THREE.sRGBEncoding;
+        tex.minFilter = THREE.LinearFilter;
+        tex.magFilter = THREE.LinearFilter;
 
-  const geo = new THREE.SphereBufferGeometry(250, 60, 40);
-  const mat = new THREE.MeshBasicMaterial({
-    map: tex,
-    side: THREE.BackSide,
-    depthWrite: false
-  });
+        const geo = new THREE.SphereGeometry(60, 64, 32);
+        geo.scale(-1, 1, 1);
 
-  panoSphere = new THREE.Mesh(geo, mat);
-  panoSphere.frustumCulled = false;
-  scene.add(panoSphere);
-}
-
-function loadBackgroundLDR() {
-  setStatus("loading pano bg…");
-  textureLoader.load(
-    LDR_BG_URL,
-    (tex) => {
-      tex.encoding = THREE.sRGBEncoding;
-      tex.minFilter = THREE.LinearFilter;
-      tex.magFilter = THREE.LinearFilter;
-      tex.anisotropy = renderer.capabilities.getMaxAnisotropy?.() || 1;
-
-      // IMPORTANT: don’t set EquirectangularReflectionMapping for sphere UVs
-      // Sphere geometry already has proper UVs for an equirectangular image.
-      setPanoSphere(tex);
-
-      setStatus("loading EXR env…");
-    },
-    undefined,
-    (err) => {
-      console.warn("❌ pano bg failed", err);
-      setStatus("pano bg failed ❌");
-    }
-  );
-}
-
-function loadEnvironmentEXR() {
-  if (!THREE.EXRLoader) {
-    console.error(
-      "THREE.EXRLoader missing. Add EXRLoader.js in External Scripts."
+        const mat = new THREE.MeshBasicMaterial({ map: tex });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.name = "PANO_BG";
+        resolve(mesh);
+      },
+      undefined,
+      () => resolve(null)
     );
-    setStatus("EXRLoader missing ❌");
-    return;
-  }
-
-  const exrLoader = new THREE.EXRLoader();
-  exrLoader.load(
-    HDR_EXR_URL,
-    (tex) => {
-      // EXR is linear — do NOT set sRGBEncoding
-      tex.mapping = THREE.EquirectangularReflectionMapping;
-
-      const envRT = pmrem.fromEquirectangular(tex);
-      scene.environment = envRT.texture;
-
-      tex.dispose();
-
-      setStatus("ready ✅");
-      console.log("✅ EXR environment loaded");
-    },
-    undefined,
-    (err) => {
-      console.warn("❌ EXR env failed", err);
-      setStatus("EXR env failed ❌");
-    }
-  );
+  });
 }
 
-loadBackgroundLDR();
-loadEnvironmentEXR();
+function applyEXREnvironment(url) {
+  return new Promise((resolve) => {
+    const exrLoader = new THREE.EXRLoader();
+    exrLoader.setCrossOrigin("anonymous");
+    exrLoader.load(
+      url,
+      (tex) => {
+        const envRT = PMREM.fromEquirectangular(tex);
+        tex.dispose();
+
+        scene.environment = envRT.texture;
+        scene.environmentIntensity = 1.0;
+        resolve(true);
+      },
+      undefined,
+      () => resolve(false)
+    );
+  });
+}
+
+(async function initBG() {
+  const pano = await buildPanoSphere(LDR_BG_URL);
+  if (pano) scene.add(pano);
+
+  const ok = await applyEXREnvironment(EXR_ENV_URL);
+  if (!ok) console.warn("⚠️ EXR env failed to load (lighting will look flatter).");
+})();
 
 // ----------------------------
-// Avatar group
+// Avatar group (global scale/offset)
 // ----------------------------
 const avatarGroup = new THREE.Group();
 avatarGroup.scale.set(15, 15, 15);
@@ -192,20 +194,20 @@ let currentLoadId = 0;
 let loadedParts = [];
 let lastTraits = null;
 
-// BODY rig refs
+// BODY rig references (master skeleton)
 let bodyRoot = null;
 let bodySkeleton = null;
 let bodySkinned = null;
 
-// Animation
+// Animation state
 let mixer = null;
 let currentAction = null;
 
-// Hips/rest
+// Hips/rest position tracking (for stability controls)
 let hipsRawName = null;
 let restPosByBone = new Map();
 
-// Face overlay
+// Face overlay objects
 let faceOverlayMeshes = [];
 let faceAnchor = null;
 
@@ -240,20 +242,26 @@ function baseKey(name) {
   s = s.replace(/end$/g, "");
   return s;
 }
+
 function aliasKey(key) {
   key = key.replace(/^spine0+(\d+)$/, "spine$1");
   if (key === "pelvis" || key === "hip") return "hips";
   return key;
 }
+
 function keyForName(name) {
   return aliasKey(baseKey(name));
 }
+
 function getBodyBoneByKey(key) {
   if (!bodySkeleton) return null;
   const target = aliasKey(key.toLowerCase());
   return bodySkeleton.bones.find((b) => keyForName(b.name) === target) || null;
 }
 
+// ----------------------------
+// Rig info (hips/rest pose + FACE_ANCHOR)
+// ----------------------------
 function collectRigInfo() {
   hipsRawName = null;
   restPosByBone = new Map();
@@ -284,6 +292,7 @@ function restoreRestPositionsExceptHips() {
 
 function attachPartToBodySkeleton(partScene) {
   if (!bodySkeleton || !bodySkinned || !partScene) return 0;
+
   bodySkinned.updateMatrixWorld(true);
 
   let skinnedCount = 0;
@@ -291,9 +300,7 @@ function attachPartToBodySkeleton(partScene) {
     if (!o.isSkinnedMesh) return;
     skinnedCount++;
 
-    const bindMatrix = o.bindMatrix
-      ? o.bindMatrix.clone()
-      : new THREE.Matrix4();
+    const bindMatrix = o.bindMatrix ? o.bindMatrix.clone() : new THREE.Matrix4();
     o.bind(bodySkeleton, bindMatrix);
     o.bindMode = bodySkinned.bindMode || o.bindMode;
     o.frustumCulled = false;
@@ -303,6 +310,7 @@ function attachPartToBodySkeleton(partScene) {
   return skinnedCount;
 }
 
+// Rigid attachment retargeting (non-skinned meshes parented under bones)
 function buildBodyBoneMap() {
   const map = new Map();
   for (const b of bodySkeleton?.bones || []) map.set(keyForName(b.name), b);
@@ -341,9 +349,7 @@ function retargetRigidAttachmentsToBodyBones(partScene) {
     if (!o.isMesh || o.isSkinnedMesh) return;
 
     const g = o.geometry;
-    const hasSkinAttrs =
-      !!g?.attributes?.skinIndex && !!g?.attributes?.skinWeight;
-
+    const hasSkinAttrs = !!g?.attributes?.skinIndex && !!g?.attributes?.skinWeight;
     if (hasSkinAttrs) {
       ops.push({ type: "convertToSkinned", obj: o });
       return;
@@ -370,8 +376,7 @@ function retargetRigidAttachmentsToBodyBones(partScene) {
       sk.quaternion.copy(src.quaternion);
       sk.scale.copy(src.scale);
 
-      const bindMatrix =
-        bodySkinned?.bindMatrix?.clone?.() || new THREE.Matrix4();
+      const bindMatrix = bodySkinned?.bindMatrix?.clone?.() || new THREE.Matrix4();
       sk.bind(bodySkeleton, bindMatrix);
       sk.frustumCulled = false;
 
@@ -385,6 +390,7 @@ function retargetRigidAttachmentsToBodyBones(partScene) {
   return ops.length;
 }
 
+// Animation sanitization
 function sanitizeClip(clip) {
   if (!clip) return clip;
 
@@ -396,10 +402,7 @@ function sanitizeClip(clip) {
 
     if (safeModeOn() && n.endsWith(".position")) {
       const rawTarget = t.name.split(".")[0] || "";
-      const boneName = rawTarget.includes("|")
-        ? rawTarget.split("|").pop()
-        : rawTarget;
-
+      const boneName = rawTarget.includes("|") ? rawTarget.split("|").pop() : rawTarget;
       const isHips = hipsRawName && boneName === hipsRawName;
 
       if (allowHipsPosOn() && isHips) tracks.push(t);
@@ -414,6 +417,7 @@ function sanitizeClip(clip) {
   return out;
 }
 
+// Face overlays (anchored to BODY head bone via FACE_ANCHOR)
 function clearFaceOverlay() {
   for (const m of faceOverlayMeshes) if (m?.parent) m.parent.remove(m);
   faceOverlayMeshes = [];
@@ -443,16 +447,15 @@ function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
 
     const n = (o.name || "").toLowerCase();
     const mn = o.material?.name ? String(o.material.name).toLowerCase() : "";
-    if (
-      /(face|vibe|eyes|mask|decal)/.test(n) ||
-      /(face|vibe|eyes|mask|decal)/.test(mn)
-    ) {
+
+    if (/(face|vibe|eyes|mask|decal)/.test(n) || /(face|vibe|eyes|mask|decal)/.test(mn)) {
       candidates.push(o);
     }
   });
 
   const targets = candidates.length ? candidates : all;
 
+  let made = 0;
   for (const src of targets) {
     src.updateMatrixWorld(true);
     faceAnchor.updateMatrixWorld(true);
@@ -460,9 +463,7 @@ function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
     let overlay;
     if (src.isSkinnedMesh) {
       overlay = new THREE.SkinnedMesh(src.geometry, faceMat);
-      const bindMatrix = src.bindMatrix
-        ? src.bindMatrix.clone()
-        : new THREE.Matrix4();
+      const bindMatrix = src.bindMatrix ? src.bindMatrix.clone() : new THREE.Matrix4();
       overlay.bind(bodySkeleton, bindMatrix);
       overlay.bindMode = src.bindMode || "attached";
     } else {
@@ -482,53 +483,15 @@ function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
 
     faceAnchor.add(overlay);
     faceOverlayMeshes.push(overlay);
+    made++;
   }
+
+  console.log(`🎭 Face overlay created: ${made} mesh(es)`);
 }
 
-// Bring back the emissive boost for some head materials (as you had before)
-function boostHeadEmissive(headScene, intensity = 2.3) {
-  if (!headScene) return;
-  headScene.traverse((child) => {
-    if (!child.isMesh) return;
-
-    const mats = Array.isArray(child.material)
-      ? child.material
-      : [child.material];
-    for (const m of mats) {
-      if (!m) continue;
-      if (m.emissiveMap) {
-        m.emissive = new THREE.Color(0xffffff);
-        m.emissiveIntensity = intensity;
-        m.needsUpdate = true;
-      }
-    }
-  });
-}
-
-// Fix “dark metal backs”: nudge envMapIntensity for metallic-ish materials
-function tuneMaterialsForEnv(root) {
-  if (!root) return;
-  root.traverse((o) => {
-    if (!o.isMesh) return;
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    for (const m of mats) {
-      if (!m) continue;
-      if ("metalness" in m) {
-        // Give shiny stuff more environment contribution
-        if ((m.metalness ?? 0) > 0.35) {
-          m.envMapIntensity = Math.max(m.envMapIntensity ?? 1, 1.35);
-        } else {
-          m.envMapIntensity = Math.max(m.envMapIntensity ?? 1, 1.05);
-        }
-        m.needsUpdate = true;
-      }
-    }
-  });
-}
-
+// Cleanup
 function clearAvatar() {
   clearFaceOverlay();
-
   loadedParts.forEach((m) => avatarGroup.remove(m));
   loadedParts = [];
 
@@ -548,6 +511,7 @@ function clearAvatar() {
   faceAnchor = null;
 }
 
+// Debug
 function printTraits() {
   if (!lastTraits) return console.warn("No traits loaded yet.");
   console.groupCollapsed("🧩 Trait URLs");
@@ -563,26 +527,30 @@ function printTraits() {
 
 function printRigBones() {
   if (!bodySkeleton) return console.warn("No rig yet.");
-  console.groupCollapsed(
-    `🦴 Rig bones (${bodySkeleton.bones.length}) hipsRaw=${
-      hipsRawName || "(none)"
-    }`
-  );
-  console.table(
-    bodySkeleton.bones.map((b) => ({ raw: b.name, key: keyForName(b.name) }))
-  );
+  console.groupCollapsed(`🦴 Rig bones (${bodySkeleton.bones.length}) hipsRaw=${hipsRawName || "(none)"}`);
+  console.table(bodySkeleton.bones.map((b) => ({ raw: b.name, key: keyForName(b.name) })));
   console.groupEnd();
 }
 
-function getEntryById(id) {
-  if (!allFriendsies) return null;
-  return (
-    allFriendsies[id] ||
-    allFriendsies[id - 1] ||
-    allFriendsies.find?.((x) => Number(x?.token_id) === id) ||
-    allFriendsies.find?.((x) => Number(x?.id) === id) ||
-    null
-  );
+// Head brightness boost (where you “add it” if it ever gets lost again)
+function boostHeadEmissive(headScene) {
+  headScene.traverse((child) => {
+    if (!child.isMesh) return;
+
+    const mats = Array.isArray(child.material) ? child.material : [child.material];
+    for (const m of mats) {
+      if (!m) continue;
+      if (m.emissiveMap) {
+        m.emissive = new THREE.Color(0xffffff);
+        m.emissiveIntensity = 2.3;
+        m.needsUpdate = true;
+      }
+      if ("envMapIntensity" in m) {
+        m.envMapIntensity = Math.max(m.envMapIntensity || 1.0, 1.35);
+        m.needsUpdate = true;
+      }
+    }
+  });
 }
 
 // ----------------------------
@@ -597,12 +565,23 @@ fetch(METADATA_URL)
   .then((data) => {
     allFriendsies = data;
     setStatus("ready ✅");
-    loadByInput();
+    loadByInput({ autoplayAnim: true }); // ✅ autoplay WalkStart by default
   })
   .catch((e) => {
     console.error(e);
     setStatus("metadata fetch failed ❌");
   });
+
+function getEntryById(id) {
+  if (!allFriendsies) return null;
+  return (
+    allFriendsies[id] ||
+    allFriendsies[id - 1] ||
+    allFriendsies.find?.((x) => Number(x?.token_id) === id) ||
+    allFriendsies.find?.((x) => Number(x?.id) === id) ||
+    null
+  );
+}
 
 // ----------------------------
 // Load full character
@@ -620,10 +599,9 @@ async function loadFriendsies(id) {
   const traits = entry.attributes || [];
   lastTraits = traits;
 
-  // FACE texture (PNG)
+  // FACE texture
   const faceAttr = traits.find((t) => t.trait_type === "face");
   let faceTexture = null;
-
   if (faceAttr?.asset_url) {
     faceTexture = textureLoader.load(faceAttr.asset_url);
     faceTexture.minFilter = THREE.LinearFilter;
@@ -632,31 +610,27 @@ async function loadFriendsies(id) {
     faceTexture.encoding = THREE.sRGBEncoding;
   }
 
-  // BODY
+  // BODY first (master rig)
   const bodyAttr = traits.find((t) => t.trait_type === "body");
   if (!bodyAttr?.asset_url) return setStatus("no body trait found ❌");
 
   const bodyRes = await loadGLB(bodyAttr.asset_url);
   if (loadId !== currentLoadId) return;
-
-  if (!bodyRes.ok) {
-    console.warn(bodyRes.err);
-    return setStatus("body load failed ❌");
-  }
+  if (!bodyRes.ok) return setStatus("body load failed ❌");
 
   bodyRoot = bodyRes.gltf.scene;
   loadedParts.push(bodyRoot);
   avatarGroup.add(bodyRoot);
 
   bodySkinned = findFirstSkinnedMesh(bodyRoot);
-  if (!bodySkinned?.skeleton)
-    return setStatus("body loaded but no skeleton ❌");
+  if (!bodySkinned?.skeleton) return setStatus("body loaded but no skeleton ❌");
 
   bodySkeleton = bodySkinned.skeleton;
   collectRigInfo();
 
   mixer = new THREE.AnimationMixer(bodyRoot);
 
+  // If body has its own idle, play it briefly until external anim loads
   const bodyClips = bodyRes.gltf.animations || [];
   if (bodyClips.length) {
     const clip = sanitizeClip(bodyClips[0]);
@@ -664,9 +638,7 @@ async function loadFriendsies(id) {
     currentAction.reset().play();
   }
 
-  tuneMaterialsForEnv(bodyRoot);
-
-  // HEAD
+  // HEAD next
   const headAttr = traits.find((t) => t.trait_type === "head");
   if (headAttr?.asset_url) {
     const headRes = await loadGLB(headAttr.asset_url);
@@ -683,21 +655,15 @@ async function loadFriendsies(id) {
       createSkinnedFaceOverlayFromHead(headScene, faceTexture);
 
       const moved = retargetRigidAttachmentsToBodyBones(headScene);
-      if (moved)
-        console.log(`🧷 Retargeted rigid attachments (head): ${moved}`);
+      if (moved) console.log(`🧷 Retargeted rigid attachments (head): ${moved}`);
 
-      // ✅ Restore emissive boost for head
-      boostHeadEmissive(headScene, 2.3);
-
-      tuneMaterialsForEnv(headScene);
+      // ✅ Bright head again (this is “where to add it”)
+      boostHeadEmissive(headScene);
     }
   }
 
-  // OTHER PARTS
-  const partTraits = traits.filter(
-    (t) => !["body", "head", "face"].includes(t.trait_type)
-  );
-
+  // Other parts
+  const partTraits = traits.filter((t) => !["body", "head", "face"].includes(t.trait_type));
   for (const t of partTraits) {
     if (!t.asset_url || !t.asset_url.endsWith(".glb")) continue;
 
@@ -713,12 +679,8 @@ async function loadFriendsies(id) {
 
       attachPartToBodySkeleton(part);
       retargetRigidAttachmentsToBodyBones(part);
-
-      tuneMaterialsForEnv(part);
     }
   }
-
-  controls.target.set(0, 1.0, 0);
 
   setStatus(
     `loaded #${id} ✅ parts:${loadedParts.length} bones:${bodySkeleton.bones.length} faceOverlays:${faceOverlayMeshes.length}`
@@ -726,7 +688,7 @@ async function loadFriendsies(id) {
 }
 
 // ----------------------------
-// External animation
+// External animation (Mixamo GLB)
 // ----------------------------
 async function loadExternalAnim() {
   const url = document.getElementById("animUrl").value.trim();
@@ -736,10 +698,7 @@ async function loadExternalAnim() {
   setStatus("loading anim…");
 
   const res = await loadGLB(url);
-  if (!res.ok) {
-    console.warn(res.err);
-    return setStatus("anim load failed ❌");
-  }
+  if (!res.ok) return setStatus("anim load failed ❌");
 
   const clips = res.gltf.animations || [];
   if (!clips.length) return setStatus("anim has 0 clips ❌");
@@ -754,30 +713,34 @@ async function loadExternalAnim() {
 }
 
 // ----------------------------
-// UI wiring
+// UI wiring (autoplay enabled)
 // ----------------------------
-function loadByInput() {
+async function loadByInput({ autoplayAnim = true } = {}) {
   const id = Number(document.getElementById("friendsiesId").value);
   if (!Number.isFinite(id) || id < 1 || id > 10000)
     return setStatus("enter a valid ID (1–10000)");
-  loadFriendsies(id);
+
+  await loadFriendsies(id);
+
+  if (autoplayAnim) {
+    const url = document.getElementById("animUrl")?.value?.trim();
+    if (url) await loadExternalAnim();
+  }
 }
 
-document.getElementById("loadBtn").addEventListener("click", loadByInput);
+document.getElementById("loadBtn").addEventListener("click", () => loadByInput({ autoplayAnim: true }));
 
-document.getElementById("randomBtn").addEventListener("click", () => {
+document.getElementById("randomBtn").addEventListener("click", async () => {
   const id = 1 + Math.floor(Math.random() * 10000);
   document.getElementById("friendsiesId").value = String(id);
-  loadFriendsies(id);
+  await loadByInput({ autoplayAnim: true });
 });
 
 document.getElementById("friendsiesId").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") loadByInput();
+  if (e.key === "Enter") loadByInput({ autoplayAnim: true });
 });
 
-document
-  .getElementById("loadAnimBtn")
-  .addEventListener("click", loadExternalAnim);
+document.getElementById("loadAnimBtn").addEventListener("click", loadExternalAnim);
 
 document.getElementById("stopAnimBtn").addEventListener("click", () => {
   if (mixer) mixer.stopAllAction();
@@ -785,9 +748,7 @@ document.getElementById("stopAnimBtn").addEventListener("click", () => {
   setStatus("anim stopped");
 });
 
-document
-  .getElementById("printTraitsBtn")
-  .addEventListener("click", printTraits);
+document.getElementById("printTraitsBtn").addEventListener("click", printTraits);
 document.getElementById("printRigBtn").addEventListener("click", printRigBones);
 
 // ----------------------------
@@ -797,7 +758,6 @@ function animate() {
   requestAnimationFrame(animate);
 
   const dt = clock.getDelta();
-
   if (mixer) mixer.update(dt);
 
   if (freezePosOn() && bodySkeleton) restoreRestPositionsExceptHips();
@@ -820,7 +780,7 @@ function animate() {
 animate();
 
 // ----------------------------
-// Resize
+// Resize handler
 // ----------------------------
 window.addEventListener("resize", () => {
   const w = window.innerWidth;
