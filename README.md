@@ -38,6 +38,15 @@ This is pinned to **Three.js r128** + matching r128 examples scripts:
 
 ---
 
+## Local run (Windows)
+
+1) Open **Developer Command Prompt for VS** (or another Windows dev shell).
+2) From the repo root, run:
+   - `npx serve .`
+3) Open: `http://localhost:3000/`
+
+---
+
 ## How it works (high-level)
 
 ### 1) Metadata → Trait URLs
