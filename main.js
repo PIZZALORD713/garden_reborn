@@ -234,7 +234,7 @@ async function loadPanoramaSphere() {
       PANORAMA_URL,
       (panoTex) => {
         panoTex.encoding = THREE.sRGBEncoding;
-        panoTex.flipY = false;
+        panoTex.flipY = true;
 
         const geo = new THREE.SphereGeometry(80, 64, 32);
 
