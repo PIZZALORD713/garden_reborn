@@ -1,0 +1,241 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+    sans-serif;
+}
+
+#ui {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#controls {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: min(1120px, calc(100vw - 24px));
+  pointer-events: auto;
+  border-radius: 18px;
+  overflow: hidden;
+
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.14), 0 2px 0 rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.dock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 225, 246, 0.9),
+    rgba(215, 242, 255, 0.9)
+  );
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.iconBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.85);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.iconBtn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.95);
+}
+.iconBtn:active {
+  transform: translateY(0px) scale(0.98);
+}
+
+.dockTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.titleRow strong {
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+
+.status {
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.subRow {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.quickbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px;
+  align-items: center;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 14px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.pill.wide {
+  flex: 1;
+  min-width: min(520px, 100%);
+}
+
+.pillLabel {
+  font-size: 12px;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+input[type="number"],
+input[type="text"] {
+  font-size: 14px;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+input[type="number"] {
+  width: 110px;
+  text-align: center;
+}
+input[type="text"] {
+  width: 100%;
+}
+
+.btn {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.02);
+}
+.btn:active {
+  transform: translateY(0px) scale(0.99);
+}
+
+.btn.primary {
+  background: linear-gradient(180deg, #6ee7b7, #34d399);
+  color: #053a2a;
+  font-weight: 700;
+}
+
+.btn.danger {
+  background: linear-gradient(180deg, #fecaca, #f87171);
+  color: #3a0404;
+  font-weight: 700;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chip.big {
+  border-radius: 16px;
+  padding: 12px 12px;
+}
+
+.chip input {
+  transform: scale(1.1);
+}
+
+.drawer {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  background: rgba(250, 250, 255, 0.75);
+  overflow: hidden;
+  max-height: 340px;
+  transition: max-height 0.22s ease, opacity 0.22s ease;
+  opacity: 1;
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 12px 0 12px;
+}
+
+.drawerTitle {
+  font-weight: 800;
+  font-size: 13px;
+}
+.drawerHint {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.drawerGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px 12px 12px 12px;
+}
+
+.drawerFooter {
+  font-size: 12px;
+  opacity: 0.75;
+  padding: 0 12px 12px 12px;
+}
+
+#controls.collapsed .drawer {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .drawerGrid {
+    grid-template-columns: 1fr;
+  }
+  .pill.wide {
+    min-width: 100%;
+  }
+}
