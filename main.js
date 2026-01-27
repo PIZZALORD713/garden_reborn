@@ -9,6 +9,11 @@
 // - Gear button toggles ALL UI (controls + transcript)
 // - Transcript panel can collapse independently
 // - Trait URLs / Rig Bones print into transcript (not dev console)
+//
+// UPDATE (2026-01-27):
+// - Panorama sphere fix: avoid double-inverting (scale(-1...) + BackSide).
+//   We keep geo.scale(-1,1,1) and switch material side to FrontSide.
+//   Also force pano to render as true background.
 // ------------------------------------------------------------
 
 // ----------------------------
@@ -153,7 +158,8 @@ function setBoolLS(key, val) {
 function applyUIHidden(hidden) {
   uiRoot.classList.toggle("uiHidden", hidden);
   if (el.panel) el.panel.setAttribute("aria-hidden", hidden ? "true" : "false");
-  if (el.logPanel) el.logPanel.setAttribute("aria-hidden", hidden ? "true" : "false");
+  if (el.logPanel)
+    el.logPanel.setAttribute("aria-hidden", hidden ? "true" : "false");
   setBoolLS(LS_UI_HIDDEN, hidden);
 }
 
@@ -178,7 +184,7 @@ el.logToggleBtn?.addEventListener("click", () => {
 el.clearLogBtn?.addEventListener("click", clearLog);
 
 document.addEventListener("keydown", (e) => {
-  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+  const tag = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : "";
   const typing = tag === "input" || tag === "select" || tag === "textarea";
   if (typing) return;
 
@@ -231,15 +237,24 @@ async function loadPanoramaSphere() {
         panoTex.flipY = false;
 
         const geo = new THREE.SphereGeometry(80, 64, 32);
+
+        // ✅ Keep this inversion (camera is inside the sphere)
         geo.scale(-1, 1, 1);
 
+        // ✅ FIX: do NOT use BackSide when you've already inverted the geometry.
+        // Also force background-ish behavior.
         const mat = new THREE.MeshBasicMaterial({
           map: panoTex,
-          side: THREE.BackSide
+          side: THREE.FrontSide,
+          depthWrite: false,
+          depthTest: false
         });
 
         const mesh = new THREE.Mesh(geo, mat);
         mesh.name = "PANORAMA_SPHERE";
+
+        // Ensure it renders first (so it never covers the avatar)
+        mesh.renderOrder = -1000;
 
         panoGroup.clear();
         panoGroup.add(mesh);
@@ -384,7 +399,10 @@ function collectRigInfo() {
     headBone.add(faceAnchor);
   } else {
     avatarGroup.add(faceAnchor);
-    logLine("⚠️ No BODY head/neck bone found — FACE_ANCHOR attached to avatarGroup", "warn");
+    logLine(
+      "⚠️ No BODY head/neck bone found — FACE_ANCHOR attached to avatarGroup",
+      "warn"
+    );
   }
 }
 
@@ -799,9 +817,7 @@ async function loadFriendsies(id) {
   }
 
   // Other parts
-  const partTraits = traits.filter(
-    (t) => !["body", "head", "face"].includes(t.trait_type)
-  );
+  const partTraits = traits.filter((t) => !["body", "head", "face"].includes(t.trait_type));
 
   let totalBound = 0;
   let totalMoved = 0;
