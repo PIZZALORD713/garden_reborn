@@ -19,7 +19,7 @@
 // ----------------------------
 // UI: gear + drawer
 // ----------------------------
-const gearBtn = document.getElementById("gearBtn");
+const gearBtn = document.getElementById("gearBtn") || document.getElementById("debugBtn");
 const controlsWrap = document.getElementById("controls");
 const debugDrawer = document.getElementById("debugDrawer");
 
@@ -72,7 +72,7 @@ controls.target.set(0, 1.0, 0);
 // UI helpers (checkbox state)
 // ----------------------------
 const statusEl = document.getElementById("status");
-const setStatus = (s) => (statusEl.textContent = s);
+const setStatus = (s) => (statusEl && (statusEl.textContent = s));
 
 const orbitOn = () => document.getElementById("orbitOn")?.checked ?? true;
 const autoRotateOn = () =>
@@ -84,6 +84,145 @@ const freezePosOn = () =>
 const allowHipsPosOn = () =>
   document.getElementById("allowHipsPosOn")?.checked ?? true;
 const bobOn = () => document.getElementById("bobOn")?.checked ?? true;
+
+// ----------------------------
+// Animation presets + UI + on-screen log (Stage 2A)
+// ----------------------------
+
+// Friendly animation presets (name + url)
+const ANIMS = [
+  {
+    name: "Walk Start",
+    url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/WalkStart.glb",
+  },
+  // Add other presets here:
+  // { name: "Idle", url: "https://..." },
+];
+
+// Cache UI elements (these exist in the reduced "toy remote" index.html)
+const UI = {
+  status: document.getElementById("status"),
+  debugBtn: document.getElementById("debugBtn"),
+  debugMenu: document.getElementById("debugMenu"),
+  animSelect: document.getElementById("animSelect"),
+  playBtn: document.getElementById("playBtn"),
+  stopBtn: document.getElementById("stopAnimBtn"),
+  autoRandomOn: document.getElementById("autoRandomOn"),
+  loadBtn: document.getElementById("loadBtn"),
+  randomBtn: document.getElementById("randomBtn"),
+  friendsiesId: document.getElementById("friendsiesId"),
+  logPanel: document.getElementById("logPanel"),
+  logBody: document.getElementById("logBody"),
+  toggleLogBtn: document.getElementById("toggleLogBtn"),
+  copyLogBtn: document.getElementById("copyLogBtn"),
+  clearLogBtn: document.getElementById("clearLogBtn"),
+  closeLogBtn: document.getElementById("closeLogBtn"),
+  printTraitsBtn: document.getElementById("printTraitsBtn"),
+  printRigBtn: document.getElementById("printRigBtn"),
+};
+
+// On-screen log helpers
+function uiLog(msg) {
+  try {
+    const t = new Date().toLocaleTimeString();
+    if (UI.logBody) {
+      UI.logBody.textContent += `[${t}] ${msg}\n`;
+      UI.logBody.scrollTop = UI.logBody.scrollHeight;
+    }
+    // Still useful to keep console for debugging
+    console.log(`[LOG] ${msg}`);
+  } catch (e) {
+    console.warn("uiLog failed", e);
+  }
+}
+function openLog() {
+  if (UI.logPanel) {
+    UI.logPanel.classList.remove("hidden");
+    UI.logPanel.setAttribute("aria-hidden", "false");
+  }
+}
+function closeLog() {
+  if (UI.logPanel) {
+    UI.logPanel.classList.add("hidden");
+    UI.logPanel.setAttribute("aria-hidden", "true");
+  }
+}
+
+// Debug menu toggle
+if (UI.debugBtn) {
+  UI.debugBtn.addEventListener("click", () => {
+    if (!UI.debugMenu) return;
+    const hidden = UI.debugMenu.classList.toggle("hidden");
+    UI.debugMenu.setAttribute("aria-hidden", String(hidden));
+  });
+}
+
+// Log controls wiring
+UI.toggleLogBtn?.addEventListener("click", () => {
+  if (!UI.logPanel) return;
+  UI.logPanel.classList.toggle("hidden");
+});
+UI.clearLogBtn?.addEventListener("click", () => {
+  if (UI.logBody) UI.logBody.textContent = "";
+});
+UI.closeLogBtn?.addEventListener("click", closeLog);
+UI.copyLogBtn?.addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText(UI.logBody?.textContent || "");
+    uiLog("Copied log to clipboard ✅");
+  } catch {
+    uiLog("Clipboard copy failed (browser blocked it) ❌");
+  }
+});
+
+// Populate animation dropdown
+function initAnimSelect() {
+  if (!UI.animSelect) return;
+  UI.animSelect.innerHTML = "";
+  for (const a of ANIMS) {
+    const opt = document.createElement("option");
+    opt.value = a.url;
+    opt.textContent = a.name;
+    UI.animSelect.appendChild(opt);
+  }
+  UI.animSelect.value = ANIMS[0]?.url || "";
+}
+initAnimSelect();
+
+// Play wiring: use selected preset URL
+UI.playBtn?.addEventListener("click", () => {
+  const url = UI.animSelect?.value || "";
+  if (!url) return setStatus("select an animation");
+  loadExternalAnim(url);
+});
+
+// Stop wiring
+UI.stopBtn?.addEventListener("click", () => {
+  if (mixer) mixer.stopAllAction();
+  currentAction = null;
+  setStatus("anim stopped");
+});
+
+// Auto Random (4s)
+let autoRandomTimer = null;
+function stopAutoRandom() {
+  if (autoRandomTimer) clearInterval(autoRandomTimer);
+  autoRandomTimer = null;
+  uiLog("Auto Random OFF");
+}
+function startAutoRandom() {
+  stopAutoRandom();
+  uiLog("Auto Random ON (4s)");
+  autoRandomTimer = setInterval(async () => {
+    const id = 1 + Math.floor(Math.random() * 10000);
+    if (UI.friendsiesId) UI.friendsiesId.value = String(id);
+    await loadFriendsies(id);
+  }, 4000);
+}
+UI.autoRandomOn?.addEventListener("change", (e) => {
+  if (e.target.checked) startAutoRandom();
+  else stopAutoRandom();
+});
 
 // ----------------------------
 // Lights (kept subtle because EXR env does most of the work)
@@ -486,7 +625,7 @@ function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
     made++;
   }
 
-  console.log(`🎭 Face overlay created: ${made} mesh(es)`);
+  uiLog(`Face overlay created: ${made} mesh(es)`);
 }
 
 // Cleanup
@@ -511,25 +650,29 @@ function clearAvatar() {
   faceAnchor = null;
 }
 
-// Debug
+// Debug (now logs to on-screen UI)
 function printTraits() {
-  if (!lastTraits) return console.warn("No traits loaded yet.");
-  console.groupCollapsed("🧩 Trait URLs");
-  console.table(
-    lastTraits.map((t) => ({
-      trait_type: t.trait_type,
-      value: t.value,
-      asset_url: t.asset_url
-    }))
-  );
-  console.groupEnd();
+  if (!lastTraits) {
+    uiLog("No traits loaded yet.");
+    return;
+  }
+  openLog();
+  uiLog("Trait URLs:");
+  for (const t of lastTraits) {
+    uiLog(`- ${t.trait_type}: ${t.value} → ${t.asset_url || "(none)"}`);
+  }
 }
 
 function printRigBones() {
-  if (!bodySkeleton) return console.warn("No rig yet.");
-  console.groupCollapsed(`🦴 Rig bones (${bodySkeleton.bones.length}) hipsRaw=${hipsRawName || "(none)"}`);
-  console.table(bodySkeleton.bones.map((b) => ({ raw: b.name, key: keyForName(b.name) })));
-  console.groupEnd();
+  if (!bodySkeleton) {
+    uiLog("No rig yet.");
+    return;
+  }
+  openLog();
+  uiLog(`Rig bones (${bodySkeleton.bones.length}) hipsRaw=${hipsRawName || "(none)"}`);
+  for (const b of bodySkeleton.bones) {
+    uiLog(`- ${b.name}`);
+  }
 }
 
 // Head brightness boost (where you “add it” if it ever gets lost again)
@@ -565,7 +708,9 @@ fetch(METADATA_URL)
   .then((data) => {
     allFriendsies = data;
     setStatus("ready ✅");
-    loadByInput({ autoplayAnim: true }); // ✅ autoplay WalkStart by default
+    // Autoplay default animation if present
+    const defaultId = Number(UI.friendsiesId?.value || 7117);
+    loadByInput({ autoplayAnim: true }).catch(() => {});
   })
   .catch((e) => {
     console.error(e);
@@ -588,7 +733,6 @@ function getEntryById(id) {
 // ----------------------------
 async function loadFriendsies(id) {
   if (!allFriendsies) return;
-
   const loadId = ++currentLoadId;
   clearAvatar();
   setStatus(`loading #${id}…`);
@@ -655,7 +799,7 @@ async function loadFriendsies(id) {
       createSkinnedFaceOverlayFromHead(headScene, faceTexture);
 
       const moved = retargetRigidAttachmentsToBodyBones(headScene);
-      if (moved) console.log(`🧷 Retargeted rigid attachments (head): ${moved}`);
+      if (moved) uiLog(`Retargeted rigid attachments (head): ${moved}`);
 
       // ✅ Bright head again (this is “where to add it”)
       boostHeadEmissive(headScene);
@@ -690,18 +834,26 @@ async function loadFriendsies(id) {
 // ----------------------------
 // External animation (Mixamo GLB)
 // ----------------------------
-async function loadExternalAnim() {
-  const url = document.getElementById("animUrl").value.trim();
-  if (!url) return setStatus("paste an animation GLB url");
+// Accept an optional urlOverride; if not provided, fall back to animSelect value.
+async function loadExternalAnim(urlOverride) {
+  const url = (urlOverride || UI.animSelect?.value || "").trim();
+  if (!url) return setStatus("select an animation");
   if (!mixer || !bodyRoot) return setStatus("load a friendsies first");
 
   setStatus("loading anim…");
+  uiLog(`Loading anim: ${url}`);
 
   const res = await loadGLB(url);
-  if (!res.ok) return setStatus("anim load failed ❌");
+  if (!res.ok) {
+    uiLog(`Anim load failed ❌`);
+    return setStatus("anim load failed ❌");
+  }
 
   const clips = res.gltf.animations || [];
-  if (!clips.length) return setStatus("anim has 0 clips ❌");
+  if (!clips.length) {
+    uiLog(`Anim has 0 clips ❌`);
+    return setStatus("anim has 0 clips ❌");
+  }
 
   const clip = sanitizeClip(clips[0]);
 
@@ -709,7 +861,8 @@ async function loadExternalAnim() {
   currentAction = mixer.clipAction(clip);
   currentAction.reset().play();
 
-  setStatus(`playing anim ✅ clip:${clip.name || "unnamed"}`);
+  uiLog(`Playing clip ✅ ${clip.name || "unnamed"}`);
+  setStatus(`playing anim ✅ ${clip.name || "unnamed"}`);
 }
 
 // ----------------------------
@@ -723,33 +876,31 @@ async function loadByInput({ autoplayAnim = true } = {}) {
   await loadFriendsies(id);
 
   if (autoplayAnim) {
-    const url = document.getElementById("animUrl")?.value?.trim();
-    if (url) await loadExternalAnim();
+    const url = UI.animSelect?.value;
+    if (url) await loadExternalAnim(url);
   }
 }
 
-document.getElementById("loadBtn").addEventListener("click", () => loadByInput({ autoplayAnim: true }));
+UI.loadBtn?.addEventListener("click", () => loadByInput({ autoplayAnim: true }));
 
-document.getElementById("randomBtn").addEventListener("click", async () => {
+UI.randomBtn?.addEventListener("click", async () => {
   const id = 1 + Math.floor(Math.random() * 10000);
-  document.getElementById("friendsiesId").value = String(id);
+  if (UI.friendsiesId) UI.friendsiesId.value = String(id);
   await loadByInput({ autoplayAnim: true });
 });
 
-document.getElementById("friendsiesId").addEventListener("keydown", (e) => {
+UI.friendsiesId?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") loadByInput({ autoplayAnim: true });
 });
 
-document.getElementById("loadAnimBtn").addEventListener("click", loadExternalAnim);
+// Legacy element that might exist in old HTML; guard it
+const loadAnimBtnEl = document.getElementById("loadAnimBtn");
+if (loadAnimBtnEl) loadAnimBtnEl.addEventListener("click", () => loadExternalAnim());
 
-document.getElementById("stopAnimBtn").addEventListener("click", () => {
-  if (mixer) mixer.stopAllAction();
-  currentAction = null;
-  setStatus("anim stopped");
-});
+// stopAnimBtn is already wired above via UI.stopBtn
 
-document.getElementById("printTraitsBtn").addEventListener("click", printTraits);
-document.getElementById("printRigBtn").addEventListener("click", printRigBones);
+UI.printTraitsBtn?.addEventListener("click", printTraits);
+UI.printRigBtn?.addEventListener("click", printRigBones);
 
 // ----------------------------
 // Render loop

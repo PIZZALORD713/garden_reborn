@@ -8,13 +8,21 @@
     <link rel="stylesheet" href="./style.css" />
 
     <!-- Three.js (r128) + examples (match versions to avoid OrbitControls issues) -->
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+      integrity="REPLACE_WITH_SRI_HASH" crossorigin="anonymous"></script>
+
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"
+      integrity="REPLACE_WITH_SRI_HASH" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"
+      integrity="REPLACE_WITH_SRI_HASH" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"
+      integrity="REPLACE_WITH_SRI_HASH" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"
+      integrity="REPLACE_WITH_SRI_HASH" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"
+      integrity="REPLACE_WITH_SRI_HASH" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"
+      integrity="REPLACE_WITH_SRI_HASH" crossorigin="anonymous"></script>
 
     <!-- Your app -->
     <script defer src="./main.js"></script>
@@ -22,68 +30,67 @@
 
   <body>
     <div id="ui">
-  <div id="bar">
-    <button id="debugBtn" class="iconBtn" type="button" aria-label="Debug">
-      ⚙️
-    </button>
+      <div id="bar">
+        <button id="debugBtn" class="iconBtn" type="button" aria-label="Debug">⚙️</button>
 
-    <div class="group">
-      <label class="pill">
-        <span>ID</span>
-        <input type="number" id="friendsiesId" min="1" max="10000" value="7117" />
-      </label>
-      <button id="loadBtn" class="btn primary">Load</button>
-      <button id="randomBtn" class="btn">🎲 Random</button>
+        <div class="group">
+          <label class="pill">
+            <span>ID</span>
+            <input type="number" id="friendsiesId" min="1" max="10000" value="7117" />
+          </label>
 
-      <label class="toggle">
-        <input type="checkbox" id="autoRandomOn" />
-        Auto Random (4s)
-      </label>
-    </div>
+          <button id="loadBtn" class="btn primary" type="button">Load</button>
+          <button id="randomBtn" class="btn" type="button" aria-label="Random">🎲 Random</button>
 
-    <div class="group">
-      <label class="pill wide">
-        <span>Anim</span>
-        <select id="animSelect"></select>
-      </label>
+          <label class="toggle">
+            <input type="checkbox" id="autoRandomOn" />
+            Auto Random (4s)
+          </label>
+        </div>
 
-      <button id="playBtn" class="btn primary">▶ Play</button>
-      <button id="stopAnimBtn" class="btn danger">■ Stop</button>
-    </div>
+        <div class="group">
+          <label class="pill wide">
+            <span>Anim</span>
+            <select id="animSelect"></select>
+          </label>
 
-    <div class="group">
-      <label class="toggle">
-        <input type="checkbox" id="orbitOn" checked />
-        Orbit
-      </label>
-      <label class="toggle">
-        <input type="checkbox" id="autoRotateOn" />
-        Auto-rotate
-      </label>
-    </div>
+          <button id="playBtn" class="btn primary" type="button">▶ Play</button>
+          <button id="stopAnimBtn" class="btn danger" type="button">■ Stop</button>
+        </div>
 
-    <div id="status" class="status">booting…</div>
-  </div>
+        <div class="group">
+          <label class="toggle">
+            <input type="checkbox" id="orbitOn" checked />
+            Orbit
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="autoRotateOn" />
+            Auto-rotate
+          </label>
+        </div>
 
-  <!-- Debug mini menu -->
-  <div id="debugMenu" class="menu hidden">
-    <button id="printTraitsBtn" class="btn">🧩 Print Trait URLs</button>
-    <button id="printRigBtn" class="btn">🦴 Print Rig Bones</button>
-    <button id="toggleLogBtn" class="btn">📟 Toggle Log</button>
-  </div>
+        <div id="status" class="status" role="status" aria-live="polite">booting…</div>
+      </div>
 
-  <!-- On-screen log -->
-  <div id="logPanel" class="log hidden">
-    <div class="logHead">
-      <strong>Log</strong>
-      <div class="logBtns">
-        <button id="copyLogBtn" class="mini">Copy</button>
-        <button id="clearLogBtn" class="mini">Clear</button>
-        <button id="closeLogBtn" class="mini">✕</button>
+      <!-- Debug mini menu (hidden by default) -->
+      <div id="debugMenu" class="menu hidden" aria-hidden="true">
+        <button id="printTraitsBtn" class="btn" type="button">🧩 Print Trait URLs</button>
+        <button id="printRigBtn" class="btn" type="button">🦴 Print Rig Bones</button>
+        <button id="toggleLogBtn" class="btn" type="button">📟 Toggle Log</button>
+      </div>
+
+      <!-- On-screen log (hidden by default) -->
+      <div id="logPanel" class="log hidden" aria-hidden="true">
+        <div class="logHead">
+          <strong>Log</strong>
+          <div class="logBtns">
+            <button id="copyLogBtn" class="mini" type="button">Copy</button>
+            <button id="clearLogBtn" class="mini" type="button">Clear</button>
+            <button id="closeLogBtn" class="mini" type="button">✕</button>
+          </div>
+        </div>
+        <pre id="logBody" class="logBody" aria-live="polite"></pre>
       </div>
     </div>
-    <pre id="logBody" class="logBody"></pre>
-  </div>
-</div>
   </body>
 </html>
