@@ -1,114 +1,117 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>fRiENDSiES Toy Box</title>
-  <link rel="stylesheet" href="./style.css" />
-</head>
-<body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>fRiENDSiES Toy Box</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
 
-  <!-- Always-visible UI toggle -->
-  <button
-    id="uiToggleBtn"
-    class="iconBtn uiToggle"
-    type="button"
-    aria-label="Toggle UI"
-    aria-expanded="true"
-    title="Toggle UI (H)"
-  >
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
-      <path d="M19.4 15a8.7 8.7 0 0 0 .1-1l2-1.2-2-3.4-2.2.6a7.7 7.7 0 0 0-1.7-1l-.3-2.3H10l-.3 2.3a7.7 7.7 0 0 0-1.7 1l-2.2-.6-2 3.4 2 1.2a8.7 8.7 0 0 0 .1 1 8.7 8.7 0 0 0-.1 1l-2 1.2 2 3.4 2.2-.6c.5.4 1.1.7 1.7 1l.3 2.3h5.4l.3-2.3c.6-.3 1.2-.6 1.7-1l2.2.6 2-3.4-2-1.2a8.7 8.7 0 0 0-.1-1Z"
-        stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-    </svg>
-  </button>
+  <body>
+    <div id="ui">
+      <!-- Toggle ALL UI (controls + transcript) -->
+      <button
+        id="uiToggleBtn"
+        class="uiToggle"
+        type="button"
+        aria-label="Toggle UI"
+        title="Toggle UI (H)"
+      >
+        <!-- gear icon -->
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+            stroke="currentColor"
+            stroke-width="2"
+          />
+          <path
+            d="M19.4 15a8.7 8.7 0 0 0 .1-1l2-1.2-2-3.4-2.2.6a7.7 7.7 0 0 0-1.7-1l-.3-2.3H10l-.3 2.3a7.7 7.7 0 0 0-1.7 1l-2.2-.6-2 3.4 2 1.2a8.7 8.7 0 0 0 .1 1 8.7 8.7 0 0 0-.1 1l-2 1.2 2 3.4 2.2-.6c.5.4 1.1.7 1.7 1l.3 2.3h5.4l.3-2.3c.6-.3 1.2-.6 1.7-1l2.2.6 2-3.4-2-1.2a8.7 8.7 0 0 0-.1-1Z"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
 
-  <div id="ui">
-    <div id="panel" class="panel">
-      <div class="panelHeader">
-        <div class="brand">
-          <span class="logo">🧸</span>
-          <div class="brandText">
-            <div class="title">fRiENDSiES Toy Box</div>
-            <div class="subtitle">Viewer + anim test (pano bg + EXR env)</div>
+      <!-- Controls panel -->
+      <div id="panel" class="panel" aria-hidden="false">
+        <div class="panelHeader">
+          <div class="brand">
+            <div class="logo" aria-hidden="true">🧸</div>
+            <div class="brandText">
+              <div class="title">fRiENDSiES Toy Box</div>
+              <div class="subtitle">Viewer + anim test (pano bg + EXR env)</div>
+            </div>
           </div>
+          <div id="status" class="status">booting…</div>
         </div>
-        <div id="status" class="status">booting…</div>
+
+        <div class="row">
+          <div class="pill">
+            <span class="pillLabel">ID</span>
+            <input type="number" id="friendsiesId" min="1" max="10000" value="5" />
+          </div>
+
+          <button id="loadBtn" class="btn primary">Load</button>
+          <button id="randomBtn" class="btn">🎲 Random</button>
+
+          <label class="chip" title="Auto-random every 4 seconds">
+            <input type="checkbox" id="autoRandomOn" />
+            ✅ Auto
+          </label>
+        </div>
+
+        <div class="row">
+          <div class="pill wide">
+            <span class="pillLabel">Anim</span>
+            <select id="animSelect"></select>
+          </div>
+
+          <button id="playBtn" class="btn primary">▶ Play</button>
+          <button id="stopBtn" class="btn danger">■ Stop</button>
+
+          <label class="chip">
+            <input type="checkbox" id="orbitOn" checked />
+            🛰 Orbit
+          </label>
+
+          <label class="chip">
+            <input type="checkbox" id="autoRotateOn" />
+            🔄 Auto
+          </label>
+        </div>
+
+        <div class="row tiny">
+          <button id="printTraitsBtn" class="btn">🧩 Trait URLs</button>
+          <button id="printRigBtn" class="btn">🛠 Rig Bones</button>
+          <span class="hintText">Tip: press <kbd>H</kbd> to hide UI, <kbd>L</kbd> to collapse transcript.</span>
+        </div>
       </div>
 
-      <div class="row">
-        <label class="pill">
-          <span class="pillLabel">ID</span>
-          <input type="number" id="friendsiesId" min="1" max="10000" value="5" />
-        </label>
-        <button id="loadBtn" class="btn primary">Load</button>
-        <button id="randomBtn" class="btn">🎲 Random</button>
-        <label class="chip" title="Auto-random every 4 seconds">
-          <input type="checkbox" id="autoRandomOn" />
-          ✅ Auto
-        </label>
-      </div>
-
-      <div class="row">
-        <label class="pill wide">
-          <span class="pillLabel">Anim</span>
-          <select id="animSelect"></select>
-        </label>
-        <button id="playBtn" class="btn primary">▶ Play</button>
-        <button id="stopAnimBtn" class="btn danger">■ Stop</button>
-
-        <label class="chip">
-          <input type="checkbox" id="orbitOn" checked />
-          🛰 Orbit
-        </label>
-
-        <label class="chip">
-          <input type="checkbox" id="autoRotateOn" />
-          🔄 Auto-rotate
-        </label>
-      </div>
-
-      <div class="row tiny">
-        <button id="printTraitsBtn" class="btn">🧩 Trait URLs</button>
-        <button id="printRigBtn" class="btn">🛠 Rig Bones</button>
-      </div>
-
-      <div class="logWrap" id="logWrap">
+      <!-- Transcript / pseudo console (collapsible) -->
+      <div id="logPanel" class="logPanel" aria-hidden="false">
         <div class="logHeader">
-          <div class="logTitle">Console</div>
+          <div class="logTitle">📟 Transcript</div>
           <div class="logActions">
-            <button
-              id="logToggleBtn"
-              class="iconBtn small"
-              type="button"
-              aria-label="Toggle console"
-              aria-expanded="true"
-              title="Toggle console (L)"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M8 10l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
+            <button id="clearLogBtn" class="iconBtn" type="button" title="Clear transcript">Clear</button>
+            <button id="logToggleBtn" class="iconBtn" type="button" aria-label="Toggle transcript" title="Toggle transcript (L)">
+              <span id="logChevron" aria-hidden="true">▾</span>
             </button>
-
-            <button id="clearLogBtn" class="btn ghost">Clear</button>
           </div>
         </div>
-
-        <div id="log" class="log" aria-live="polite"></div>
+        <div id="log" class="log"></div>
       </div>
     </div>
-  </div>
 
-  <!-- Three r128 + examples (global THREE) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Three.js r128 + loaders/controls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
-  <script src="./main.js"></script>
-</body>
+    <script src="./main.js"></script>
+  </body>
 </html>
