@@ -852,6 +852,7 @@ function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
     map: faceTexture,
     transparent: true,
     alphaTest: 0.5,
+    depthTest: false,
     depthWrite: false
   });
   faceMat.polygonOffset = true;
