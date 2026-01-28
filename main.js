@@ -852,7 +852,6 @@ function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
     map: faceTexture,
     transparent: true,
     alphaTest: 0.5,
-    depthTest: false,
     depthWrite: false
   });
   faceMat.polygonOffset = true;
@@ -878,14 +877,12 @@ function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
 
   let made = 0;
   for (const src of targets) {
-    src.updateMatrixWorld(true);
-    faceAnchor.updateMatrixWorld(true);
-
     let overlay;
     if (src.isSkinnedMesh) {
-      overlay = src.clone();
-      overlay.material = faceMat;
-      const bindMatrix = src.bindMatrix ? src.bindMatrix.clone() : new THREE.Matrix4();
+      overlay = new THREE.SkinnedMesh(src.geometry, faceMat);
+      const bindMatrix = src.bindMatrix
+        ? src.bindMatrix.clone()
+        : new THREE.Matrix4();
       overlay.bind(bodySkeleton, bindMatrix);
       overlay.bindMode = src.bindMode || "attached";
     } else {
@@ -896,22 +893,18 @@ function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
     overlay.renderOrder = 999;
     overlay.frustumCulled = false;
 
-    let parentForOverlay = faceAnchor;
-    if (src.isSkinnedMesh) {
-      parentForOverlay = src.parent || faceAnchor;
-      overlay.position.copy(src.position);
-      overlay.quaternion.copy(src.quaternion);
-      overlay.scale.copy(src.scale);
-    } else {
-      const local = new THREE.Matrix4()
-        .copy(faceAnchor.matrixWorld)
-        .invert()
-        .multiply(src.matrixWorld);
+    headScene.updateMatrixWorld(true);
+    faceAnchor.updateMatrixWorld(true);
+    src.updateMatrixWorld(true);
 
-      local.decompose(overlay.position, overlay.quaternion, overlay.scale);
-    }
+    const local = new THREE.Matrix4()
+      .copy(faceAnchor.matrixWorld)
+      .invert()
+      .multiply(src.matrixWorld);
 
-    parentForOverlay.add(overlay);
+    local.decompose(overlay.position, overlay.quaternion, overlay.scale);
+
+    faceAnchor.add(overlay);
     faceOverlayMeshes.push(overlay);
     made++;
   }
@@ -1155,6 +1148,9 @@ async function loadFriendsies(id) {
   if (headRes?.ok) {
     const headScene = headRes.gltf.scene;
 
+    avatarGroup.add(headScene);
+    avatarGroup.updateMatrixWorld(true);
+
     attachPartToBodySkeleton(headScene);
     createSkinnedFaceOverlayFromHead(headScene, faceTexture);
 
@@ -1163,7 +1159,6 @@ async function loadFriendsies(id) {
 
     boostMaterialsForPop(headScene);
     loadedParts.push(headScene);
-    avatarGroup.add(headScene);
     avatarGroup.updateMatrixWorld(true);
   }
 
