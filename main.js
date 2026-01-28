@@ -73,25 +73,29 @@ document.body.appendChild(renderer.domElement);
 // ----------------------------
 const LOOK_CONTROLS = {
   toneMapping: "ACES",
-  toneMappingExposure: 1.05,
-  ambientIntensity: 0.18,
-  hemiIntensity: 0.25,
-  keyIntensity: 0.75,
-  rimIntensity: 0.35,
-  envMapIntensity: 1.2,
-  emissiveIntensity: 1.6
+  toneMappingExposure: 1.04,
+  ambientIntensity: 0.12,
+  hemiIntensity: 0.72,
+  keyIntensity: 0.55,
+  rimIntensity: 0.55,
+  envMapIntensity: 0.1,
+  emissiveIntensity: 0.75,
+  keyLightIntensity: 0.55,
+  rimLightIntensity: 0.55,
+  envIntensityMultiplier: 0.1,
+  emissiveIntensityMultiplier: 0.75
 };
 
 const LOOK_PRESETS = {
   Cinematic: {
     toneMapping: "ACES",
-    toneMappingExposure: 1.05,
-    ambientIntensity: 0.18,
-    hemiIntensity: 0.25,
-    keyIntensity: 0.75,
-    rimIntensity: 0.35,
-    envMapIntensity: 1.2,
-    emissiveIntensity: 1.6
+    toneMappingExposure: 1.04,
+    ambientIntensity: 0.12,
+    hemiIntensity: 0.72,
+    keyIntensity: 0.55,
+    rimIntensity: 0.55,
+    envMapIntensity: 0.1,
+    emissiveIntensity: 0.75
   },
   "Punchy Toybox": {
     toneMapping: "ACES",
@@ -143,6 +147,27 @@ function registerMaterialDefaults(m) {
   }
 }
 
+function normalizeLookControls() {
+  if (LOOK_CONTROLS.keyLightIntensity === undefined) {
+    LOOK_CONTROLS.keyLightIntensity = LOOK_CONTROLS.keyIntensity ?? 0.75;
+  }
+  if (LOOK_CONTROLS.rimLightIntensity === undefined) {
+    LOOK_CONTROLS.rimLightIntensity = LOOK_CONTROLS.rimIntensity ?? 0.35;
+  }
+  if (LOOK_CONTROLS.envIntensityMultiplier === undefined) {
+    LOOK_CONTROLS.envIntensityMultiplier = LOOK_CONTROLS.envMapIntensity ?? 1.0;
+  }
+  if (LOOK_CONTROLS.emissiveIntensityMultiplier === undefined) {
+    LOOK_CONTROLS.emissiveIntensityMultiplier =
+      LOOK_CONTROLS.emissiveIntensity ?? 1.0;
+  }
+
+  LOOK_CONTROLS.keyIntensity = LOOK_CONTROLS.keyLightIntensity;
+  LOOK_CONTROLS.rimIntensity = LOOK_CONTROLS.rimLightIntensity;
+  LOOK_CONTROLS.envMapIntensity = LOOK_CONTROLS.envIntensityMultiplier;
+  LOOK_CONTROLS.emissiveIntensity = LOOK_CONTROLS.emissiveIntensityMultiplier;
+}
+
 function applyLookToMaterials(root) {
   if (!root) return;
   root.traverse((child) => {
@@ -155,13 +180,13 @@ function applyLookToMaterials(root) {
 
       if ("envMapIntensity" in m) {
         m.envMapIntensity =
-          m.userData.baseEnvMapIntensity * LOOK_CONTROLS.envMapIntensity;
+          m.userData.baseEnvMapIntensity * LOOK_CONTROLS.envIntensityMultiplier;
       }
 
       if (m.emissiveMap) {
         m.emissive = new THREE.Color(0xffffff);
         const base = m.userData.baseEmissiveIntensity ?? 1.0;
-        m.emissiveIntensity = base * LOOK_CONTROLS.emissiveIntensity;
+        m.emissiveIntensity = base * LOOK_CONTROLS.emissiveIntensityMultiplier;
       }
 
       m.needsUpdate = true;
@@ -170,13 +195,14 @@ function applyLookToMaterials(root) {
 }
 
 function applyLookControls() {
+  normalizeLookControls();
   renderer.toneMapping = resolveToneMapping(LOOK_CONTROLS.toneMapping);
   renderer.toneMappingExposure = LOOK_CONTROLS.toneMappingExposure;
 
   hemisphereLight.intensity = LOOK_CONTROLS.hemiIntensity;
   ambientLight.intensity = LOOK_CONTROLS.ambientIntensity;
-  keyLight.intensity = LOOK_CONTROLS.keyIntensity;
-  rim.intensity = LOOK_CONTROLS.rimIntensity;
+  keyLight.intensity = LOOK_CONTROLS.keyLightIntensity;
+  rim.intensity = LOOK_CONTROLS.rimLightIntensity;
 
   applyLookToMaterials(avatarGroup);
 }
@@ -185,7 +211,9 @@ function applyLookPreset(name) {
   const preset = LOOK_PRESETS[name];
   if (!preset) return;
   Object.assign(LOOK_CONTROLS, preset);
+  normalizeLookControls();
   applyLookControls();
+  syncLookSliders();
   const msg = `🎨 Look preset applied: ${name}`;
   console.log(msg, { ...LOOK_CONTROLS });
   logLine(msg);
@@ -210,6 +238,10 @@ const el = {
   logPanel: document.getElementById("logPanel"),
   logToggleBtn: document.getElementById("logToggleBtn"),
   logChevron: document.getElementById("logChevron"),
+  lookPanel: document.getElementById("lookPanel"),
+  lookToggleBtn: document.getElementById("lookToggleBtn"),
+  lookControls: document.getElementById("lookControls"),
+  copyLookBtn: document.getElementById("copyLookBtn"),
 
   status: document.getElementById("status"),
   friendsiesId: document.getElementById("friendsiesId"),
@@ -268,6 +300,43 @@ function clearLog() {
   logLine("Transcript cleared.");
 }
 
+function formatLookValue(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) return String(value);
+  return value.toFixed(2);
+}
+
+function syncLookSliders() {
+  const sliders = document.querySelectorAll("[data-look-control]");
+  sliders.forEach((slider) => {
+    const key = slider.dataset.lookControl;
+    if (!key || !(key in LOOK_CONTROLS)) return;
+    const value = LOOK_CONTROLS[key];
+    slider.value = String(value);
+  });
+
+  const valueEls = document.querySelectorAll("[data-look-value]");
+  valueEls.forEach((elValue) => {
+    const key = elValue.dataset.lookValue;
+    if (!key || !(key in LOOK_CONTROLS)) return;
+    elValue.textContent = formatLookValue(LOOK_CONTROLS[key]);
+  });
+}
+
+function updateLookControl(key, value) {
+  LOOK_CONTROLS[key] = value;
+  normalizeLookControls();
+  applyLookControls();
+  syncLookSliders();
+}
+
+function copyCurrentLook() {
+  normalizeLookControls();
+  const json = JSON.stringify(LOOK_CONTROLS, null, 2);
+  logSection("Current Look JSON");
+  logLine(json);
+  console.log("Current Look JSON", json);
+}
+
 // UI visibility
 function getBoolLS(key, fallback = false) {
   const v = localStorage.getItem(key);
@@ -306,6 +375,25 @@ el.logToggleBtn?.addEventListener("click", () => {
 
 el.clearLogBtn?.addEventListener("click", clearLog);
 
+el.lookToggleBtn?.addEventListener("click", () => {
+  if (!el.lookPanel || !el.lookControls) return;
+  const collapsed = !el.lookPanel.classList.contains("collapsed");
+  el.lookPanel.classList.toggle("collapsed", collapsed);
+  el.lookToggleBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  el.lookControls.setAttribute("aria-hidden", collapsed ? "true" : "false");
+});
+
+el.copyLookBtn?.addEventListener("click", copyCurrentLook);
+
+document.querySelectorAll("[data-look-control]").forEach((slider) => {
+  slider.addEventListener("input", (event) => {
+    const key = event.target.dataset.lookControl;
+    const value = Number(event.target.value);
+    if (!key || !Number.isFinite(value)) return;
+    updateLookControl(key, value);
+  });
+});
+
 document.addEventListener("keydown", (e) => {
   const tag = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : "";
   const typing = tag === "input" || tag === "select" || tag === "textarea";
@@ -320,6 +408,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "1") applyLookPreset("Cinematic");
   if (e.key === "2") applyLookPreset("Punchy Toybox");
   if (e.key === "3") applyLookPreset("Soft Pastel");
+  if (e.key.toLowerCase() === "p") copyCurrentLook();
 });
 
 // ----------------------------
@@ -431,6 +520,7 @@ avatarGroup.position.y = -2.5;
 scene.add(avatarGroup);
 
 applyLookPreset("Cinematic");
+syncLookSliders();
 
 // ----------------------------
 // State
