@@ -76,10 +76,6 @@ const LOOK_CONTROLS = {
   toneMappingExposure: 1.04,
   ambientIntensity: 0.12,
   hemiIntensity: 0.72,
-  keyIntensity: 0.55,
-  rimIntensity: 0.55,
-  envMapIntensity: 0.1,
-  emissiveIntensity: 0.75,
   keyLightIntensity: 0.55,
   rimLightIntensity: 0.55,
   envIntensityMultiplier: 0.1,
@@ -92,32 +88,55 @@ const LOOK_PRESETS = {
     toneMappingExposure: 1.04,
     ambientIntensity: 0.12,
     hemiIntensity: 0.72,
-    keyIntensity: 0.55,
-    rimIntensity: 0.55,
-    envMapIntensity: 0.1,
-    emissiveIntensity: 0.75
+    keyLightIntensity: 0.55,
+    rimLightIntensity: 0.55,
+    envIntensityMultiplier: 0.1,
+    emissiveIntensityMultiplier: 0.75
   },
   "Punchy Toybox": {
     toneMapping: "ACES",
     toneMappingExposure: 1.2,
     ambientIntensity: 0.12,
     hemiIntensity: 0.2,
-    keyIntensity: 1.0,
-    rimIntensity: 0.45,
-    envMapIntensity: 1.5,
-    emissiveIntensity: 2.0
+    keyLightIntensity: 1.0,
+    rimLightIntensity: 0.45,
+    envIntensityMultiplier: 1.5,
+    emissiveIntensityMultiplier: 2.0
   },
   "Soft Pastel": {
     toneMapping: "Reinhard",
     toneMappingExposure: 0.95,
     ambientIntensity: 0.25,
     hemiIntensity: 0.35,
-    keyIntensity: 0.55,
-    rimIntensity: 0.22,
-    envMapIntensity: 0.9,
-    emissiveIntensity: 1.1
+    keyLightIntensity: 0.55,
+    rimLightIntensity: 0.22,
+    envIntensityMultiplier: 0.9,
+    emissiveIntensityMultiplier: 1.1
   }
 };
+
+const DEFAULT_LOOK_PRESET = "Cinematic";
+const LOOK_ALLOWED_KEYS = [
+  "toneMapping",
+  "toneMappingExposure",
+  "ambientIntensity",
+  "hemiIntensity",
+  "keyLightIntensity",
+  "rimLightIntensity",
+  "envIntensityMultiplier",
+  "emissiveIntensityMultiplier"
+];
+const LEGACY_LOOK_KEY_MAP = {
+  keyIntensity: "keyLightIntensity",
+  rimIntensity: "rimLightIntensity",
+  envMapIntensity: "envIntensityMultiplier",
+  emissiveIntensity: "emissiveIntensityMultiplier"
+};
+const IS_DEV =
+  location.hostname === "localhost" ||
+  location.hostname === "127.0.0.1" ||
+  location.hostname.endsWith(".local") ||
+  location.hostname === "";
 
 function resolveToneMapping(name) {
   switch (String(name).toLowerCase()) {
@@ -148,24 +167,65 @@ function registerMaterialDefaults(m) {
 }
 
 function normalizeLookControls() {
-  if (LOOK_CONTROLS.keyLightIntensity === undefined) {
-    LOOK_CONTROLS.keyLightIntensity = LOOK_CONTROLS.keyIntensity ?? 0.75;
-  }
-  if (LOOK_CONTROLS.rimLightIntensity === undefined) {
-    LOOK_CONTROLS.rimLightIntensity = LOOK_CONTROLS.rimIntensity ?? 0.35;
-  }
-  if (LOOK_CONTROLS.envIntensityMultiplier === undefined) {
-    LOOK_CONTROLS.envIntensityMultiplier = LOOK_CONTROLS.envMapIntensity ?? 1.0;
-  }
-  if (LOOK_CONTROLS.emissiveIntensityMultiplier === undefined) {
-    LOOK_CONTROLS.emissiveIntensityMultiplier =
-      LOOK_CONTROLS.emissiveIntensity ?? 1.0;
+  for (const [legacyKey, canonicalKey] of Object.entries(LEGACY_LOOK_KEY_MAP)) {
+    if (legacyKey in LOOK_CONTROLS) {
+      if (LOOK_CONTROLS[canonicalKey] === undefined) {
+        LOOK_CONTROLS[canonicalKey] = LOOK_CONTROLS[legacyKey];
+      }
+      delete LOOK_CONTROLS[legacyKey];
+    }
   }
 
-  LOOK_CONTROLS.keyIntensity = LOOK_CONTROLS.keyLightIntensity;
-  LOOK_CONTROLS.rimIntensity = LOOK_CONTROLS.rimLightIntensity;
-  LOOK_CONTROLS.envMapIntensity = LOOK_CONTROLS.envIntensityMultiplier;
-  LOOK_CONTROLS.emissiveIntensity = LOOK_CONTROLS.emissiveIntensityMultiplier;
+  if (LOOK_CONTROLS.keyLightIntensity === undefined) {
+    LOOK_CONTROLS.keyLightIntensity = 0.75;
+  }
+  if (LOOK_CONTROLS.rimLightIntensity === undefined) {
+    LOOK_CONTROLS.rimLightIntensity = 0.35;
+  }
+  if (LOOK_CONTROLS.envIntensityMultiplier === undefined) {
+    LOOK_CONTROLS.envIntensityMultiplier = 1.0;
+  }
+  if (LOOK_CONTROLS.emissiveIntensityMultiplier === undefined) {
+    LOOK_CONTROLS.emissiveIntensityMultiplier = 1.0;
+  }
+}
+
+function validateLookConfig(config, label) {
+  if (!IS_DEV || !config) return;
+
+  const keys = Object.keys(config);
+  const unknownKeys = keys.filter((key) => !LOOK_ALLOWED_KEYS.includes(key));
+  const legacyKeys = keys.filter((key) => key in LEGACY_LOOK_KEY_MAP);
+  const overlapping = legacyKeys
+    .filter((legacy) => keys.includes(LEGACY_LOOK_KEY_MAP[legacy]))
+    .map((legacy) => `${legacy} → ${LEGACY_LOOK_KEY_MAP[legacy]}`);
+
+  if (!unknownKeys.length && !legacyKeys.length) return;
+
+  const warning = [
+    `[LookControls] ${label} has unsupported look keys.`,
+    unknownKeys.length ? `Unknown: ${unknownKeys.join(", ")}` : null,
+    legacyKeys.length ? `Legacy: ${legacyKeys.join(", ")}` : null,
+    overlapping.length ? `Overlapping: ${overlapping.join(", ")}` : null
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  console.warn(warning, { unknownKeys, legacyKeys, overlapping });
+  if (typeof logLine === "function") {
+    logLine(warning, "warn");
+  }
+}
+
+function getCanonicalLookSnapshot() {
+  normalizeLookControls();
+  const snapshot = {};
+  for (const key of LOOK_ALLOWED_KEYS) {
+    if (key in LOOK_CONTROLS) {
+      snapshot[key] = LOOK_CONTROLS[key];
+    }
+  }
+  return snapshot;
 }
 
 function applyLookToMaterials(root) {
@@ -330,8 +390,7 @@ function updateLookControl(key, value) {
 }
 
 function copyCurrentLook() {
-  normalizeLookControls();
-  const json = JSON.stringify(LOOK_CONTROLS, null, 2);
+  const json = JSON.stringify(getCanonicalLookSnapshot(), null, 2);
   logSection("Current Look JSON");
   logLine(json);
   console.log("Current Look JSON", json);
@@ -519,7 +578,7 @@ avatarGroup.scale.setScalar(15);
 avatarGroup.position.y = -2.5;
 scene.add(avatarGroup);
 
-applyLookPreset("Cinematic");
+applyLookPreset(DEFAULT_LOOK_PRESET);
 syncLookSliders();
 
 // ----------------------------
@@ -1188,6 +1247,11 @@ el.printRigBtn?.addEventListener("click", printRigBones);
 // Boot sequence
 // ----------------------------
 (async function boot() {
+  validateLookConfig(LOOK_CONTROLS, "LOOK_CONTROLS");
+  validateLookConfig(
+    LOOK_PRESETS[DEFAULT_LOOK_PRESET],
+    `Preset: ${DEFAULT_LOOK_PRESET}`
+  );
   setStatus("loading pano/env…");
 
   const panoOk = await loadPanoramaSphere();
