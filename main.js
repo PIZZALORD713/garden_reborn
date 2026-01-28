@@ -883,7 +883,8 @@ function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
 
     let overlay;
     if (src.isSkinnedMesh) {
-      overlay = new THREE.SkinnedMesh(src.geometry, faceMat);
+      overlay = src.clone();
+      overlay.material = faceMat;
       const bindMatrix = src.bindMatrix ? src.bindMatrix.clone() : new THREE.Matrix4();
       overlay.bind(bodySkeleton, bindMatrix);
       overlay.bindMode = src.bindMode || "attached";
