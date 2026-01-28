@@ -73,29 +73,29 @@ document.body.appendChild(renderer.domElement);
 // ----------------------------
 const LOOK_CONTROLS = {
   toneMapping: "ACES",
-  toneMappingExposure: 1.05,
-  ambientIntensity: 0.18,
-  hemiIntensity: 0.25,
-  keyIntensity: 0.75,
-  rimIntensity: 0.35,
-  envMapIntensity: 1.2,
-  emissiveIntensity: 1.6,
-  keyLightIntensity: 0.75,
-  rimLightIntensity: 0.35,
-  envIntensityMultiplier: 1.2,
-  emissiveIntensityMultiplier: 1.6
+  toneMappingExposure: 1.04,
+  ambientIntensity: 0.12,
+  hemiIntensity: 0.72,
+  keyIntensity: 0.55,
+  rimIntensity: 0.55,
+  envMapIntensity: 0.1,
+  emissiveIntensity: 0.75,
+  keyLightIntensity: 0.55,
+  rimLightIntensity: 0.55,
+  envIntensityMultiplier: 0.1,
+  emissiveIntensityMultiplier: 0.75
 };
 
 const LOOK_PRESETS = {
   Cinematic: {
     toneMapping: "ACES",
-    toneMappingExposure: 1.05,
-    ambientIntensity: 0.18,
-    hemiIntensity: 0.25,
-    keyIntensity: 0.75,
-    rimIntensity: 0.35,
-    envMapIntensity: 1.2,
-    emissiveIntensity: 1.6
+    toneMappingExposure: 1.04,
+    ambientIntensity: 0.12,
+    hemiIntensity: 0.72,
+    keyIntensity: 0.55,
+    rimIntensity: 0.55,
+    envMapIntensity: 0.1,
+    emissiveIntensity: 0.75
   },
   "Punchy Toybox": {
     toneMapping: "ACES",
