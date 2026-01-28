@@ -626,6 +626,17 @@ function loadGLB(url) {
   });
 }
 
+function loadTextureAsync(url) {
+  return new Promise((resolve) => {
+    textureLoader.load(
+      url,
+      (tex) => resolve(tex),
+      undefined,
+      () => resolve(null)
+    );
+  });
+}
+
 function findFirstSkinnedMesh(root) {
   let found = null;
   root.traverse((o) => {
@@ -1041,32 +1052,46 @@ async function loadFriendsies(id) {
 
   // face texture
   const faceAttr = traits.find((t) => t.trait_type === "face");
-  let faceTexture = null;
-
-  if (faceAttr?.asset_url) {
-    faceTexture = textureLoader.load(faceAttr.asset_url);
-    faceTexture.minFilter = THREE.LinearFilter;
-    faceTexture.repeat.y = -1;
-    faceTexture.offset.y = 1;
-    faceTexture.encoding = THREE.sRGBEncoding;
-  }
+  const faceTexturePromise = faceAttr?.asset_url
+    ? loadTextureAsync(faceAttr.asset_url).then((tex) => {
+        if (!tex) return null;
+        tex.minFilter = THREE.LinearFilter;
+        tex.repeat.y = -1;
+        tex.offset.y = 1;
+        tex.encoding = THREE.sRGBEncoding;
+        return tex;
+      })
+    : Promise.resolve(null);
 
   // BODY
   const bodyAttr = traits.find((t) => t.trait_type === "body");
   if (!bodyAttr?.asset_url) return setStatus("no body trait found ❌");
 
-  const bodyRes = await loadGLB(bodyAttr.asset_url);
+  const bodyPromise = loadGLB(bodyAttr.asset_url);
+
+  const headAttr = traits.find((t) => t.trait_type === "head");
+
+  // Other parts
+  const partTraits = traits.filter((t) => !["body", "head", "face"].includes(t.trait_type));
+  const headPromise = headAttr?.asset_url ? loadGLB(headAttr.asset_url) : Promise.resolve(null);
+  const partPromises = partTraits
+    .filter((t) => t.asset_url && t.asset_url.endsWith(".glb"))
+    .map((t) => ({ trait: t, promise: loadGLB(t.asset_url) }));
+
+  const results = await Promise.all([
+    bodyPromise,
+    headPromise,
+    ...partPromises.map((p) => p.promise)
+  ]);
   if (loadId !== currentLoadId) return;
 
+  const bodyRes = results[0];
   if (!bodyRes.ok) {
     logLine("body load failed ❌", "err");
     return setStatus("body load failed ❌");
   }
 
   bodyRoot = bodyRes.gltf.scene;
-  loadedParts.push(bodyRoot);
-  avatarGroup.add(bodyRoot);
-
   bodySkinned = findFirstSkinnedMesh(bodyRoot);
   if (!bodySkinned?.skeleton) return setStatus("body loaded but no skeleton ❌");
 
@@ -1083,54 +1108,45 @@ async function loadFriendsies(id) {
     currentAction.reset().play();
   }
 
-  // HEAD
-  const headAttr = traits.find((t) => t.trait_type === "head");
-  if (headAttr?.asset_url) {
-    const headRes = await loadGLB(headAttr.asset_url);
-    if (loadId !== currentLoadId) return;
+  const stagedParts = [bodyRoot];
+  const headRes = results[1];
+  const faceTexture = await faceTexturePromise;
+  if (loadId !== currentLoadId) return;
 
-    if (headRes.ok) {
-      const headScene = headRes.gltf.scene;
+  if (headRes?.ok) {
+    const headScene = headRes.gltf.scene;
 
-      loadedParts.push(headScene);
-      avatarGroup.add(headScene);
-      avatarGroup.updateMatrixWorld(true);
+    attachPartToBodySkeleton(headScene);
+    createSkinnedFaceOverlayFromHead(headScene, faceTexture);
 
-      attachPartToBodySkeleton(headScene);
-      createSkinnedFaceOverlayFromHead(headScene, faceTexture);
+    const moved = retargetRigidAttachmentsToBodyBones(headScene);
+    if (moved) logLine(`🧷 Retargeted rigid attachments (head): ${moved}`);
 
-      const moved = retargetRigidAttachmentsToBodyBones(headScene);
-      if (moved) logLine(`🧷 Retargeted rigid attachments (head): ${moved}`);
-
-      boostMaterialsForPop(headScene);
-    }
+    boostMaterialsForPop(headScene);
+    stagedParts.push(headScene);
   }
-
-  // Other parts
-  const partTraits = traits.filter((t) => !["body", "head", "face"].includes(t.trait_type));
 
   let totalBound = 0;
   let totalMoved = 0;
 
-  for (const t of partTraits) {
-    if (!t.asset_url || !t.asset_url.endsWith(".glb")) continue;
+  for (let index = 0; index < partPromises.length; index += 1) {
+    const res = results[index + 2];
+    if (!res?.ok) continue;
 
-    const res = await loadGLB(t.asset_url);
-    if (loadId !== currentLoadId) return;
+    const part = res.gltf.scene;
 
-    if (res.ok) {
-      const part = res.gltf.scene;
+    totalBound += attachPartToBodySkeleton(part);
+    totalMoved += retargetRigidAttachmentsToBodyBones(part);
 
-      loadedParts.push(part);
-      avatarGroup.add(part);
-      avatarGroup.updateMatrixWorld(true);
-
-      totalBound += attachPartToBodySkeleton(part);
-      totalMoved += retargetRigidAttachmentsToBodyBones(part);
-
-      boostMaterialsForPop(part);
-    }
+    boostMaterialsForPop(part);
+    stagedParts.push(part);
   }
+
+  for (const part of stagedParts) {
+    loadedParts.push(part);
+    avatarGroup.add(part);
+  }
+  avatarGroup.updateMatrixWorld(true);
 
   applyLookControls();
   controls.target.set(0, 1.0, 0);
