@@ -81,6 +81,109 @@
           </label>
         </div>
 
+        <div class="lookPanel collapsed" id="lookPanel">
+          <button
+            id="lookToggleBtn"
+            class="panelToggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="lookControls"
+          >
+            <span>🎨 Look Tuning</span>
+            <span class="panelChevron" aria-hidden="true">▾</span>
+          </button>
+          <div id="lookControls" class="lookControls" aria-hidden="true">
+            <div class="sliderRow">
+              <label for="lookExposure">toneMappingExposure</label>
+              <input
+                type="range"
+                id="lookExposure"
+                min="0.6"
+                max="1.8"
+                step="0.01"
+                data-look-control="toneMappingExposure"
+              />
+              <span class="sliderValue" data-look-value="toneMappingExposure"></span>
+            </div>
+            <div class="sliderRow">
+              <label for="lookHemi">hemiIntensity</label>
+              <input
+                type="range"
+                id="lookHemi"
+                min="0"
+                max="1"
+                step="0.01"
+                data-look-control="hemiIntensity"
+              />
+              <span class="sliderValue" data-look-value="hemiIntensity"></span>
+            </div>
+            <div class="sliderRow">
+              <label for="lookAmbient">ambientIntensity</label>
+              <input
+                type="range"
+                id="lookAmbient"
+                min="0"
+                max="1"
+                step="0.01"
+                data-look-control="ambientIntensity"
+              />
+              <span class="sliderValue" data-look-value="ambientIntensity"></span>
+            </div>
+            <div class="sliderRow">
+              <label for="lookKey">keyLightIntensity</label>
+              <input
+                type="range"
+                id="lookKey"
+                min="0"
+                max="2"
+                step="0.01"
+                data-look-control="keyLightIntensity"
+              />
+              <span class="sliderValue" data-look-value="keyLightIntensity"></span>
+            </div>
+            <div class="sliderRow">
+              <label for="lookRim">rimLightIntensity</label>
+              <input
+                type="range"
+                id="lookRim"
+                min="0"
+                max="2"
+                step="0.01"
+                data-look-control="rimLightIntensity"
+              />
+              <span class="sliderValue" data-look-value="rimLightIntensity"></span>
+            </div>
+            <div class="sliderRow">
+              <label for="lookEnv">envIntensityMultiplier</label>
+              <input
+                type="range"
+                id="lookEnv"
+                min="0"
+                max="3"
+                step="0.05"
+                data-look-control="envIntensityMultiplier"
+              />
+              <span class="sliderValue" data-look-value="envIntensityMultiplier"></span>
+            </div>
+            <div class="sliderRow">
+              <label for="lookEmissive">emissiveIntensityMultiplier</label>
+              <input
+                type="range"
+                id="lookEmissive"
+                min="0"
+                max="4"
+                step="0.05"
+                data-look-control="emissiveIntensityMultiplier"
+              />
+              <span class="sliderValue" data-look-value="emissiveIntensityMultiplier"></span>
+            </div>
+            <div class="lookActions">
+              <button id="copyLookBtn" class="btn">📋 Copy Current Look</button>
+              <span class="hintText">Press <kbd>P</kbd> to print JSON.</span>
+            </div>
+          </div>
+        </div>
+
         <div class="row tiny">
           <button id="printTraitsBtn" class="btn">🧩 Trait URLs</button>
           <button id="printRigBtn" class="btn">🛠 Rig Bones</button>
