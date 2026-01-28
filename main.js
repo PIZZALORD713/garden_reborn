@@ -1065,13 +1065,15 @@ async function loadFriendsies(id) {
 
   bodyRoot = bodyRes.gltf.scene;
   loadedParts.push(bodyRoot);
-  avatarGroup.add(bodyRoot);
 
   bodySkinned = findFirstSkinnedMesh(bodyRoot);
   if (!bodySkinned?.skeleton) return setStatus("body loaded but no skeleton ❌");
 
   bodySkeleton = bodySkinned.skeleton;
   collectRigInfo();
+
+  avatarGroup.add(bodyRoot);
+  avatarGroup.updateMatrixWorld(true);
 
   mixer = new THREE.AnimationMixer(bodyRoot);
 
