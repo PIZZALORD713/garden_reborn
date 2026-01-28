@@ -1044,6 +1044,14 @@ async function loadFriendsies(id) {
   const entry = getEntryById(id);
   if (!entry) return setStatus(`not found: #${id}`);
 
+  const previousAvatarVisible = avatarGroup.visible;
+  avatarGroup.visible = false;
+  const restoreAvatarVisibility = () => {
+    if (loadId === currentLoadId) {
+      avatarGroup.visible = previousAvatarVisible;
+    }
+  };
+
   const traits = entry.attributes || [];
   lastTraits = traits;
 
@@ -1065,7 +1073,10 @@ async function loadFriendsies(id) {
 
   // BODY
   const bodyAttr = traits.find((t) => t.trait_type === "body");
-  if (!bodyAttr?.asset_url) return setStatus("no body trait found ❌");
+  if (!bodyAttr?.asset_url) {
+    restoreAvatarVisibility();
+    return setStatus("no body trait found ❌");
+  }
 
   const bodyPromise = loadGLB(bodyAttr.asset_url);
 
@@ -1083,17 +1094,24 @@ async function loadFriendsies(id) {
     headPromise,
     ...partPromises.map((p) => p.promise)
   ]);
-  if (loadId !== currentLoadId) return;
+  if (loadId !== currentLoadId) {
+    restoreAvatarVisibility();
+    return;
+  }
 
   const bodyRes = results[0];
   if (!bodyRes.ok) {
     logLine("body load failed ❌", "err");
+    restoreAvatarVisibility();
     return setStatus("body load failed ❌");
   }
 
   bodyRoot = bodyRes.gltf.scene;
   bodySkinned = findFirstSkinnedMesh(bodyRoot);
-  if (!bodySkinned?.skeleton) return setStatus("body loaded but no skeleton ❌");
+  if (!bodySkinned?.skeleton) {
+    restoreAvatarVisibility();
+    return setStatus("body loaded but no skeleton ❌");
+  }
 
   bodySkeleton = bodySkinned.skeleton;
   collectRigInfo();
@@ -1108,10 +1126,16 @@ async function loadFriendsies(id) {
     currentAction.reset().play();
   }
 
-  const stagedParts = [bodyRoot];
+  loadedParts.push(bodyRoot);
+  avatarGroup.add(bodyRoot);
+  avatarGroup.updateMatrixWorld(true);
+
   const headRes = results[1];
   const faceTexture = await faceTexturePromise;
-  if (loadId !== currentLoadId) return;
+  if (loadId !== currentLoadId) {
+    restoreAvatarVisibility();
+    return;
+  }
 
   if (headRes?.ok) {
     const headScene = headRes.gltf.scene;
@@ -1123,7 +1147,9 @@ async function loadFriendsies(id) {
     if (moved) logLine(`🧷 Retargeted rigid attachments (head): ${moved}`);
 
     boostMaterialsForPop(headScene);
-    stagedParts.push(headScene);
+    loadedParts.push(headScene);
+    avatarGroup.add(headScene);
+    avatarGroup.updateMatrixWorld(true);
   }
 
   let totalBound = 0;
@@ -1139,14 +1165,11 @@ async function loadFriendsies(id) {
     totalMoved += retargetRigidAttachmentsToBodyBones(part);
 
     boostMaterialsForPop(part);
-    stagedParts.push(part);
-  }
-
-  for (const part of stagedParts) {
     loadedParts.push(part);
     avatarGroup.add(part);
   }
   avatarGroup.updateMatrixWorld(true);
+  avatarGroup.visible = previousAvatarVisible;
 
   applyLookControls();
   controls.target.set(0, 1.0, 0);
