@@ -883,7 +883,8 @@ function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
 
     let overlay;
     if (src.isSkinnedMesh) {
-      overlay = new THREE.SkinnedMesh(src.geometry, faceMat);
+      overlay = src.clone();
+      overlay.material = faceMat;
       const bindMatrix = src.bindMatrix ? src.bindMatrix.clone() : new THREE.Matrix4();
       overlay.bind(bodySkeleton, bindMatrix);
       overlay.bindMode = src.bindMode || "attached";
@@ -895,14 +896,22 @@ function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
     overlay.renderOrder = 999;
     overlay.frustumCulled = false;
 
-    const local = new THREE.Matrix4()
-      .copy(faceAnchor.matrixWorld)
-      .invert()
-      .multiply(src.matrixWorld);
+    let parentForOverlay = faceAnchor;
+    if (src.isSkinnedMesh) {
+      parentForOverlay = src.parent || faceAnchor;
+      overlay.position.copy(src.position);
+      overlay.quaternion.copy(src.quaternion);
+      overlay.scale.copy(src.scale);
+    } else {
+      const local = new THREE.Matrix4()
+        .copy(faceAnchor.matrixWorld)
+        .invert()
+        .multiply(src.matrixWorld);
 
-    local.decompose(overlay.position, overlay.quaternion, overlay.scale);
+      local.decompose(overlay.position, overlay.quaternion, overlay.scale);
+    }
 
-    faceAnchor.add(overlay);
+    parentForOverlay.add(overlay);
     faceOverlayMeshes.push(overlay);
     made++;
   }
