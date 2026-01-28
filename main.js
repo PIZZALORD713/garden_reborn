@@ -1107,6 +1107,8 @@ async function loadFriendsies(id) {
   }
 
   bodyRoot = bodyRes.gltf.scene;
+  loadedParts.push(bodyRoot);
+
   bodySkinned = findFirstSkinnedMesh(bodyRoot);
   if (!bodySkinned?.skeleton) {
     restoreAvatarVisibility();
@@ -1115,6 +1117,9 @@ async function loadFriendsies(id) {
 
   bodySkeleton = bodySkinned.skeleton;
   collectRigInfo();
+
+  avatarGroup.add(bodyRoot);
+  avatarGroup.updateMatrixWorld(true);
 
   mixer = new THREE.AnimationMixer(bodyRoot);
 
