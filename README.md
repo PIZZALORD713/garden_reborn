@@ -159,3 +159,78 @@ If:
 - Smarter head target selection (use material tags or known node names)
 - Clip retargeting by normalized bone names (Mixamo ↔ fRiENDSiES)
 - Optional eye/mouth decals as separate overlays (layered renderOrder)
+
+---
+
+## Delivery constraints & UI component map (static DOM/CSS)
+
+### ✅ Chosen path: **A) Vanilla HTML/JS/CSS**
+
+**Why:** the project is already a static site with plain `index.html` + `style.css` + `main.js`, no Node tooling,
+and runtime dependencies are delivered via CDN script tags. This makes it a good fit for static hosting and
+does not require a build step or bundler. Keeping it vanilla preserves the current deploy model (drop-in files
+served by any static host) while still allowing a component-like structure via DOM + CSS class conventions.
+
+### Current delivery constraints (audit)
+
+- **Static host friendly:** No `package.json`, no build output, and `index.html` loads Three.js + loaders from CDN.
+- **Assets are file-based:** PNG/EXR assets are referenced by relative URLs in `main.js`.
+- **Single entrypoint:** `index.html` + `main.js` are the only runtime entrypoints; everything else is CSS/asset files.
+- **Implication:** Introducing a bundler (Vite/React) would require new build scripts, build outputs, and HTML
+  adjustments. Since the existing UI is already DOM-driven, a component map can be implemented without changing
+  the delivery pipeline.
+
+### DOM-based component map (mirrors existing UI)
+
+The following “components” are DOM sections + CSS classes already in use. This keeps the current structure and
+lets you treat each block as a reusable, documented component.
+
+1. **`AppShell`**
+   - **DOM:** `#ui` wrapper + `canvas` (appended in `main.js`)
+   - **Purpose:** layout root for UI overlay + WebGL canvas.
+   - **Key styles:** `#ui`, `html, body`, `canvas`
+
+2. **`UiToggleButton`**
+   - **DOM:** `button#uiToggleBtn.uiToggle` + SVG icon
+   - **Purpose:** toggles UI visibility (controls + transcript).
+   - **Key styles:** `.uiToggle`, `#ui.uiHidden .panel`, `#ui.uiHidden .logPanel`
+   - **Behavior:** controlled in `main.js` (UI toggle + hotkey).
+
+3. **`ControlPanel`**
+   - **DOM:** `div#panel.panel`
+   - **Purpose:** contains header + all main controls.
+   - **Key styles:** `.panel`, `.panelHeader`, `.brand`, `.status`
+
+4. **`BrandHeader`**
+   - **DOM:** `.panelHeader` → `.brand`, `.logo`, `.brandText`, `.title`, `.subtitle`
+   - **Purpose:** brand identity + status label.
+   - **Key styles:** `.brand`, `.logo`, `.title`, `.subtitle`, `.status`
+
+5. **`PrimaryControlsRow`**
+   - **DOM:** `.row` containing `#friendsiesId`, `#loadBtn`, `#randomBtn`, `#autoRandomOn`
+   - **Purpose:** token selection + load/random actions.
+   - **Key styles:** `.row`, `.pill`, `.pillLabel`, `.btn`, `.chip`
+
+6. **`AnimationControlsRow`**
+   - **DOM:** `.row` containing `#animSelect`, `#playBtn`, `#stopBtn`, `#orbitOn`, `#autoRotateOn`
+   - **Purpose:** animation/controls toggles.
+   - **Key styles:** `.row`, `.pill.wide`, `.btn.primary`, `.btn.danger`, `.chip`
+
+7. **`LookTuningPanel`**
+   - **DOM:** `#lookPanel.lookPanel` with `#lookToggleBtn.panelToggle` and `#lookControls.lookControls`
+   - **Purpose:** collapsible look/lighting controls + sliders + copy action.
+   - **Key styles:** `.lookPanel`, `.panelToggle`, `.panelChevron`, `.lookControls`, `.sliderRow`, `.lookActions`
+
+8. **`DebugRow`**
+   - **DOM:** `.row.tiny` with `#printTraitsBtn`, `#printRigBtn`, and `.hintText`
+   - **Purpose:** dev helpers and hotkey hints.
+   - **Key styles:** `.row.tiny`, `.btn`, `.hintText`
+
+9. **`TranscriptPanel`**
+   - **DOM:** `#logPanel.logPanel` with `.logHeader`, `#logToggleBtn`, `#log`, `.logLine`
+   - **Purpose:** console-style transcript output with collapse control.
+   - **Key styles:** `.logPanel`, `.logHeader`, `.logTitle`, `.iconBtn`, `.log`
+   - **Behavior:** collapse state controlled in `main.js` (`#ui.logCollapsed`).
+
+> If you ever decide to migrate to React/Vite, each item above can become a component with the same class
+> names to preserve styling. For now, the DOM map documents the structure without changing the delivery model.
