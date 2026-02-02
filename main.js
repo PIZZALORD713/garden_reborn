@@ -1126,19 +1126,47 @@ function downloadRigGlb() {
   const exportRoot = new THREE.Group();
   exportRoot.name = "EXPORT_ROOT";
 
-  // Keep BODY as-is (it owns the real bones).
-  exportRoot.add(bodyRoot);
+  // IMPORTANT: Don't export live scene objects. Clone everything for export.
+  // Use SkeletonUtils.clone so SkinnedMesh + skeleton/bind data survive properly.
+  const exportBodyRoot = THREE.SkeletonUtils?.clone
+    ? THREE.SkeletonUtils.clone(bodyRoot)
+    : bodyRoot.clone(true);
 
-  // Clone trait parts, strip junk, and rebind skinned meshes to BODY skeleton.
-  // IMPORTANT: many trait meshes are parented under their original armature bones.
-  // If we remove bones first, we can delete those meshes. So we lift meshes, then strip.
+  exportRoot.add(exportBodyRoot);
+
+  const exportBodySkinned = findFirstSkinnedMesh(exportBodyRoot);
+  const exportSkeleton = exportBodySkinned?.skeleton || null;
+
+  function attachPartToExportSkeleton(partScene) {
+    if (!exportSkeleton || !exportBodySkinned || !partScene) return 0;
+
+    exportBodySkinned.updateMatrixWorld(true);
+
+    let skinnedCount = 0;
+    partScene.traverse((o) => {
+      if (!o.isSkinnedMesh) return;
+      skinnedCount++;
+
+      // Use the part's existing bindMatrix, but bind to the exported skeleton.
+      const bindMatrix = o.bindMatrix ? o.bindMatrix.clone() : new THREE.Matrix4();
+      o.bind(exportSkeleton, bindMatrix);
+      o.bindMode = exportBodySkinned.bindMode || o.bindMode;
+      o.frustumCulled = false;
+      o.updateMatrixWorld(true);
+    });
+
+    return skinnedCount;
+  }
+
+  // Clone trait parts, strip junk, and rebind skinned meshes to the EXPORTED BODY skeleton.
   const traitParts = loadedParts.filter((p) => p && p !== bodyRoot);
   for (const part of traitParts) {
-    const clone = part.clone(true);
-    stripJunkNodesButKeepMeshes(clone);
-    attachPartToBodySkeleton(clone);
+    const clone = THREE.SkeletonUtils?.clone ? THREE.SkeletonUtils.clone(part) : part.clone(true);
 
-    // Add only the meshes to the export root to avoid nested Scene roots.
+    stripJunkNodesButKeepMeshes(clone);
+    attachPartToExportSkeleton(clone);
+
+    // Add only meshes to exportRoot to avoid nested Scene roots.
     const keep = [];
     clone.traverse((o) => {
       if (o.isMesh || o.isSkinnedMesh) keep.push(o);
@@ -1203,10 +1231,6 @@ function downloadRigGlb() {
       (result) => {
         // restore scene graph
         if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
-        if (exportRoot?.parent === null) {
-          // bodyRoot is still attached to exportRoot; put it back.
-          avatarGroup.add(bodyRoot);
-        }
         avatarGroup.scale.copy(oldScale);
         avatarGroup.position.copy(oldPos);
         avatarGroup.updateMatrixWorld(true);
@@ -1233,9 +1257,6 @@ function downloadRigGlb() {
   } catch (err) {
     // restore on error
     if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
-    if (exportRoot?.parent === null) {
-      avatarGroup.add(bodyRoot);
-    }
     avatarGroup.scale.copy(oldScale);
     avatarGroup.position.copy(oldPos);
     avatarGroup.updateMatrixWorld(true);
