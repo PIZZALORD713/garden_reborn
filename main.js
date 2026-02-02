@@ -1004,6 +1004,41 @@ function printRigBones() {
 // ----------------------------
 // Export (Download)
 // ----------------------------
+// ----------------------------
+// GLB post-processing (Windows-friendly)
+// ----------------------------
+let _gltfTransform = null;
+async function optimizeGlbBinary(glbArrayBuffer) {
+  // Always try to optimize (requested). If it fails, fall back to raw.
+  try {
+    if (!_gltfTransform) {
+      const core = await import("https://esm.sh/@gltf-transform/core@3.10.0?target=es2022");
+      const fns = await import(
+        "https://esm.sh/@gltf-transform/functions@3.10.0?target=es2022"
+      );
+      _gltfTransform = { core, fns };
+    }
+
+    const { WebIO } = _gltfTransform.core;
+    const { dedup, prune } = _gltfTransform.fns;
+
+    const io = new WebIO({ credentials: "omit" });
+    const doc = await io.readBinary(new Uint8Array(glbArrayBuffer));
+
+    // Conservative clean-up. Avoid aggressive mesh merging that could break rigs.
+    await doc.transform(dedup(), prune());
+
+    const out = await io.writeBinary(doc);
+    return out.buffer;
+  } catch (err) {
+    logLine(
+      `⚠️ Optimize step failed, exporting raw GLB. (${err?.message || err})`,
+      "warn"
+    );
+    return glbArrayBuffer;
+  }
+}
+
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -1294,8 +1329,16 @@ function downloadRigGlb() {
           return;
         }
 
-        downloadBlob(new Blob([glb], { type: "model/gltf-binary" }), filename);
-        logLine(`✅ Download started: ${filename}`);
+        // Always optimize for Windows viewer compatibility.
+        Promise.resolve()
+          .then(() => optimizeGlbBinary(glb))
+          .then((opt) => {
+            downloadBlob(
+              new Blob([opt], { type: "model/gltf-binary" }),
+              filename
+            );
+            logLine(`✅ Download started: ${filename}`);
+          });
       },
       {
         binary: true,
