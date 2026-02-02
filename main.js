@@ -1056,15 +1056,42 @@ function makeFaceDecalMaterial(faceTex) {
   return mat;
 }
 
+function cloneGeometryWithNormalOffset(geometry, epsilon = 0.0002) {
+  if (!geometry) return geometry;
+  const g = geometry.clone();
+  const pos = g.attributes?.position;
+  const nrm = g.attributes?.normal;
+  if (!pos || !nrm || pos.count !== nrm.count) return g;
+
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const nx = nrm.getX(i);
+    const ny = nrm.getY(i);
+    const nz = nrm.getZ(i);
+    pos.setXYZ(i, x + nx * epsilon, y + ny * epsilon, z + nz * epsilon);
+  }
+
+  pos.needsUpdate = true;
+  g.computeBoundingBox?.();
+  g.computeBoundingSphere?.();
+  return g;
+}
+
 function addFaceDecalMesh(exportRoot, headMesh, faceTex) {
   if (!exportRoot || !headMesh || !faceTex) return null;
 
   const decalMat = makeFaceDecalMaterial(faceTex);
   if (!decalMat) return null;
 
+  // IMPORTANT: glTF has no polygonOffset; coplanar overlay meshes can break in Cycles.
+  // So for EXPORT we slightly offset the decal geometry along normals.
+  const decalGeo = cloneGeometryWithNormalOffset(headMesh.geometry, 0.0002);
+
   let decal = null;
   if (headMesh.isSkinnedMesh) {
-    decal = new THREE.SkinnedMesh(headMesh.geometry, decalMat);
+    decal = new THREE.SkinnedMesh(decalGeo, decalMat);
     // Copy skinning attributes
     decal.bindMode = headMesh.bindMode;
     decal.skeleton = headMesh.skeleton;
@@ -1075,7 +1102,7 @@ function addFaceDecalMesh(exportRoot, headMesh, faceTex) {
       decal.bind(headMesh.skeleton, headMesh.bindMatrix);
     } catch {}
   } else {
-    decal = new THREE.Mesh(headMesh.geometry, decalMat);
+    decal = new THREE.Mesh(decalGeo, decalMat);
   }
 
   decal.name = (headMesh.name ? headMesh.name + "_FACE" : "Head_FACE");
@@ -1687,11 +1714,19 @@ function downloadRigGlb() {
   const exportRoot = new THREE.Group();
   exportRoot.name = "EXPORT_ROOT";
 
-  // IMPORTANT: Don't export live scene objects. Clone everything for export.
+  // IMPORTANT: The live viewer adds FACE_ANCHOR + overlay meshes under the BODY rig.
+  // We do NOT want those exported. Temporarily detach faceAnchor before cloning.
+  const faceAnchorParent = faceAnchor?.parent || null;
+  if (faceAnchorParent) faceAnchorParent.remove(faceAnchor);
+
+  // Clone everything for export.
   // Use SkeletonUtils.clone so SkinnedMesh + skeleton/bind data survive properly.
   const exportBodyRoot = THREE.SkeletonUtils?.clone
     ? THREE.SkeletonUtils.clone(bodyRoot)
     : bodyRoot.clone(true);
+
+  // Restore live faceAnchor immediately after cloning.
+  if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
 
   exportRoot.add(exportBodyRoot);
 
@@ -1737,6 +1772,18 @@ function downloadRigGlb() {
     const labelValue = String(meta?.value || "").trim();
     const label = labelValue ? `${labelBase}_${labelValue}` : labelBase;
 
+    // Remove any viewer-only face overlay meshes if they were present in the part.
+    const toCull = [];
+    clone.traverse((o) => {
+      const n = String(o.name || "");
+      if (/FACE_ANCHOR/i.test(n) || /_FACE_OVERLAY$/i.test(n) || /^X_FACE_OVERLAY$/i.test(n)) {
+        toCull.push(o);
+      }
+    });
+    for (const o of toCull) {
+      if (o?.parent) o.parent.remove(o);
+    }
+
     // Add only meshes to exportRoot to avoid nested Scene roots.
     const keep = [];
     clone.traverse((o) => {
@@ -1773,9 +1820,7 @@ function downloadRigGlb() {
 
   logLine(`Exporting ${filename}…`, "dim");
 
-  // Temporarily exclude the face overlay anchor/helper objects from export.
-  const faceAnchorParent = faceAnchor?.parent || null;
-  if (faceAnchorParent) faceAnchorParent.remove(faceAnchor);
+  // (faceAnchor already detached only for cloning; it is not part of exportRoot)
 
   try {
     // NOTE: In Three r128 GLTFExporter.parse signature is:
@@ -1783,8 +1828,6 @@ function downloadRigGlb() {
     exporter.parse(
       exportRoot,
       (result) => {
-        // restore scene graph
-        if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
         avatarGroup.scale.copy(oldScale);
         avatarGroup.position.copy(oldPos);
         avatarGroup.updateMatrixWorld(true);
@@ -1830,7 +1873,6 @@ function downloadRigGlb() {
     );
   } catch (err) {
     // restore on error
-    if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
     avatarGroup.scale.copy(oldScale);
     avatarGroup.position.copy(oldPos);
     avatarGroup.updateMatrixWorld(true);
