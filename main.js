@@ -605,6 +605,7 @@ let restPosByBone = new Map();
 
 let faceOverlayMeshes = [];
 let faceAnchor = null;
+let lastFaceTexture = null;
 
 let autoRandomTimer = null;
 
@@ -1012,6 +1013,78 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
+function drawTextureToCanvas(ctx, tex, w, h) {
+  if (!tex || !tex.image) return;
+
+  // Some textures in this project use repeat.y = -1 + offset.y = 1 for flip.
+  // Apply equivalent transform when drawing to a canvas.
+  const flipY = tex.repeat?.y === -1;
+
+  ctx.save();
+  if (flipY) {
+    ctx.translate(0, h);
+    ctx.scale(1, -1);
+  }
+  try {
+    ctx.drawImage(tex.image, 0, 0, w, h);
+  } catch {
+    // ignore
+  }
+  ctx.restore();
+}
+
+function bakeFaceOntoBaseColor(baseTex, faceTex) {
+  if (!faceTex?.image) return baseTex || null;
+
+  const w = baseTex?.image?.width || faceTex.image.width || 1024;
+  const h = baseTex?.image?.height || faceTex.image.height || 1024;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+
+  // base
+  if (baseTex?.image) {
+    drawTextureToCanvas(ctx, baseTex, w, h);
+  } else {
+    ctx.clearRect(0, 0, w, h);
+  }
+
+  // overlay (face png already aligned to the head UV layout)
+  drawTextureToCanvas(ctx, faceTex, w, h);
+
+  const baked = new THREE.CanvasTexture(canvas);
+  baked.encoding = THREE.sRGBEncoding;
+  baked.flipY = false; // glTF convention
+  baked.needsUpdate = true;
+  return baked;
+}
+
+function stripJunkNodes(root) {
+  if (!root) return;
+
+  const toRemove = [];
+  root.traverse((o) => {
+    // Remove legacy rig bones/armature empties from trait parts.
+    if (o.isBone) {
+      toRemove.push(o);
+      return;
+    }
+
+    // Remove empty "Armature" nodes / skeleton containers (non-bone).
+    const name = String(o.name || "");
+    if (!o.isMesh && !o.isSkinnedMesh && !o.isBone) {
+      const looksLikeArmature = /armature|skeleton|rig/i.test(name);
+      if (looksLikeArmature) toRemove.push(o);
+    }
+  });
+
+  for (const o of toRemove) {
+    if (o?.parent) o.parent.remove(o);
+  }
+}
+
 function downloadRigGlb() {
   if (!loadedParts?.length || !bodyRoot) {
     logLine("Nothing loaded yet — load a fRiENDSiES first.", "warn");
@@ -1037,11 +1110,58 @@ function downloadRigGlb() {
   avatarGroup.scale.setScalar(1);
   avatarGroup.position.set(0, 0, 0);
 
-  // Optionally exclude the face overlay anchor from export (it’s useful in viewer, but noisy for DCC).
-  const faceAnchorParent = faceAnchor?.parent || null;
-  if (faceAnchorParent) faceAnchorParent.remove(faceAnchor);
+  // Build a clean export root (avoid nested Scene roots + dead armatures from parts)
+  const exportRoot = new THREE.Group();
+  exportRoot.name = "EXPORT_ROOT";
 
-  avatarGroup.updateMatrixWorld(true);
+  // Keep BODY as-is (it owns the real bones).
+  exportRoot.add(bodyRoot);
+
+  // Clone trait parts, strip junk, and rebind skinned meshes to BODY skeleton.
+  const traitParts = loadedParts.filter((p) => p && p !== bodyRoot);
+  for (const part of traitParts) {
+    const clone = part.clone(true);
+    stripJunkNodes(clone);
+    attachPartToBodySkeleton(clone);
+    exportRoot.add(clone);
+  }
+
+  // If this token uses a 2D face PNG, bake it into the head's baseColor.
+  // Assumption from you: the face PNG aligns to the same UV layout.
+  if (lastFaceTexture) {
+    let headMesh = null;
+    let firstMappableMesh = null;
+
+    exportRoot.traverse((o) => {
+      if (!(o.isMesh || o.isSkinnedMesh)) return;
+
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      const hasMap = mats?.some((m) => m?.map?.image);
+      if (hasMap && !firstMappableMesh) firstMappableMesh = o;
+
+      const n = String(o.name || "").toLowerCase();
+      if (!headMesh && n.includes("head")) headMesh = o;
+    });
+
+    headMesh = headMesh || firstMappableMesh;
+
+    if (headMesh && headMesh.material) {
+      const mats = Array.isArray(headMesh.material)
+        ? headMesh.material
+        : [headMesh.material];
+      for (const m of mats) {
+        if (!m) continue;
+        const baked = bakeFaceOntoBaseColor(m.map, lastFaceTexture);
+        if (baked) {
+          m.map = baked;
+          m.transparent = false;
+          m.needsUpdate = true;
+        }
+      }
+    }
+  }
+
+  exportRoot.updateMatrixWorld(true);
 
   const exporter = new THREE.GLTFExporter();
   const id = Number(el.friendsiesId?.value || 0) || 0;
@@ -1049,14 +1169,22 @@ function downloadRigGlb() {
 
   logLine(`Exporting ${filename}…`, "dim");
 
+  // Temporarily exclude the face overlay anchor/helper objects from export.
+  const faceAnchorParent = faceAnchor?.parent || null;
+  if (faceAnchorParent) faceAnchorParent.remove(faceAnchor);
+
   try {
     // NOTE: In Three r128 GLTFExporter.parse signature is:
     // parse(input, onDone, options)
     exporter.parse(
-      avatarGroup,
+      exportRoot,
       (result) => {
         // restore scene graph
         if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
+        if (exportRoot?.parent === null) {
+          // bodyRoot is still attached to exportRoot; put it back.
+          avatarGroup.add(bodyRoot);
+        }
         avatarGroup.scale.copy(oldScale);
         avatarGroup.position.copy(oldPos);
         avatarGroup.updateMatrixWorld(true);
@@ -1076,12 +1204,16 @@ function downloadRigGlb() {
       {
         binary: true,
         onlyVisible: true,
-        embedImages: true
+        embedImages: true,
+        trs: true
       }
     );
   } catch (err) {
     // restore on error
     if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
+    if (exportRoot?.parent === null) {
+      avatarGroup.add(bodyRoot);
+    }
     avatarGroup.scale.copy(oldScale);
     avatarGroup.position.copy(oldPos);
     avatarGroup.updateMatrixWorld(true);
@@ -1162,6 +1294,7 @@ async function loadFriendsies(id) {
     ? loadTextureAsync(faceAttr.asset_url).then((tex) => {
         if (!tex) return null;
         tex.minFilter = THREE.LinearFilter;
+        // Keep viewer behavior (some sources need Y flip)
         tex.repeat.y = -1;
         tex.offset.y = 1;
         tex.encoding = THREE.sRGBEncoding;
@@ -1235,6 +1368,7 @@ async function loadFriendsies(id) {
 
   const headRes = results[1];
   const faceTexture = await faceTexturePromise;
+  lastFaceTexture = faceTexture;
   if (loadId !== currentLoadId) {
     restoreAvatarVisibility();
     return;
