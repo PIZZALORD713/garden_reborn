@@ -1551,6 +1551,84 @@ function bakeAndRemoveKHRTextureTransform_FlipYOnly(gltf, binChunk) {
   };
 }
 
+function sanitizeMaterialsForWindows(gltf) {
+  // Windows 3D Viewer can fail hard on certain material edge-cases.
+  // Keep this conservative: clamp factors into spec ranges and strip nonstandard extras.
+  const mats = gltf.materials;
+  if (!Array.isArray(mats) || !mats.length) return { changed: false };
+
+  const clamp01 = (x) => {
+    const n = Number(x);
+    if (!Number.isFinite(n)) return x;
+    return Math.min(1, Math.max(0, n));
+  };
+
+  let changed = false;
+  let clamped = 0;
+  let strippedExtras = 0;
+
+  for (const m of mats) {
+    if (!m) continue;
+
+    if (m.extras && typeof m.extras === "object") {
+      // Strip material extras produced by our viewer-only look system.
+      delete m.extras;
+      strippedExtras++;
+      changed = true;
+    }
+
+    // emissiveFactor must be [0..1] per component in glTF 2.0.
+    if (Array.isArray(m.emissiveFactor) && m.emissiveFactor.length === 3) {
+      const before = m.emissiveFactor.slice();
+      m.emissiveFactor = [
+        clamp01(m.emissiveFactor[0]),
+        clamp01(m.emissiveFactor[1]),
+        clamp01(m.emissiveFactor[2])
+      ];
+      if (JSON.stringify(before) !== JSON.stringify(m.emissiveFactor)) {
+        clamped++;
+        changed = true;
+      }
+    }
+
+    // Clamp PBR factors into spec too.
+    const pbr = m.pbrMetallicRoughness;
+    if (pbr && typeof pbr === "object") {
+      if (typeof pbr.metallicFactor === "number") {
+        const v = clamp01(pbr.metallicFactor);
+        if (v !== pbr.metallicFactor) {
+          pbr.metallicFactor = v;
+          clamped++;
+          changed = true;
+        }
+      }
+      if (typeof pbr.roughnessFactor === "number") {
+        const v = clamp01(pbr.roughnessFactor);
+        if (v !== pbr.roughnessFactor) {
+          pbr.roughnessFactor = v;
+          clamped++;
+          changed = true;
+        }
+      }
+      if (Array.isArray(pbr.baseColorFactor) && pbr.baseColorFactor.length === 4) {
+        const before = pbr.baseColorFactor.slice();
+        pbr.baseColorFactor = [
+          clamp01(pbr.baseColorFactor[0]),
+          clamp01(pbr.baseColorFactor[1]),
+          clamp01(pbr.baseColorFactor[2]),
+          clamp01(pbr.baseColorFactor[3])
+        ];
+        if (JSON.stringify(before) !== JSON.stringify(pbr.baseColorFactor)) {
+          clamped++;
+          changed = true;
+        }
+      }
+    }
+  }
+
+  return { changed, clamped, strippedExtras };
+}
+
 function optimizeGlbForWindows(rawGlb) {
   // Returns { glb, report } or throws.
   const { json, binChunk } = parseGlb(rawGlb);
@@ -1565,6 +1643,9 @@ function optimizeGlbForWindows(rawGlb) {
 
   const skinRes = dedupeSkins(json, binChunk);
   if (skinRes.changed) report.steps.push({ step: "dedupeSkins", ...skinRes });
+
+  const matRes = sanitizeMaterialsForWindows(json);
+  if (matRes.changed) report.steps.push({ step: "sanitizeMaterials", ...matRes });
 
   // Basic sanity checks (avoid exporting a broken file)
   const matCount = Array.isArray(json.materials) ? json.materials.length : 0;
