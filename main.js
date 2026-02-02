@@ -591,6 +591,7 @@ let allFriendsies = null;
 let currentLoadId = 0;
 
 let loadedParts = [];
+let loadedPartsMeta = []; // parallel array of { trait_type, value }
 let lastTraits = null;
 
 let bodyRoot = null;
@@ -958,6 +959,7 @@ function clearAvatar() {
 
   loadedParts.forEach((m) => avatarGroup.remove(m));
   loadedParts = [];
+  loadedPartsMeta = [];
 
   bodyRoot = null;
   bodySkeleton = null;
@@ -1031,6 +1033,61 @@ function drawTextureToCanvas(ctx, tex, w, h) {
     // ignore
   }
   ctx.restore();
+}
+
+function makeFaceDecalMaterial(faceTex) {
+  if (!faceTex) return null;
+  const mat = new THREE.MeshStandardMaterial({
+    map: faceTex,
+    transparent: true,
+    opacity: 1,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    depthTest: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+    metalness: 0,
+    roughness: 1
+  });
+  // glTF export tends to prefer non-flipped textures.
+  // Keep faceTex as-is; viewer already flips via repeat/offset if needed.
+  mat.needsUpdate = true;
+  return mat;
+}
+
+function addFaceDecalMesh(exportRoot, headMesh, faceTex) {
+  if (!exportRoot || !headMesh || !faceTex) return null;
+
+  const decalMat = makeFaceDecalMaterial(faceTex);
+  if (!decalMat) return null;
+
+  let decal = null;
+  if (headMesh.isSkinnedMesh) {
+    decal = new THREE.SkinnedMesh(headMesh.geometry, decalMat);
+    // Copy skinning attributes
+    decal.bindMode = headMesh.bindMode;
+    decal.skeleton = headMesh.skeleton;
+    decal.bindMatrix.copy(headMesh.bindMatrix);
+    decal.bindMatrixInverse.copy(headMesh.bindMatrixInverse);
+    // Ensure it's bound (some exporters look for explicit bind)
+    try {
+      decal.bind(headMesh.skeleton, headMesh.bindMatrix);
+    } catch {}
+  } else {
+    decal = new THREE.Mesh(headMesh.geometry, decalMat);
+  }
+
+  decal.name = (headMesh.name ? headMesh.name + "_FACE" : "Head_FACE");
+  decal.renderOrder = 999; // helps in three.js; exporters may ignore
+
+  // Keep transform aligned with head mesh
+  decal.position.copy(headMesh.position);
+  decal.quaternion.copy(headMesh.quaternion);
+  decal.scale.copy(headMesh.scale);
+
+  exportRoot.add(decal);
+  return decal;
 }
 
 function bakeFaceOntoBaseColor(baseTex, faceTex) {
@@ -1159,12 +1216,22 @@ function downloadRigGlb() {
   }
 
   // Clone trait parts, strip junk, and rebind skinned meshes to the EXPORTED BODY skeleton.
-  const traitParts = loadedParts.filter((p) => p && p !== bodyRoot);
-  for (const part of traitParts) {
-    const clone = THREE.SkeletonUtils?.clone ? THREE.SkeletonUtils.clone(part) : part.clone(true);
+  // We also name meshes by trait type for sanity.
+  const traitParts = loadedParts
+    .map((p, idx) => ({ part: p, meta: loadedPartsMeta[idx] }))
+    .filter((x) => x.part && x.part !== bodyRoot);
+
+  for (const { part, meta } of traitParts) {
+    const clone = THREE.SkeletonUtils?.clone
+      ? THREE.SkeletonUtils.clone(part)
+      : part.clone(true);
 
     stripJunkNodesButKeepMeshes(clone);
     attachPartToExportSkeleton(clone);
+
+    const labelBase = String(meta?.trait_type || "Part").trim() || "Part";
+    const labelValue = String(meta?.value || "").trim();
+    const label = labelValue ? `${labelBase}_${labelValue}` : labelBase;
 
     // Add only meshes to exportRoot to avoid nested Scene roots.
     const keep = [];
@@ -1172,44 +1239,27 @@ function downloadRigGlb() {
       if (o.isMesh || o.isSkinnedMesh) keep.push(o);
     });
     for (const m of keep) {
+      if (!m.name || m.name === "X") m.name = label;
       reparentKeepWorld(m, exportRoot);
     }
   }
 
-  // If this token uses a 2D face PNG, bake it into the head's baseColor.
-  // Assumption from you: the face PNG aligns to the same UV layout.
+  // If this token uses a 2D face PNG, export it as a decal mesh (glTF-native overlay).
   if (lastFaceTexture) {
     let headMesh = null;
-    let firstMappableMesh = null;
-
     exportRoot.traverse((o) => {
+      if (headMesh) return;
       if (!(o.isMesh || o.isSkinnedMesh)) return;
-
-      const mats = Array.isArray(o.material) ? o.material : [o.material];
-      const hasMap = mats?.some((m) => m?.map?.image);
-      if (hasMap && !firstMappableMesh) firstMappableMesh = o;
-
       const n = String(o.name || "").toLowerCase();
-      if (!headMesh && n.includes("head")) headMesh = o;
+      if (n.includes("head")) headMesh = o;
     });
 
-    headMesh = headMesh || firstMappableMesh;
-
-    if (headMesh && headMesh.material) {
-      const mats = Array.isArray(headMesh.material)
-        ? headMesh.material
-        : [headMesh.material];
-      for (const m of mats) {
-        if (!m) continue;
-        const baked = bakeFaceOntoBaseColor(m.map, lastFaceTexture);
-        if (baked) {
-          m.map = baked;
-          m.transparent = false;
-          m.needsUpdate = true;
-        }
-      }
+    if (headMesh) {
+      addFaceDecalMesh(exportRoot, headMesh, lastFaceTexture);
     }
   }
+
+  // Mesh naming happens during part extraction below (trait-aware).
 
   exportRoot.updateMatrixWorld(true);
 
@@ -1382,6 +1432,7 @@ async function loadFriendsies(id) {
 
   bodyRoot = bodyRes.gltf.scene;
   loadedParts.push(bodyRoot);
+  loadedPartsMeta.push({ trait_type: "Body", value: "body" });
 
   bodySkinned = findFirstSkinnedMesh(bodyRoot);
   if (!bodySkinned?.skeleton) {
@@ -1405,7 +1456,7 @@ async function loadFriendsies(id) {
     currentAction.reset().play();
   }
 
-  loadedParts.push(bodyRoot);
+  // (bodyRoot already tracked/added above)
   avatarGroup.add(bodyRoot);
   avatarGroup.updateMatrixWorld(true);
 
@@ -1431,6 +1482,7 @@ async function loadFriendsies(id) {
 
     boostMaterialsForPop(headScene);
     loadedParts.push(headScene);
+    loadedPartsMeta.push({ trait_type: "Head", value: headAttr?.value || "head" });
     avatarGroup.updateMatrixWorld(true);
   }
 
@@ -1448,6 +1500,7 @@ async function loadFriendsies(id) {
 
     boostMaterialsForPop(part);
     loadedParts.push(part);
+    loadedPartsMeta.push({ trait_type: partPromises[index]?.trait?.trait_type || "Part", value: partPromises[index]?.trait?.value || "" });
     avatarGroup.add(part);
   }
   avatarGroup.updateMatrixWorld(true);
