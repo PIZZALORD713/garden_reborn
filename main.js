@@ -318,6 +318,7 @@ const el = {
 
   printTraitsBtn: document.getElementById("printTraitsBtn"),
   printRigBtn: document.getElementById("printRigBtn"),
+  downloadGlbBtn: document.getElementById("downloadGlbBtn"),
 
   log: document.getElementById("log"),
   clearLogBtn: document.getElementById("clearLogBtn")
@@ -590,6 +591,7 @@ let allFriendsies = null;
 let currentLoadId = 0;
 
 let loadedParts = [];
+let loadedPartsMeta = []; // parallel array of { trait_type, value }
 let lastTraits = null;
 
 let bodyRoot = null;
@@ -604,6 +606,7 @@ let restPosByBone = new Map();
 
 let faceOverlayMeshes = [];
 let faceAnchor = null;
+let lastFaceTexture = null;
 
 let autoRandomTimer = null;
 
@@ -956,6 +959,7 @@ function clearAvatar() {
 
   loadedParts.forEach((m) => avatarGroup.remove(m));
   loadedParts = [];
+  loadedPartsMeta = [];
 
   bodyRoot = null;
   bodySkeleton = null;
@@ -989,9 +993,916 @@ function printTraits() {
 function printRigBones() {
   if (!bodySkeleton) return logLine("No rig yet.", "warn");
 
-  logSection(`Rig bones (${bodySkeleton.bones.length}) hipsRaw=${hipsRawName || "(none)"}`);
+  logSection(
+    `Rig bones (${bodySkeleton.bones.length}) hipsRaw=${hipsRawName || "(none)"}`
+  );
   for (const b of bodySkeleton.bones) {
     logLine(`${b.name}  →  ${keyForName(b.name)}`);
+  }
+}
+
+// ----------------------------
+// Export (Download)
+// ----------------------------
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function drawTextureToCanvas(ctx, tex, w, h) {
+  if (!tex || !tex.image) return;
+
+  // Some textures in this project use repeat.y = -1 + offset.y = 1 for flip.
+  // Apply equivalent transform when drawing to a canvas.
+  const flipY = tex.repeat?.y === -1;
+
+  ctx.save();
+  if (flipY) {
+    ctx.translate(0, h);
+    ctx.scale(1, -1);
+  }
+  try {
+    ctx.drawImage(tex.image, 0, 0, w, h);
+  } catch {
+    // ignore
+  }
+  ctx.restore();
+}
+
+function makeFaceDecalMaterial(faceTex) {
+  if (!faceTex) return null;
+  const mat = new THREE.MeshStandardMaterial({
+    map: faceTex,
+    transparent: true,
+    opacity: 1,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    depthTest: true,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+    metalness: 0,
+    roughness: 1
+  });
+  // glTF export tends to prefer non-flipped textures.
+  // Keep faceTex as-is; viewer already flips via repeat/offset if needed.
+  mat.needsUpdate = true;
+  return mat;
+}
+
+function cloneGeometryWithNormalOffset(geometry, epsilon = 0.0002) {
+  if (!geometry) return geometry;
+  const g = geometry.clone();
+  const pos = g.attributes?.position;
+  const nrm = g.attributes?.normal;
+  if (!pos || !nrm || pos.count !== nrm.count) return g;
+
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const nx = nrm.getX(i);
+    const ny = nrm.getY(i);
+    const nz = nrm.getZ(i);
+    pos.setXYZ(i, x + nx * epsilon, y + ny * epsilon, z + nz * epsilon);
+  }
+
+  pos.needsUpdate = true;
+  g.computeBoundingBox?.();
+  g.computeBoundingSphere?.();
+  return g;
+}
+
+function addFaceDecalMesh(exportRoot, headMesh, faceTex) {
+  if (!exportRoot || !headMesh || !faceTex) return null;
+
+  const decalMat = makeFaceDecalMaterial(faceTex);
+  if (!decalMat) return null;
+
+  // IMPORTANT: glTF has no polygonOffset; coplanar overlay meshes can break in Cycles.
+  // So for EXPORT we slightly offset the decal geometry along normals.
+  const decalGeo = cloneGeometryWithNormalOffset(headMesh.geometry, 0.0002);
+
+  let decal = null;
+  if (headMesh.isSkinnedMesh) {
+    decal = new THREE.SkinnedMesh(decalGeo, decalMat);
+    // Copy skinning attributes
+    decal.bindMode = headMesh.bindMode;
+    decal.skeleton = headMesh.skeleton;
+    decal.bindMatrix.copy(headMesh.bindMatrix);
+    decal.bindMatrixInverse.copy(headMesh.bindMatrixInverse);
+    // Ensure it's bound (some exporters look for explicit bind)
+    try {
+      decal.bind(headMesh.skeleton, headMesh.bindMatrix);
+    } catch {}
+  } else {
+    decal = new THREE.Mesh(decalGeo, decalMat);
+  }
+
+  decal.name = (headMesh.name ? headMesh.name + "_FACE" : "Head_FACE");
+  decal.renderOrder = 999; // helps in three.js; exporters may ignore
+
+  // Keep transform aligned with head mesh
+  decal.position.copy(headMesh.position);
+  decal.quaternion.copy(headMesh.quaternion);
+  decal.scale.copy(headMesh.scale);
+
+  exportRoot.add(decal);
+  return decal;
+}
+
+function bakeFaceOntoBaseColor(baseTex, faceTex) {
+  if (!faceTex?.image) return baseTex || null;
+
+  const w = baseTex?.image?.width || faceTex.image.width || 1024;
+  const h = baseTex?.image?.height || faceTex.image.height || 1024;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+
+  // base
+  if (baseTex?.image) {
+    drawTextureToCanvas(ctx, baseTex, w, h);
+  } else {
+    ctx.clearRect(0, 0, w, h);
+  }
+
+  // overlay (face png already aligned to the head UV layout)
+  drawTextureToCanvas(ctx, faceTex, w, h);
+
+  const baked = new THREE.CanvasTexture(canvas);
+  baked.encoding = THREE.sRGBEncoding;
+  baked.flipY = false; // glTF convention
+  baked.needsUpdate = true;
+  return baked;
+}
+
+function stripJunkNodesButKeepMeshes(root) {
+  if (!root) return;
+
+  // If we remove bones that currently parent meshes, we can accidentally delete the meshes.
+  // So first, lift all meshes/skinned meshes to the root while preserving world transforms.
+  const meshes = [];
+  root.traverse((o) => {
+    if (o.isMesh || o.isSkinnedMesh) meshes.push(o);
+  });
+  for (const m of meshes) {
+    if (!m.parent) continue;
+    reparentKeepWorld(m, root);
+  }
+
+  // Now we can safely remove bone trees + armature empties.
+  const toRemove = [];
+  root.traverse((o) => {
+    if (o === root) return;
+
+    // Never remove bones here — we still need the skeleton for export.
+    // (We strip extra armature wrappers elsewhere.)
+
+    if (!o.isMesh && !o.isSkinnedMesh && !o.isBone) {
+      const name = String(o.name || "");
+      const looksLikeArmature = /armature|skeleton|rig/i.test(name);
+      if (looksLikeArmature) toRemove.push(o);
+    }
+  });
+
+  for (const o of toRemove) {
+    if (o?.parent) o.parent.remove(o);
+  }
+}
+
+function pruneExportHelpers(exportRoot) {
+  if (!exportRoot) return 0;
+  const killNames = [
+    /^glTF_not_exported$/i,
+    /^Icosphere(\.\d+)?$/i,
+    /^FACE_ANCHOR$/i,
+    /^X_FACE_OVERLAY$/i,
+    /_FACE_OVERLAY$/i
+  ];
+
+  const toRemove = [];
+  exportRoot.traverse((o) => {
+    const n = String(o.name || "");
+    if (!n) return;
+    if (killNames.some((re) => re.test(n))) toRemove.push(o);
+  });
+
+  for (const o of toRemove) {
+    if (o?.parent) o.parent.remove(o);
+  }
+
+  return toRemove.length;
+}
+
+// ----------------------------
+// Export post-processing
+// Goal: Improve Windows 3D Viewer compatibility without breaking Blender.
+// This is intentionally conservative: if anything looks off, we fall back to raw GLB.
+// ----------------------------
+function parseGlb(arrayBuffer) {
+  const u8 = new Uint8Array(arrayBuffer);
+  const dv = new DataView(arrayBuffer);
+
+  const magic = dv.getUint32(0, true);
+  if (magic !== 0x46546c67) throw new Error("Not a GLB (bad magic)");
+
+  const version = dv.getUint32(4, true);
+  if (version !== 2) throw new Error(`Unsupported GLB version: ${version}`);
+
+  let offset = 12;
+  let jsonChunk = null;
+  let binChunk = null;
+
+  while (offset + 8 <= u8.byteLength) {
+    const chunkLength = dv.getUint32(offset, true);
+    const chunkType = dv.getUint32(offset + 4, true);
+    const chunkStart = offset + 8;
+    const chunkEnd = chunkStart + chunkLength;
+
+    if (chunkEnd > u8.byteLength) break;
+
+    if (chunkType === 0x4e4f534a) {
+      // JSON
+      jsonChunk = u8.slice(chunkStart, chunkEnd);
+    } else if (chunkType === 0x004e4942) {
+      // BIN
+      binChunk = u8.slice(chunkStart, chunkEnd);
+    }
+
+    offset = chunkEnd;
+  }
+
+  if (!jsonChunk) throw new Error("GLB missing JSON chunk");
+
+  const jsonText = new TextDecoder("utf-8").decode(jsonChunk);
+  const json = JSON.parse(jsonText);
+
+  return { json, binChunk };
+}
+
+function buildGlb(json, binChunk) {
+  const enc = new TextEncoder();
+  let jsonBytes = enc.encode(JSON.stringify(json));
+
+  // 4-byte alignment
+  const pad4 = (n) => (4 - (n % 4)) % 4;
+  const jsonPad = pad4(jsonBytes.byteLength);
+  const binPad = binChunk ? pad4(binChunk.byteLength) : 0;
+
+  const jsonChunkLen = jsonBytes.byteLength + jsonPad;
+  const binChunkLen = binChunk ? binChunk.byteLength + binPad : 0;
+
+  const totalLen = 12 + 8 + jsonChunkLen + (binChunk ? 8 + binChunkLen : 0);
+
+  const out = new ArrayBuffer(totalLen);
+  const dv = new DataView(out);
+  const u8 = new Uint8Array(out);
+
+  // header
+  dv.setUint32(0, 0x46546c67, true);
+  dv.setUint32(4, 2, true);
+  dv.setUint32(8, totalLen, true);
+
+  let offset = 12;
+
+  // JSON chunk header
+  dv.setUint32(offset, jsonChunkLen, true);
+  dv.setUint32(offset + 4, 0x4e4f534a, true);
+  offset += 8;
+  u8.set(jsonBytes, offset);
+  offset += jsonBytes.byteLength;
+  for (let i = 0; i < jsonPad; i++) u8[offset++] = 0x20; // spaces
+
+  if (binChunk) {
+    dv.setUint32(offset, binChunkLen, true);
+    dv.setUint32(offset + 4, 0x004e4942, true);
+    offset += 8;
+    u8.set(binChunk, offset);
+    offset += binChunk.byteLength;
+    for (let i = 0; i < binPad; i++) u8[offset++] = 0;
+  }
+
+  return out;
+}
+
+function deepEqualJson(a, b) {
+  // only for small objects like samplers
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function dedupeSamplers(gltf) {
+  const samplers = gltf.samplers;
+  const textures = gltf.textures;
+  if (!Array.isArray(samplers) || !Array.isArray(textures) || samplers.length < 2)
+    return { changed: false };
+
+  const newSamplers = [];
+  const remap = new Map(); // old -> new
+
+  for (let i = 0; i < samplers.length; i++) {
+    const s = samplers[i] || {};
+    let found = -1;
+    for (let j = 0; j < newSamplers.length; j++) {
+      if (deepEqualJson(newSamplers[j], s)) {
+        found = j;
+        break;
+      }
+    }
+    if (found === -1) {
+      found = newSamplers.length;
+      newSamplers.push(s);
+    }
+    remap.set(i, found);
+  }
+
+  let texChanged = false;
+  for (const t of textures) {
+    if (!t) continue;
+    const old = t.sampler;
+    if (typeof old === "number" && remap.has(old)) {
+      const nu = remap.get(old);
+      if (nu !== old) {
+        t.sampler = nu;
+        texChanged = true;
+      }
+    }
+  }
+
+  const changed = texChanged || newSamplers.length !== samplers.length;
+  if (changed) gltf.samplers = newSamplers;
+  return { changed, before: samplers.length, after: newSamplers.length };
+}
+
+function dedupeSkins(gltf, binChunk) {
+  // THREE.GLTFExporter tends to emit one skin per SkinnedMesh even when they all share
+  // the same skeleton/joints. Windows 3D Viewer seems especially unhappy with that.
+  //
+  // We dedupe aggressively but safely:
+  // - If joints[] and skeleton match, we treat skins as equivalent.
+  // - Prefer the first skin as canonical.
+  // - If inverseBindMatrices accessors differ but are byte-identical MAT4 buffers,
+  //   we also treat them as equivalent.
+  const skins = gltf.skins;
+  const nodes = gltf.nodes;
+  if (!Array.isArray(skins) || skins.length < 2 || !Array.isArray(nodes))
+    return { changed: false };
+
+  const accessors = gltf.accessors;
+  const bufferViews = gltf.bufferViews;
+  const bin = binChunk
+    ? new Uint8Array(binChunk.buffer, binChunk.byteOffset, binChunk.byteLength)
+    : null;
+
+  const getAccessorByteSliceKey = (accessorIndex) => {
+    if (!bin || !Array.isArray(accessors) || !Array.isArray(bufferViews)) return null;
+    const acc = accessors[accessorIndex];
+    if (!acc) return null;
+    const bv = bufferViews[acc.bufferView];
+    if (!bv) return null;
+
+    // Only bother with the common IBM shape (MAT4, float)
+    if (acc.componentType !== 5126 || acc.type !== "MAT4") return null;
+
+    const byteOffset = (bv.byteOffset || 0) + (acc.byteOffset || 0);
+    const byteLength = (bv.byteStride || 64) * (acc.count || 0);
+    if (byteLength <= 0) return null;
+    const end = byteOffset + byteLength;
+    if (byteOffset < 0 || end > bin.byteLength) return null;
+
+    // Create a cheap hash (not cryptographic) for comparison.
+    // Sample a few bytes + length.
+    const view = bin.subarray(byteOffset, end);
+    let h = 2166136261;
+    const step = Math.max(1, Math.floor(view.length / 64));
+    for (let i = 0; i < view.length; i += step) {
+      h ^= view[i];
+      h = Math.imul(h, 16777619);
+    }
+    return `${view.length}:${h >>> 0}`;
+  };
+
+  const keyForSkin = (s) => {
+    if (!s) return "null";
+
+    const joints = Array.isArray(s.joints) ? s.joints : null;
+    const skeleton = typeof s.skeleton === "number" ? s.skeleton : null;
+
+    // Prefer to match by actual IBM buffer content when possible.
+    const ibm = typeof s.inverseBindMatrices === "number" ? s.inverseBindMatrices : null;
+    const ibmKey = ibm !== null ? getAccessorByteSliceKey(ibm) : null;
+
+    return JSON.stringify({ joints, skeleton, ibmKey: ibmKey || ibm });
+  };
+
+  const mapKeyToNew = new Map();
+  const remap = new Map();
+  const newSkins = [];
+
+  for (let i = 0; i < skins.length; i++) {
+    const s = skins[i];
+    const k = keyForSkin(s);
+    if (!mapKeyToNew.has(k)) {
+      mapKeyToNew.set(k, newSkins.length);
+      newSkins.push(s);
+    }
+    remap.set(i, mapKeyToNew.get(k));
+  }
+
+  let nodeChanged = false;
+  for (const n of nodes) {
+    if (!n) continue;
+    const old = n.skin;
+    if (typeof old === "number" && remap.has(old)) {
+      const nu = remap.get(old);
+      if (nu !== old) {
+        n.skin = nu;
+        nodeChanged = true;
+      }
+    }
+  }
+
+  // Also unify inverseBindMatrices indices for the merged skins, picking the first one.
+  // (This is conservative: we only unify within the deduped skin list.)
+  for (const s of newSkins) {
+    if (!s) continue;
+    // no-op, but keeps structure stable
+  }
+
+  const changed = nodeChanged || newSkins.length !== skins.length;
+  if (changed) gltf.skins = newSkins;
+  return { changed, before: skins.length, after: gltf.skins.length };
+}
+
+function bakeAndRemoveKHRTextureTransform_FlipYOnly(gltf, binChunk) {
+  // Windows 3D Viewer is often picky; KHR_texture_transform might be a culprit.
+  // We handle ONLY the common flipY pattern: offset [0,1], scale [1,-1], rotation 0.
+  if (!gltf?.materials || !gltf?.meshes || !gltf?.accessors || !gltf?.bufferViews)
+    return { changed: false };
+
+  const materials = gltf.materials;
+  const meshes = gltf.meshes;
+
+  const flipYTextures = new Set();
+
+  for (let mi = 0; mi < materials.length; mi++) {
+    const m = materials[mi];
+    const tex = m?.pbrMetallicRoughness?.baseColorTexture;
+    const ext = tex?.extensions?.KHR_texture_transform;
+    if (!ext) continue;
+
+    const off = ext.offset || [0, 0];
+    const sc = ext.scale || [1, 1];
+    const rot = ext.rotation || 0;
+
+    const isFlipY =
+      rot === 0 &&
+      off[0] === 0 &&
+      off[1] === 1 &&
+      sc[0] === 1 &&
+      sc[1] === -1;
+
+    if (!isFlipY) continue;
+
+    const ti = tex.index;
+    if (typeof ti === "number") {
+      flipYTextures.add(ti);
+    }
+  }
+
+  if (!flipYTextures.size) return { changed: false };
+
+  // Build a mapping from material index -> needsFlipY (based on baseColorTexture index)
+  const materialNeedsFlip = new Set();
+  for (let mi = 0; mi < materials.length; mi++) {
+    const m = materials[mi];
+    const tex = m?.pbrMetallicRoughness?.baseColorTexture;
+    const ti = tex?.index;
+    if (typeof ti === "number" && flipYTextures.has(ti)) materialNeedsFlip.add(mi);
+  }
+
+  // Flip V in-place for TEXCOORD_0 accessors on primitives that use those materials.
+  const bin = binChunk
+    ? new Uint8Array(binChunk.buffer, binChunk.byteOffset, binChunk.byteLength)
+    : null;
+  if (!bin) return { changed: false };
+
+  const accessors = gltf.accessors;
+  const bufferViews = gltf.bufferViews;
+
+  const flipAccessor = (accessorIndex) => {
+    const acc = accessors[accessorIndex];
+    if (!acc) return false;
+    if (acc.componentType !== 5126) return false; // FLOAT
+    if (acc.type !== "VEC2") return false;
+
+    const bv = bufferViews[acc.bufferView];
+    if (!bv) return false;
+
+    const baseOffset = (bv.byteOffset || 0) + (acc.byteOffset || 0);
+    const stride = bv.byteStride || 8;
+    const count = acc.count || 0;
+
+    // Safety checks
+    const lastByte = baseOffset + stride * (count - 1) + 8;
+    if (count <= 0 || baseOffset < 0 || lastByte > bin.byteLength) return false;
+
+    const dv = new DataView(bin.buffer, bin.byteOffset, bin.byteLength);
+    for (let i = 0; i < count; i++) {
+      const yOff = baseOffset + i * stride + 4;
+      const y = dv.getFloat32(yOff, true);
+      dv.setFloat32(yOff, 1.0 - y, true);
+    }
+
+    // Update accessor min/max if present
+    if (Array.isArray(acc.min) && acc.min.length === 2) {
+      const minY = acc.min[1];
+      const maxY = Array.isArray(acc.max) ? acc.max[1] : undefined;
+      if (typeof minY === "number" && typeof maxY === "number") {
+        acc.min[1] = 1.0 - maxY;
+        if (Array.isArray(acc.max) && acc.max.length === 2) {
+          acc.max[1] = 1.0 - minY;
+        }
+      }
+    }
+
+    return true;
+  };
+
+  const flippedAccessors = new Set();
+  let changed = false;
+
+  for (const mesh of meshes) {
+    for (const prim of mesh?.primitives || []) {
+      if (!prim) continue;
+      const matIndex = prim.material;
+      if (typeof matIndex !== "number" || !materialNeedsFlip.has(matIndex)) continue;
+
+      const uvAccessor = prim.attributes?.TEXCOORD_0;
+      if (typeof uvAccessor !== "number") continue;
+      if (flippedAccessors.has(uvAccessor)) continue;
+
+      if (flipAccessor(uvAccessor)) {
+        flippedAccessors.add(uvAccessor);
+        changed = true;
+      }
+    }
+  }
+
+  if (!changed) return { changed: false };
+
+  // Remove the extension from materials (only those flipY ones)
+  for (const m of materials) {
+    const tex = m?.pbrMetallicRoughness?.baseColorTexture;
+    const ext = tex?.extensions?.KHR_texture_transform;
+    if (!ext) continue;
+
+    const off = ext.offset || [0, 0];
+    const sc = ext.scale || [1, 1];
+    const rot = ext.rotation || 0;
+    const isFlipY =
+      rot === 0 && off[0] === 0 && off[1] === 1 && sc[0] === 1 && sc[1] === -1;
+
+    if (!isFlipY) continue;
+
+    delete tex.extensions.KHR_texture_transform;
+    if (Object.keys(tex.extensions).length === 0) delete tex.extensions;
+  }
+
+  // Clean up extensionsUsed if possible
+  if (Array.isArray(gltf.extensionsUsed)) {
+    const stillUsed = new Set();
+    // crude scan
+    const scan = (obj) => {
+      if (!obj || typeof obj !== "object") return;
+      if (obj.extensions && typeof obj.extensions === "object") {
+        for (const k of Object.keys(obj.extensions)) stillUsed.add(k);
+      }
+      for (const v of Object.values(obj)) scan(v);
+    };
+    scan(gltf);
+    gltf.extensionsUsed = gltf.extensionsUsed.filter((k) => stillUsed.has(k));
+    if (!gltf.extensionsUsed.length) delete gltf.extensionsUsed;
+  }
+
+  return {
+    changed: true,
+    flippedAccessors: flippedAccessors.size,
+    textures: flipYTextures.size
+  };
+}
+
+function sanitizeMaterialsForWindows(gltf) {
+  // Windows 3D Viewer can fail hard on certain material edge-cases.
+  // Keep this conservative: clamp factors into spec ranges and strip nonstandard extras.
+  const mats = gltf.materials;
+  if (!Array.isArray(mats) || !mats.length) return { changed: false };
+
+  const clamp01 = (x) => {
+    const n = Number(x);
+    if (!Number.isFinite(n)) return x;
+    return Math.min(1, Math.max(0, n));
+  };
+
+  let changed = false;
+  let clamped = 0;
+  let strippedExtras = 0;
+
+  for (const m of mats) {
+    if (!m) continue;
+
+    if (m.extras && typeof m.extras === "object") {
+      // Strip material extras produced by our viewer-only look system.
+      delete m.extras;
+      strippedExtras++;
+      changed = true;
+    }
+
+    // emissiveFactor must be [0..1] per component in glTF 2.0.
+    if (Array.isArray(m.emissiveFactor) && m.emissiveFactor.length === 3) {
+      const before = m.emissiveFactor.slice();
+      m.emissiveFactor = [
+        clamp01(m.emissiveFactor[0]),
+        clamp01(m.emissiveFactor[1]),
+        clamp01(m.emissiveFactor[2])
+      ];
+      if (JSON.stringify(before) !== JSON.stringify(m.emissiveFactor)) {
+        clamped++;
+        changed = true;
+      }
+    }
+
+    // Clamp PBR factors into spec too.
+    const pbr = m.pbrMetallicRoughness;
+    if (pbr && typeof pbr === "object") {
+      if (typeof pbr.metallicFactor === "number") {
+        const v = clamp01(pbr.metallicFactor);
+        if (v !== pbr.metallicFactor) {
+          pbr.metallicFactor = v;
+          clamped++;
+          changed = true;
+        }
+      }
+      if (typeof pbr.roughnessFactor === "number") {
+        const v = clamp01(pbr.roughnessFactor);
+        if (v !== pbr.roughnessFactor) {
+          pbr.roughnessFactor = v;
+          clamped++;
+          changed = true;
+        }
+      }
+      if (Array.isArray(pbr.baseColorFactor) && pbr.baseColorFactor.length === 4) {
+        const before = pbr.baseColorFactor.slice();
+        pbr.baseColorFactor = [
+          clamp01(pbr.baseColorFactor[0]),
+          clamp01(pbr.baseColorFactor[1]),
+          clamp01(pbr.baseColorFactor[2]),
+          clamp01(pbr.baseColorFactor[3])
+        ];
+        if (JSON.stringify(before) !== JSON.stringify(pbr.baseColorFactor)) {
+          clamped++;
+          changed = true;
+        }
+      }
+    }
+  }
+
+  return { changed, clamped, strippedExtras };
+}
+
+function optimizeGlbForWindows(rawGlb) {
+  // Returns { glb, report } or throws.
+  const { json, binChunk } = parseGlb(rawGlb);
+
+  const report = { steps: [] };
+
+  const bakeRes = bakeAndRemoveKHRTextureTransform_FlipYOnly(json, binChunk);
+  if (bakeRes.changed) report.steps.push({ step: "bakeFlipY", ...bakeRes });
+
+  const sampRes = dedupeSamplers(json);
+  if (sampRes.changed) report.steps.push({ step: "dedupeSamplers", ...sampRes });
+
+  const skinRes = dedupeSkins(json, binChunk);
+  if (skinRes.changed) report.steps.push({ step: "dedupeSkins", ...skinRes });
+
+  const matRes = sanitizeMaterialsForWindows(json);
+  if (matRes.changed) report.steps.push({ step: "sanitizeMaterials", ...matRes });
+
+  // Basic sanity checks (avoid exporting a broken file)
+  const matCount = Array.isArray(json.materials) ? json.materials.length : 0;
+  const imgCount = Array.isArray(json.images) ? json.images.length : 0;
+  const texCount = Array.isArray(json.textures) ? json.textures.length : 0;
+
+  if (!matCount) throw new Error("Optimize sanity check failed: 0 materials");
+  if (!imgCount && texCount) throw new Error("Optimize sanity check failed: textures but 0 images");
+
+  return { glb: buildGlb(json, binChunk), report };
+}
+
+function downloadRigGlb() {
+  if (!loadedParts?.length || !bodyRoot) {
+    logLine("Nothing loaded yet — load a fRiENDSiES first.", "warn");
+    return;
+  }
+  if (!THREE?.GLTFExporter) {
+    logLine("GLTFExporter missing (script tag not loaded).", "warn");
+    return;
+  }
+
+  // We want option A: rigged + T-pose only.
+  // Stop animation and return skeleton to bind pose if possible.
+  try {
+    if (mixer) mixer.stopAllAction();
+    if (bodySkeleton && typeof bodySkeleton.pose === "function") {
+      bodySkeleton.pose();
+    }
+  } catch {}
+
+  // Temporarily normalize avatarGroup scale/position so the exported file is usable in Blender.
+  const oldScale = avatarGroup.scale.clone();
+  const oldPos = avatarGroup.position.clone();
+  avatarGroup.scale.setScalar(1);
+  avatarGroup.position.set(0, 0, 0);
+
+  // Build a clean export root (avoid nested Scene roots + dead armatures from parts)
+  const exportRoot = new THREE.Group();
+  const id = Number(el.friendsiesId?.value || 0) || 0;
+  const idStr = String(id || 0).padStart(4, "0");
+  exportRoot.name = `fRiENDSiES_${idStr}`;
+
+  // IMPORTANT: The live viewer adds FACE_ANCHOR + overlay meshes under the BODY rig.
+  // We do NOT want those exported. Temporarily detach faceAnchor before cloning.
+  const faceAnchorParent = faceAnchor?.parent || null;
+  if (faceAnchorParent) faceAnchorParent.remove(faceAnchor);
+
+  // Clone everything for export.
+  // Use SkeletonUtils.clone so SkinnedMesh + skeleton/bind data survive properly.
+  const exportBodyRoot = THREE.SkeletonUtils?.clone
+    ? THREE.SkeletonUtils.clone(bodyRoot)
+    : bodyRoot.clone(true);
+
+  // Restore live faceAnchor immediately after cloning.
+  if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
+
+  exportRoot.add(exportBodyRoot);
+
+  const exportBodySkinned = findFirstSkinnedMesh(exportBodyRoot);
+  const exportSkeleton = exportBodySkinned?.skeleton || null;
+
+  function attachPartToExportSkeleton(partScene) {
+    if (!exportSkeleton || !exportBodySkinned || !partScene) return 0;
+
+    exportBodySkinned.updateMatrixWorld(true);
+
+    let skinnedCount = 0;
+    partScene.traverse((o) => {
+      if (!o.isSkinnedMesh) return;
+      skinnedCount++;
+
+      // Use the part's existing bindMatrix, but bind to the exported skeleton.
+      const bindMatrix = o.bindMatrix ? o.bindMatrix.clone() : new THREE.Matrix4();
+      o.bind(exportSkeleton, bindMatrix);
+      o.bindMode = exportBodySkinned.bindMode || o.bindMode;
+      o.frustumCulled = false;
+      o.updateMatrixWorld(true);
+    });
+
+    return skinnedCount;
+  }
+
+  // Clone trait parts, strip junk, and rebind skinned meshes to the EXPORTED BODY skeleton.
+  // We also name meshes by trait type for sanity.
+  const traitParts = loadedParts
+    .map((p, idx) => ({ part: p, meta: loadedPartsMeta[idx] }))
+    .filter((x) => x.part && x.part !== bodyRoot);
+
+  for (const { part, meta } of traitParts) {
+    const clone = THREE.SkeletonUtils?.clone
+      ? THREE.SkeletonUtils.clone(part)
+      : part.clone(true);
+
+    stripJunkNodesButKeepMeshes(clone);
+    attachPartToExportSkeleton(clone);
+
+    const labelBase = String(meta?.trait_type || "Part").trim() || "Part";
+    const labelValue = String(meta?.value || "").trim();
+    const label = labelValue ? `${labelBase}_${labelValue}` : labelBase;
+
+    // Remove any viewer-only face overlay meshes if they were present in the part.
+    const toCull = [];
+    clone.traverse((o) => {
+      const n = String(o.name || "");
+      if (/FACE_ANCHOR/i.test(n) || /_FACE_OVERLAY$/i.test(n) || /^X_FACE_OVERLAY$/i.test(n)) {
+        toCull.push(o);
+      }
+    });
+    for (const o of toCull) {
+      if (o?.parent) o.parent.remove(o);
+    }
+
+    // Add only meshes to exportRoot to avoid nested Scene roots.
+    const keep = [];
+    clone.traverse((o) => {
+      if (o.isMesh || o.isSkinnedMesh) keep.push(o);
+    });
+    for (const m of keep) {
+      if (!m.name || m.name === "X") m.name = label;
+      reparentKeepWorld(m, exportRoot);
+    }
+  }
+
+  // If this token uses a 2D face PNG, export it as a decal mesh (glTF-native overlay).
+  if (lastFaceTexture) {
+    let headMesh = null;
+    exportRoot.traverse((o) => {
+      if (headMesh) return;
+      if (!(o.isMesh || o.isSkinnedMesh)) return;
+      const n = String(o.name || "").toLowerCase();
+      if (n.includes("head")) headMesh = o;
+    });
+
+    if (headMesh) {
+      addFaceDecalMesh(exportRoot, headMesh, lastFaceTexture);
+    }
+  }
+
+  // Final cleanup: remove any known helper nodes that can confuse Blender importer.
+  const pruned = pruneExportHelpers(exportRoot);
+  if (pruned) logLine(`🧽 Pruned helper nodes from export: ${pruned}`, "dim");
+
+  exportRoot.updateMatrixWorld(true);
+
+  const exporter = new THREE.GLTFExporter();
+  const filename = `friendsies_${id || "export"}_rig_tpose.glb`;
+
+  logLine(`Exporting ${filename}…`, "dim");
+
+  // (faceAnchor already detached only for cloning; it is not part of exportRoot)
+
+  try {
+    // NOTE: In Three r128 GLTFExporter.parse signature is:
+    // parse(input, onDone, options)
+    exporter.parse(
+      exportRoot,
+      (result) => {
+        avatarGroup.scale.copy(oldScale);
+        avatarGroup.position.copy(oldPos);
+        avatarGroup.updateMatrixWorld(true);
+
+        const glb = result instanceof ArrayBuffer ? result : null;
+        if (!glb) {
+          logLine(
+            `Export failed: expected ArrayBuffer (.glb) but got ${typeof result}.`,
+            "warn"
+          );
+          return;
+        }
+
+        let outGlb = glb;
+
+        // Attempt a conservative Windows-compat pass.
+        // If it fails for any reason, fall back to the raw exporter output.
+        try {
+          const optimized = optimizeGlbForWindows(glb);
+          outGlb = optimized.glb;
+          if (optimized?.report?.steps?.length) {
+            logLine(
+              `🧹 Export cleanup: ${optimized.report.steps
+                .map((s) => s.step)
+                .join(", ")}`,
+              "dim"
+            );
+          }
+        } catch (e) {
+          logLine(`⚠️ Export cleanup skipped: ${e?.message || e}`, "dim");
+          outGlb = glb;
+        }
+
+        downloadBlob(new Blob([outGlb], { type: "model/gltf-binary" }), filename);
+        logLine(`✅ Download started: ${filename}`);
+      },
+      {
+        binary: true,
+        onlyVisible: true,
+        embedImages: true,
+        trs: true
+      }
+    );
+  } catch (err) {
+    // restore on error
+    avatarGroup.scale.copy(oldScale);
+    avatarGroup.position.copy(oldPos);
+    avatarGroup.updateMatrixWorld(true);
+
+    logLine(`Export error: ${err?.message || err}`, "warn");
   }
 }
 
@@ -1067,6 +1978,7 @@ async function loadFriendsies(id) {
     ? loadTextureAsync(faceAttr.asset_url).then((tex) => {
         if (!tex) return null;
         tex.minFilter = THREE.LinearFilter;
+        // Keep viewer behavior (some sources need Y flip)
         tex.repeat.y = -1;
         tex.offset.y = 1;
         tex.encoding = THREE.sRGBEncoding;
@@ -1111,6 +2023,7 @@ async function loadFriendsies(id) {
 
   bodyRoot = bodyRes.gltf.scene;
   loadedParts.push(bodyRoot);
+  loadedPartsMeta.push({ trait_type: "Body", value: "body" });
 
   bodySkinned = findFirstSkinnedMesh(bodyRoot);
   if (!bodySkinned?.skeleton) {
@@ -1134,12 +2047,13 @@ async function loadFriendsies(id) {
     currentAction.reset().play();
   }
 
-  loadedParts.push(bodyRoot);
+  // (bodyRoot already tracked/added above)
   avatarGroup.add(bodyRoot);
   avatarGroup.updateMatrixWorld(true);
 
   const headRes = results[1];
   const faceTexture = await faceTexturePromise;
+  lastFaceTexture = faceTexture;
   if (loadId !== currentLoadId) {
     restoreAvatarVisibility();
     return;
@@ -1159,6 +2073,7 @@ async function loadFriendsies(id) {
 
     boostMaterialsForPop(headScene);
     loadedParts.push(headScene);
+    loadedPartsMeta.push({ trait_type: "Head", value: headAttr?.value || "head" });
     avatarGroup.updateMatrixWorld(true);
   }
 
@@ -1176,6 +2091,7 @@ async function loadFriendsies(id) {
 
     boostMaterialsForPop(part);
     loadedParts.push(part);
+    loadedPartsMeta.push({ trait_type: partPromises[index]?.trait?.trait_type || "Part", value: partPromises[index]?.trait?.value || "" });
     avatarGroup.add(part);
   }
   avatarGroup.updateMatrixWorld(true);
@@ -1291,6 +2207,7 @@ el.stopBtn?.addEventListener("click", () => {
 
 el.printTraitsBtn?.addEventListener("click", printTraits);
 el.printRigBtn?.addEventListener("click", printRigBones);
+el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
 
 // ----------------------------
 // Boot sequence
