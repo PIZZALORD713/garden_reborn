@@ -1061,20 +1061,32 @@ function bakeFaceOntoBaseColor(baseTex, faceTex) {
   return baked;
 }
 
-function stripJunkNodes(root) {
+function stripJunkNodesButKeepMeshes(root) {
   if (!root) return;
 
+  // If we remove bones that currently parent meshes, we can accidentally delete the meshes.
+  // So first, lift all meshes/skinned meshes to the root while preserving world transforms.
+  const meshes = [];
+  root.traverse((o) => {
+    if (o.isMesh || o.isSkinnedMesh) meshes.push(o);
+  });
+  for (const m of meshes) {
+    if (!m.parent) continue;
+    reparentKeepWorld(m, root);
+  }
+
+  // Now we can safely remove bone trees + armature empties.
   const toRemove = [];
   root.traverse((o) => {
-    // Remove legacy rig bones/armature empties from trait parts.
+    if (o === root) return;
+
     if (o.isBone) {
       toRemove.push(o);
       return;
     }
 
-    // Remove empty "Armature" nodes / skeleton containers (non-bone).
-    const name = String(o.name || "");
     if (!o.isMesh && !o.isSkinnedMesh && !o.isBone) {
+      const name = String(o.name || "");
       const looksLikeArmature = /armature|skeleton|rig/i.test(name);
       if (looksLikeArmature) toRemove.push(o);
     }
@@ -1118,12 +1130,22 @@ function downloadRigGlb() {
   exportRoot.add(bodyRoot);
 
   // Clone trait parts, strip junk, and rebind skinned meshes to BODY skeleton.
+  // IMPORTANT: many trait meshes are parented under their original armature bones.
+  // If we remove bones first, we can delete those meshes. So we lift meshes, then strip.
   const traitParts = loadedParts.filter((p) => p && p !== bodyRoot);
   for (const part of traitParts) {
     const clone = part.clone(true);
-    stripJunkNodes(clone);
+    stripJunkNodesButKeepMeshes(clone);
     attachPartToBodySkeleton(clone);
-    exportRoot.add(clone);
+
+    // Add only the meshes to the export root to avoid nested Scene roots.
+    const keep = [];
+    clone.traverse((o) => {
+      if (o.isMesh || o.isSkinnedMesh) keep.push(o);
+    });
+    for (const m of keep) {
+      reparentKeepWorld(m, exportRoot);
+    }
   }
 
   // If this token uses a 2D face PNG, bake it into the head's baseColor.
