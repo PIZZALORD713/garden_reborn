@@ -1049,39 +1049,45 @@ function downloadRigGlb() {
 
   logLine(`Exporting ${filename}…`, "dim");
 
-  exporter.parse(
-    avatarGroup,
-    (result) => {
-      // restore scene graph
-      if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
-      avatarGroup.scale.copy(oldScale);
-      avatarGroup.position.copy(oldPos);
-      avatarGroup.updateMatrixWorld(true);
+  try {
+    // NOTE: In Three r128 GLTFExporter.parse signature is:
+    // parse(input, onDone, options)
+    exporter.parse(
+      avatarGroup,
+      (result) => {
+        // restore scene graph
+        if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
+        avatarGroup.scale.copy(oldScale);
+        avatarGroup.position.copy(oldPos);
+        avatarGroup.updateMatrixWorld(true);
 
-      const glb = result instanceof ArrayBuffer ? result : null;
-      if (!glb) {
-        logLine("Export failed: exporter did not return ArrayBuffer.", "warn");
-        return;
+        const glb = result instanceof ArrayBuffer ? result : null;
+        if (!glb) {
+          logLine(
+            `Export failed: expected ArrayBuffer (.glb) but got ${typeof result}.`,
+            "warn"
+          );
+          return;
+        }
+
+        downloadBlob(new Blob([glb], { type: "model/gltf-binary" }), filename);
+        logLine(`✅ Download started: ${filename}`);
+      },
+      {
+        binary: true,
+        onlyVisible: true,
+        embedImages: true
       }
+    );
+  } catch (err) {
+    // restore on error
+    if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
+    avatarGroup.scale.copy(oldScale);
+    avatarGroup.position.copy(oldPos);
+    avatarGroup.updateMatrixWorld(true);
 
-      downloadBlob(new Blob([glb], { type: "model/gltf-binary" }), filename);
-      logLine(`✅ Download started: ${filename}`);
-    },
-    (err) => {
-      // restore on error
-      if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
-      avatarGroup.scale.copy(oldScale);
-      avatarGroup.position.copy(oldPos);
-      avatarGroup.updateMatrixWorld(true);
-
-      logLine(`Export error: ${err?.message || err}`, "warn");
-    },
-    {
-      binary: true,
-      onlyVisible: true,
-      embedImages: true
-    }
-  );
+    logLine(`Export error: ${err?.message || err}`, "warn");
+  }
 }
 
 // ----------------------------
