@@ -318,6 +318,7 @@ const el = {
 
   printTraitsBtn: document.getElementById("printTraitsBtn"),
   printRigBtn: document.getElementById("printRigBtn"),
+  downloadGlbBtn: document.getElementById("downloadGlbBtn"),
 
   log: document.getElementById("log"),
   clearLogBtn: document.getElementById("clearLogBtn")
@@ -989,10 +990,98 @@ function printTraits() {
 function printRigBones() {
   if (!bodySkeleton) return logLine("No rig yet.", "warn");
 
-  logSection(`Rig bones (${bodySkeleton.bones.length}) hipsRaw=${hipsRawName || "(none)"}`);
+  logSection(
+    `Rig bones (${bodySkeleton.bones.length}) hipsRaw=${hipsRawName || "(none)"}`
+  );
   for (const b of bodySkeleton.bones) {
     logLine(`${b.name}  →  ${keyForName(b.name)}`);
   }
+}
+
+// ----------------------------
+// Export (Download)
+// ----------------------------
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function downloadRigGlb() {
+  if (!loadedParts?.length || !bodyRoot) {
+    logLine("Nothing loaded yet — load a fRiENDSiES first.", "warn");
+    return;
+  }
+  if (!THREE?.GLTFExporter) {
+    logLine("GLTFExporter missing (script tag not loaded).", "warn");
+    return;
+  }
+
+  // We want option A: rigged + T-pose only.
+  // Stop animation and return skeleton to bind pose if possible.
+  try {
+    if (mixer) mixer.stopAllAction();
+    if (bodySkeleton && typeof bodySkeleton.pose === "function") {
+      bodySkeleton.pose();
+    }
+  } catch {}
+
+  // Temporarily normalize avatarGroup scale/position so the exported file is usable in Blender.
+  const oldScale = avatarGroup.scale.clone();
+  const oldPos = avatarGroup.position.clone();
+  avatarGroup.scale.setScalar(1);
+  avatarGroup.position.set(0, 0, 0);
+
+  // Optionally exclude the face overlay anchor from export (it’s useful in viewer, but noisy for DCC).
+  const faceAnchorParent = faceAnchor?.parent || null;
+  if (faceAnchorParent) faceAnchorParent.remove(faceAnchor);
+
+  avatarGroup.updateMatrixWorld(true);
+
+  const exporter = new THREE.GLTFExporter();
+  const id = Number(el.friendsiesId?.value || 0) || 0;
+  const filename = `friendsies_${id || "export"}_rig_tpose.glb`;
+
+  logLine(`Exporting ${filename}…`, "dim");
+
+  exporter.parse(
+    avatarGroup,
+    (result) => {
+      // restore scene graph
+      if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
+      avatarGroup.scale.copy(oldScale);
+      avatarGroup.position.copy(oldPos);
+      avatarGroup.updateMatrixWorld(true);
+
+      const glb = result instanceof ArrayBuffer ? result : null;
+      if (!glb) {
+        logLine("Export failed: exporter did not return ArrayBuffer.", "warn");
+        return;
+      }
+
+      downloadBlob(new Blob([glb], { type: "model/gltf-binary" }), filename);
+      logLine(`✅ Download started: ${filename}`);
+    },
+    (err) => {
+      // restore on error
+      if (faceAnchorParent) faceAnchorParent.add(faceAnchor);
+      avatarGroup.scale.copy(oldScale);
+      avatarGroup.position.copy(oldPos);
+      avatarGroup.updateMatrixWorld(true);
+
+      logLine(`Export error: ${err?.message || err}`, "warn");
+    },
+    {
+      binary: true,
+      onlyVisible: true,
+      embedImages: true
+    }
+  );
 }
 
 // ----------------------------
@@ -1291,6 +1380,7 @@ el.stopBtn?.addEventListener("click", () => {
 
 el.printTraitsBtn?.addEventListener("click", printTraits);
 el.printRigBtn?.addEventListener("click", printRigBones);
+el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
 
 // ----------------------------
 // Boot sequence
