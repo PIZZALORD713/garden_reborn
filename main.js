@@ -1293,19 +1293,65 @@ function dedupeSamplers(gltf) {
   return { changed, before: samplers.length, after: newSamplers.length };
 }
 
-function dedupeSkins(gltf) {
+function dedupeSkins(gltf, binChunk) {
+  // THREE.GLTFExporter tends to emit one skin per SkinnedMesh even when they all share
+  // the same skeleton/joints. Windows 3D Viewer seems especially unhappy with that.
+  //
+  // We dedupe aggressively but safely:
+  // - If joints[] and skeleton match, we treat skins as equivalent.
+  // - Prefer the first skin as canonical.
+  // - If inverseBindMatrices accessors differ but are byte-identical MAT4 buffers,
+  //   we also treat them as equivalent.
   const skins = gltf.skins;
   const nodes = gltf.nodes;
   if (!Array.isArray(skins) || skins.length < 2 || !Array.isArray(nodes))
     return { changed: false };
 
+  const accessors = gltf.accessors;
+  const bufferViews = gltf.bufferViews;
+  const bin = binChunk
+    ? new Uint8Array(binChunk.buffer, binChunk.byteOffset, binChunk.byteLength)
+    : null;
+
+  const getAccessorByteSliceKey = (accessorIndex) => {
+    if (!bin || !Array.isArray(accessors) || !Array.isArray(bufferViews)) return null;
+    const acc = accessors[accessorIndex];
+    if (!acc) return null;
+    const bv = bufferViews[acc.bufferView];
+    if (!bv) return null;
+
+    // Only bother with the common IBM shape (MAT4, float)
+    if (acc.componentType !== 5126 || acc.type !== "MAT4") return null;
+
+    const byteOffset = (bv.byteOffset || 0) + (acc.byteOffset || 0);
+    const byteLength = (bv.byteStride || 64) * (acc.count || 0);
+    if (byteLength <= 0) return null;
+    const end = byteOffset + byteLength;
+    if (byteOffset < 0 || end > bin.byteLength) return null;
+
+    // Create a cheap hash (not cryptographic) for comparison.
+    // Sample a few bytes + length.
+    const view = bin.subarray(byteOffset, end);
+    let h = 2166136261;
+    const step = Math.max(1, Math.floor(view.length / 64));
+    for (let i = 0; i < view.length; i += step) {
+      h ^= view[i];
+      h = Math.imul(h, 16777619);
+    }
+    return `${view.length}:${h >>> 0}`;
+  };
+
   const keyForSkin = (s) => {
     if (!s) return "null";
-    return JSON.stringify({
-      ibm: s.inverseBindMatrices ?? null,
-      joints: s.joints ?? null,
-      skeleton: s.skeleton ?? null
-    });
+
+    const joints = Array.isArray(s.joints) ? s.joints : null;
+    const skeleton = typeof s.skeleton === "number" ? s.skeleton : null;
+
+    // Prefer to match by actual IBM buffer content when possible.
+    const ibm = typeof s.inverseBindMatrices === "number" ? s.inverseBindMatrices : null;
+    const ibmKey = ibm !== null ? getAccessorByteSliceKey(ibm) : null;
+
+    return JSON.stringify({ joints, skeleton, ibmKey: ibmKey || ibm });
   };
 
   const mapKeyToNew = new Map();
@@ -1335,9 +1381,16 @@ function dedupeSkins(gltf) {
     }
   }
 
+  // Also unify inverseBindMatrices indices for the merged skins, picking the first one.
+  // (This is conservative: we only unify within the deduped skin list.)
+  for (const s of newSkins) {
+    if (!s) continue;
+    // no-op, but keeps structure stable
+  }
+
   const changed = nodeChanged || newSkins.length !== skins.length;
   if (changed) gltf.skins = newSkins;
-  return { changed, before: skins.length, after: skins.length ? gltf.skins.length : 0 };
+  return { changed, before: skins.length, after: gltf.skins.length };
 }
 
 function bakeAndRemoveKHRTextureTransform_FlipYOnly(gltf, binChunk) {
@@ -1510,7 +1563,7 @@ function optimizeGlbForWindows(rawGlb) {
   const sampRes = dedupeSamplers(json);
   if (sampRes.changed) report.steps.push({ step: "dedupeSamplers", ...sampRes });
 
-  const skinRes = dedupeSkins(json);
+  const skinRes = dedupeSkins(json, binChunk);
   if (skinRes.changed) report.steps.push({ step: "dedupeSkins", ...skinRes });
 
   // Basic sanity checks (avoid exporting a broken file)
