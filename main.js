@@ -1164,10 +1164,8 @@ function stripJunkNodesButKeepMeshes(root) {
   root.traverse((o) => {
     if (o === root) return;
 
-    if (o.isBone) {
-      toRemove.push(o);
-      return;
-    }
+    // Never remove bones here — we still need the skeleton for export.
+    // (We strip extra armature wrappers elsewhere.)
 
     if (!o.isMesh && !o.isSkinnedMesh && !o.isBone) {
       const name = String(o.name || "");
@@ -1179,6 +1177,30 @@ function stripJunkNodesButKeepMeshes(root) {
   for (const o of toRemove) {
     if (o?.parent) o.parent.remove(o);
   }
+}
+
+function pruneExportHelpers(exportRoot) {
+  if (!exportRoot) return 0;
+  const killNames = [
+    /^glTF_not_exported$/i,
+    /^Icosphere(\.\d+)?$/i,
+    /^FACE_ANCHOR$/i,
+    /^X_FACE_OVERLAY$/i,
+    /_FACE_OVERLAY$/i
+  ];
+
+  const toRemove = [];
+  exportRoot.traverse((o) => {
+    const n = String(o.name || "");
+    if (!n) return;
+    if (killNames.some((re) => re.test(n))) toRemove.push(o);
+  });
+
+  for (const o of toRemove) {
+    if (o?.parent) o.parent.remove(o);
+  }
+
+  return toRemove.length;
 }
 
 // ----------------------------
@@ -1712,7 +1734,9 @@ function downloadRigGlb() {
 
   // Build a clean export root (avoid nested Scene roots + dead armatures from parts)
   const exportRoot = new THREE.Group();
-  exportRoot.name = "EXPORT_ROOT";
+  const id = Number(el.friendsiesId?.value || 0) || 0;
+  const idStr = String(id || 0).padStart(4, "0");
+  exportRoot.name = `fRiENDSiES_${idStr}`;
 
   // IMPORTANT: The live viewer adds FACE_ANCHOR + overlay meshes under the BODY rig.
   // We do NOT want those exported. Temporarily detach faceAnchor before cloning.
@@ -1810,12 +1834,13 @@ function downloadRigGlb() {
     }
   }
 
-  // Mesh naming happens during part extraction below (trait-aware).
+  // Final cleanup: remove any known helper nodes that can confuse Blender importer.
+  const pruned = pruneExportHelpers(exportRoot);
+  if (pruned) logLine(`🧽 Pruned helper nodes from export: ${pruned}`, "dim");
 
   exportRoot.updateMatrixWorld(true);
 
   const exporter = new THREE.GLTFExporter();
-  const id = Number(el.friendsiesId?.value || 0) || 0;
   const filename = `friendsies_${id || "export"}_rig_tpose.glb`;
 
   logLine(`Exporting ${filename}…`, "dim");
