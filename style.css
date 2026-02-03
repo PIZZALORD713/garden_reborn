@@ -3,13 +3,18 @@ html, body {
   margin: 0;
   padding: 0;
   height: 100%;
+  height: 100dvh; /* modern mobile: dynamic viewport height */
   overflow: hidden;
   background: #ffffff;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
     "Apple Color Emoji", "Segoe UI Emoji";
 }
 
-canvas { display: block; }
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100dvh;
+}
 
 /* UI overlay */
 #ui {
