@@ -2170,7 +2170,9 @@ function setAutoRandom(on) {
 
   if (on) {
     autoRandomTimer = setInterval(() => {
-      const id = 1 + Math.floor(Math.random() * 10000);
+      const walletIds = getWalletTokenIds();
+      const id = walletIds ? getRandomFromArray(walletIds) : 1 + Math.floor(Math.random() * 10000);
+      if (!id) return;
       if (el.friendsiesId) el.friendsiesId.value = String(id);
       loadFriendsies(id);
     }, 4000);
@@ -2190,6 +2192,20 @@ setAutoRandom(getBoolLS(LS_AUTORANDOM, false));
 // Wallet lookup (Moralis via /api proxy)
 // ----------------------------
 let lastWalletLookup = null;
+
+function getWalletTokenIds() {
+  const ids = lastWalletLookup?.tokenIds;
+  if (!Array.isArray(ids) || !ids.length) return null;
+  return ids
+    .map((x) => Number(x))
+    .filter((n) => Number.isFinite(n) && n >= 1 && n <= 10000)
+    .sort((a, b) => a - b);
+}
+
+function getRandomFromArray(arr) {
+  if (!arr || !arr.length) return null;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 function isLikelyEns(name) {
   return typeof name === "string" && name.trim().toLowerCase().endsWith(".eth");
@@ -2370,10 +2386,14 @@ el.walletTokensSelect?.addEventListener("change", () => {
   const id = Number(val);
   if (!Number.isFinite(id) || id < 1 || id > 10000) return;
   if (el.friendsiesId) el.friendsiesId.value = String(id);
+  // Auto-load immediately on selection (better UX)
+  loadFriendsies(id);
 });
 
 el.randomBtn?.addEventListener("click", () => {
-  const id = 1 + Math.floor(Math.random() * 10000);
+  const walletIds = getWalletTokenIds();
+  const id = walletIds ? getRandomFromArray(walletIds) : 1 + Math.floor(Math.random() * 10000);
+  if (!id) return;
   if (el.friendsiesId) el.friendsiesId.value = String(id);
   loadFriendsies(id);
 });
