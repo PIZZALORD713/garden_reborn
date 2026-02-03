@@ -2435,6 +2435,25 @@ el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
 // Boot sequence
 // ----------------------------
 (async function boot() {
+  // Deep link support:
+  // - /pizzalord.eth
+  // - /0xabc...
+  // - ?owner=pizzalord.eth
+  // We rewrite to index.html (via vercel.json) and parse the path/query here.
+  // IMPORTANT: do this BEFORE loading pano/env so the wallet field fills immediately.
+  const path = String(location.pathname || "/")
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "");
+  const ownerFromQuery = new URLSearchParams(location.search).get("owner");
+  const ownerFromPath = path && path !== "index.html" ? decodeURIComponent(path) : "";
+  const owner = (ownerFromQuery || ownerFromPath || "").trim();
+
+  if (owner && el.walletInput) {
+    el.walletInput.value = owner;
+    // Don't block boot if wallet lookup fails.
+    doWalletLookup();
+  }
+
   validateLookConfig(LOOK_CONTROLS, "LOOK_CONTROLS");
   validateLookConfig(
     LOOK_PRESETS[DEFAULT_LOOK_PRESET],
@@ -2449,25 +2468,6 @@ el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
   logLine(`🌫 env: ${envOk ? "ok" : "failed"} (${EXR_ENV_URL})`);
 
   setStatus("fetching metadata…");
-
-  // Deep link support:
-  // - /pizzalord.eth
-  // - /0xabc...
-  // - ?owner=pizzalord.eth
-  // We rewrite to index.html (via vercel.json) and parse the path/query here.
-  const path = String(location.pathname || "/")
-    .replace(/^\/+/, "")
-    .replace(/\/+$/, "");
-  const ownerFromQuery = new URLSearchParams(location.search).get("owner");
-  const ownerFromPath = path && path !== "index.html" ? decodeURIComponent(path) : "";
-  const owner = (ownerFromQuery || ownerFromPath || "").trim();
-
-  // Kick off wallet lookup ASAP (doesn't depend on metadata).
-  if (owner && el.walletInput) {
-    el.walletInput.value = owner;
-    // Don't block boot if wallet lookup fails.
-    doWalletLookup();
-  }
 
   fetch(METADATA_URL)
     .then((r) => r.json())
