@@ -24,10 +24,10 @@ const ASSET_VERSION = "2026-01-27a";
 // ----------------------------
 // Assets in your repo root
 // ----------------------------
-const PANORAMA_URL = `./garden-cotton-clouds.png?v=${encodeURIComponent(
+const PANORAMA_URL = `/garden-cotton-clouds.png?v=${encodeURIComponent(
   ASSET_VERSION
 )}`;
-const EXR_ENV_URL = `./friendsies_cloud_overcast_studio_v1.exr?v=${encodeURIComponent(
+const EXR_ENV_URL = `/friendsies_cloud_overcast_studio_v1.exr?v=${encodeURIComponent(
   ASSET_VERSION
 )}`;
 
