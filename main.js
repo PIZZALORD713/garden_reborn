@@ -2280,17 +2280,19 @@ function setCarouselVisible(visible) {
 }
 
 var peekTimer = null;
+var carouselIsOpen = false;
 
 function setCarouselOpen(open) {
+  carouselIsOpen = !!open;
   if (el.carousel) {
-    el.carousel.classList.toggle("open", !!open);
+    el.carousel.classList.toggle("open", carouselIsOpen);
     // Hover reveal only in showcase mode (otherwise it can get in the way)
     el.carousel.classList.toggle("hoverReveal", !!IS_SHOWCASE_MODE);
   }
   if (el.carouselPeekBtn) {
-    el.carouselPeekBtn.classList.toggle("open", !!open);
+    el.carouselPeekBtn.classList.toggle("open", carouselIsOpen);
     // default icon state; updateCarouselActive can temporarily show token id
-    el.carouselPeekBtn.textContent = open ? "▾" : "▴";
+    el.carouselPeekBtn.textContent = carouselIsOpen ? "▾" : "▴";
   }
 }
 
@@ -2332,10 +2334,16 @@ function renderCarousel(tokenIds) {
   }
 
   setCarouselVisible(true);
-  // Default behavior:
-  // - In showcase mode, keep it hidden until user hover/toggles.
-  // - In normal mode, keep it open so users can explore.
-  setCarouselOpen(!IS_SHOWCASE_MODE);
+
+  // Don't stomp the user's open/closed state on every re-render.
+  // Only set a default the first time we ever show the carousel.
+  if (typeof carouselIsOpen !== "boolean") carouselIsOpen = false;
+  if (!el.carousel?.dataset?.carouselInit) {
+    setCarouselOpen(!IS_SHOWCASE_MODE);
+    if (el.carousel) el.carousel.dataset.carouselInit = "1";
+  } else {
+    setCarouselOpen(carouselIsOpen);
+  }
 
   const size = getCarouselWindowSize();
   const start = clamp(carouselWindowStart, 0, Math.max(0, tokenIds.length - size));
@@ -2485,6 +2493,9 @@ async function doWalletLookup() {
       .filter((n) => Number.isFinite(n))
       .sort((a, b) => a - b);
 
+    // reset carousel init for new wallet results
+    if (el.carousel) delete el.carousel.dataset.carouselInit;
+
     setWalletTokensSelect(tokenIds);
     renderCarousel(tokenIds);
 
@@ -2545,8 +2556,7 @@ el.walletLookupBtn?.addEventListener("click", doWalletLookup);
 
 // Carousel controls
 el.carouselPeekBtn?.addEventListener("click", () => {
-  const open = !!el.carousel?.classList.contains("open");
-  setCarouselOpen(!open);
+  setCarouselOpen(!carouselIsOpen);
 });
 el.carouselPrevBtn?.addEventListener("click", () => scrollCarouselByPage(-1));
 el.carouselNextBtn?.addEventListener("click", () => scrollCarouselByPage(1));
