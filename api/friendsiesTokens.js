@@ -57,7 +57,8 @@ async function moralisGetWalletNfts({ owner, chain, contract }) {
     const params = new URLSearchParams();
     params.set("chain", chain);
     params.set("format", "decimal");
-    params.set("token_addresses", contract);
+    // Moralis docs/examples use token_addresses[0]=...; this is the most compatible form.
+    params.append("token_addresses[0]", contract);
     // Keep payload small.
     params.set("normalizeMetadata", "false");
     params.set("media_items", "false");

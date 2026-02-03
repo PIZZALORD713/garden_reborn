@@ -40,7 +40,10 @@ const METADATA_URL =
 // ----------------------------
 // On-chain collection identity (wallet lookup)
 // ----------------------------
-const FRIENDSIES_CONTRACT = "0x28af3356C6aaF449d20C59d2531941DDfB94d713";
+// Friendsies ERC-721 contract (Ethereum mainnet)
+// NOTE: pizzalord.eth currently resolves to 0x28af…d713 (wallet),
+// but the Friendsies NFT contract is 0xe5af…6956.
+const FRIENDSIES_CONTRACT = "0xe5af63234f93afd72a8b9114803e33f6d9766956";
 const FRIENDSIES_CHAIN = "eth";
 
 // ----------------------------
