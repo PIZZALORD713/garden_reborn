@@ -485,7 +485,15 @@ kbd {
   .panel { left: 10px; top: 60px; width: calc(100vw - 20px); }
   .uiToggle { left: 10px; top: 10px; }
   .logPanel { left: 10px; bottom: 88px; width: calc(100vw - 20px); }
-  .carousel { left: 10px; right: 10px; bottom: 10px; }
+  .carousel {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+    max-width: none;
+    transform: translate(0, 110%); /* override desktop centering translateX(-50%) */
+  }
+  .carousel.open { transform: translate(0, 0); }
   .carouselPeek { bottom: 10px; }
   .carouselPeek.open { bottom: 80px; }
 }
