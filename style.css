@@ -322,8 +322,12 @@ kbd {
   }
 }
 
-/* Hide nav arrows unless carousel is open */
-.carousel:not(.open) .carouselNav { display: none; }
+/* Nav arrows: only show when open (mobile) or when hovered (desktop) */
+.carouselNav { display: none; }
+.carousel.open .carouselNav { display: grid; }
+@media (hover: hover) {
+  .carousel:hover .carouselNav { display: grid; }
+}
 
 .carouselPeek {
   pointer-events: auto;
@@ -359,7 +363,6 @@ kbd {
   border: 1px solid rgba(0,0,0,0.10);
   background: rgba(255,255,255,0.75);
   cursor: pointer;
-  display: grid;
   place-items: center;
 }
 .carouselNav:hover { transform: translateY(-50%) translateY(-1px); }

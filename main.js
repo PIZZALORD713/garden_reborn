@@ -2307,10 +2307,25 @@ function setCarouselWindowAroundId(id) {
 function shiftCarouselWindow(dir) {
   const size = getCarouselWindowSize();
   const maxStart = Math.max(0, carouselAllTokenIds.length - size);
-  carouselWindowStart = clamp(carouselWindowStart + dir * size, 0, maxStart);
+  const next = carouselWindowStart + dir * size;
+
+  // Wrap-around paging so arrows can be used indefinitely.
+  if (dir > 0 && next > maxStart) {
+    carouselWindowStart = 0;
+    return;
+  }
+  if (dir < 0 && next < 0) {
+    carouselWindowStart = maxStart;
+    return;
+  }
+
+  carouselWindowStart = clamp(next, 0, maxStart);
 }
 
 function scrollCarouselByPage(dir) {
+  // If the user is paging, keep the carousel open.
+  setCarouselOpen(true);
+
   // In windowed mode, paging means shifting the window.
   shiftCarouselWindow(dir);
   renderCarousel(carouselAllTokenIds);
