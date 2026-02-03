@@ -305,6 +305,8 @@ const el = {
   uiToggleBtn: document.getElementById("uiToggleBtn"),
   panel: document.getElementById("panel"),
   logPanel: document.getElementById("logPanel"),
+  carousel: document.getElementById("carousel"),
+  carouselTrack: document.getElementById("carouselTrack"),
   logToggleBtn: document.getElementById("logToggleBtn"),
   logChevron: document.getElementById("logChevron"),
   lookPanel: document.getElementById("lookPanel"),
@@ -2250,6 +2252,49 @@ function setWalletUiState({ busy = false, tokenIds = null, hint = null } = {}) {
   if (el.walletHint && hint) el.walletHint.textContent = hint;
 }
 
+function setCarouselVisible(visible) {
+  if (!el.carousel) return;
+  el.carousel.style.display = visible ? "block" : "none";
+  el.carousel.setAttribute("aria-hidden", visible ? "false" : "true");
+}
+
+function renderCarousel(tokenIds) {
+  if (!el.carouselTrack) return;
+  el.carouselTrack.innerHTML = "";
+
+  if (!tokenIds || !tokenIds.length) {
+    setCarouselVisible(false);
+    return;
+  }
+
+  setCarouselVisible(true);
+
+  const currentId = Number(el.friendsiesId?.value || 0);
+
+  for (const id of tokenIds) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "carouselItem" + (id === currentId ? " active" : "");
+    btn.textContent = `#${id}`;
+    btn.setAttribute("role", "listitem");
+    btn.addEventListener("click", () => {
+      if (el.friendsiesId) el.friendsiesId.value = String(id);
+      loadFriendsies(id);
+    });
+    el.carouselTrack.appendChild(btn);
+  }
+}
+
+function updateCarouselActive() {
+  if (!el.carouselTrack) return;
+  const currentId = Number(el.friendsiesId?.value || 0);
+  for (const node of Array.from(el.carouselTrack.children)) {
+    const text = String(node.textContent || "");
+    const id = Number(text.replace(/^#/, ""));
+    node.classList.toggle("active", Number.isFinite(id) && id === currentId);
+  }
+}
+
 function setWalletTokensSelect(tokenIds) {
   if (!el.walletTokensSelect) return;
 
@@ -2323,6 +2368,7 @@ function loadByInput() {
     return setStatus("enter a valid ID (1–10000)");
   }
   loadFriendsies(id);
+  updateCarouselActive();
 }
 
 el.loadBtn?.addEventListener("click", loadByInput);
@@ -2344,6 +2390,7 @@ async function doWalletLookup() {
       .sort((a, b) => a - b);
 
     setWalletTokensSelect(tokenIds);
+    renderCarousel(tokenIds);
 
     const who = data.ownerResolved || data.ownerInput || input;
     const display =
@@ -2391,6 +2438,7 @@ async function doWalletLookup() {
     lastWalletLookup = null;
     syncOwnedModeLabels();
     setWalletTokensSelect([]);
+    renderCarousel([]);
     setWalletUiState({ busy: false, tokenIds: [], hint: "Lookup failed." });
     setStatus("wallet lookup failed ❌");
     logLine(`wallet lookup failed ❌ ${err?.message || err}`, "err");
@@ -2421,6 +2469,7 @@ el.walletLoadSelectedBtn?.addEventListener("click", () => {
   }
   if (el.friendsiesId) el.friendsiesId.value = String(id);
   loadFriendsies(id);
+  updateCarouselActive();
 });
 
 el.walletTokensSelect?.addEventListener("change", () => {
@@ -2430,6 +2479,7 @@ el.walletTokensSelect?.addEventListener("change", () => {
   if (el.friendsiesId) el.friendsiesId.value = String(id);
   // Auto-load immediately on selection (better UX)
   loadFriendsies(id);
+  updateCarouselActive();
 });
 
 el.randomBtn?.addEventListener("click", () => {
@@ -2438,6 +2488,7 @@ el.randomBtn?.addEventListener("click", () => {
   if (!id) return;
   if (el.friendsiesId) el.friendsiesId.value = String(id);
   loadFriendsies(id);
+  updateCarouselActive();
 });
 
 el.friendsiesId?.addEventListener("keydown", (e) => {

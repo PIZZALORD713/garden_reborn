@@ -289,6 +289,60 @@ kbd {
   background: rgba(255,255,255,0.7);
 }
 
+/* Bottom carousel */
+.carousel {
+  pointer-events: auto;
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 14px;
+  height: 64px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  border: 1px solid rgba(255,255,255,0.55);
+  overflow: hidden;
+  display: none; /* hidden by default; enabled after wallet lookup */
+}
+
+.carouselTrack {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.carouselItem {
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.75);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.carouselItem:hover { transform: translateY(-1px); }
+
+.carouselItem.active {
+  background: rgba(33, 150, 83, 0.90);
+  border-color: rgba(33, 150, 83, 0.95);
+  color: #fff;
+}
+
+/* When transcript is hidden in showcase mode, carousel can sit at bottom safely */
+#ui.uiHidden .carousel {
+  opacity: 0.95;
+}
+
 /* Transcript panel */
 .logPanel {
   pointer-events: auto;
@@ -362,5 +416,6 @@ kbd {
   .subtitle { display: none; }
   .panel { left: 10px; top: 60px; width: calc(100vw - 20px); }
   .uiToggle { left: 10px; top: 10px; }
-  .logPanel { left: 10px; bottom: 10px; width: calc(100vw - 20px); }
+  .logPanel { left: 10px; bottom: 88px; width: calc(100vw - 20px); }
+  .carousel { left: 10px; right: 10px; bottom: 10px; }
 }
