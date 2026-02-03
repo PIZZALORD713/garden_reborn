@@ -64,7 +64,8 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   2000
 );
-camera.position.set(0, 1.2, 5);
+// Zoom out ~10% from the initial framing
+camera.position.set(0, 1.2, 5.5);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
