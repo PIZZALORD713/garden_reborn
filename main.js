@@ -324,7 +324,9 @@ const el = {
   friendsiesId: document.getElementById("friendsiesId"),
   loadBtn: document.getElementById("loadBtn"),
   randomBtn: document.getElementById("randomBtn"),
+  randomBtnText: document.getElementById("randomBtnText"),
   autoRandomOn: document.getElementById("autoRandomOn"),
+  autoRandomLabelText: document.getElementById("autoRandomLabelText"),
 
   animSelect: document.getElementById("animSelect"),
   playBtn: document.getElementById("playBtn"),
@@ -2187,6 +2189,7 @@ function setAutoRandom(on) {
 
 // restore auto-random preference
 setAutoRandom(getBoolLS(LS_AUTORANDOM, false));
+syncOwnedModeLabels();
 
 // ----------------------------
 // Wallet lookup (Moralis via /api proxy)
@@ -2205,6 +2208,13 @@ function getWalletTokenIds() {
 function getRandomFromArray(arr) {
   if (!arr || !arr.length) return null;
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function syncOwnedModeLabels() {
+  const owned = !!getWalletTokenIds();
+  if (el.randomBtnText) el.randomBtnText.textContent = owned ? "🎲 Random (Owned)" : "🎲 Random";
+  if (el.autoRandomLabelText)
+    el.autoRandomLabelText.textContent = owned ? "✅ Auto (Owned)" : "✅ Auto";
 }
 
 function isLikelyEns(name) {
@@ -2317,6 +2327,7 @@ async function doWalletLookup() {
 
     const data = await lookupWalletTokens(input);
     lastWalletLookup = data;
+    syncOwnedModeLabels();
 
     // normalize + sort numeric
     const tokenIds = (data.tokenIds || [])
@@ -2348,6 +2359,7 @@ async function doWalletLookup() {
   } catch (err) {
     console.error(err);
     lastWalletLookup = null;
+    syncOwnedModeLabels();
     setWalletTokensSelect([]);
     setWalletUiState({ busy: false, tokenIds: [], hint: "Lookup failed." });
     setStatus("wallet lookup failed ❌");
@@ -2440,9 +2452,27 @@ el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
 
   fetch(METADATA_URL)
     .then((r) => r.json())
-    .then((data) => {
+    .then(async (data) => {
       allFriendsies = data;
       setStatus("ready ✅");
+
+      // Deep link support:
+      // - /pizzalord.eth
+      // - /0xabc...
+      // - ?owner=pizzalord.eth
+      // We rewrite to index.html (via vercel.json) and parse the path/query here.
+      const path = String(location.pathname || "/")
+        .replace(/^\/+/, "")
+        .replace(/\/+$/, "");
+      const ownerFromQuery = new URLSearchParams(location.search).get("owner");
+      const ownerFromPath = path && path !== "index.html" ? decodeURIComponent(path) : "";
+      const owner = (ownerFromQuery || ownerFromPath || "").trim();
+
+      if (owner && el.walletInput) {
+        el.walletInput.value = owner;
+        await doWalletLookup();
+      }
+
       loadByInput();
     })
     .catch((e) => {
