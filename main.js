@@ -1976,20 +1976,21 @@ async function loadFriendsies(id) {
   if (!allFriendsies) return;
 
   const loadId = ++currentLoadId;
+
+  // If a load fails, never leave the viewer blank. Always restore visibility.
+  const restoreAvatarVisibility = () => {
+    if (loadId === currentLoadId) avatarGroup.visible = true;
+  };
+
   // IMPORTANT: don't clear the existing avatar until the new one is confirmed loadable.
   // Otherwise a transient load failure leaves the viewer empty (background only).
   setStatus(`loading #${id}…`);
 
   const entry = getEntryById(id);
-  if (!entry) return setStatus(`not found: #${id}`);
-
-  const previousAvatarVisible = avatarGroup.visible;
-  avatarGroup.visible = false;
-  const restoreAvatarVisibility = () => {
-    if (loadId === currentLoadId) {
-      avatarGroup.visible = previousAvatarVisible;
-    }
-  };
+  if (!entry) {
+    restoreAvatarVisibility();
+    return setStatus(`not found: #${id}`);
+  }
 
   const traits = entry.attributes || [];
   lastTraits = traits;
@@ -2056,6 +2057,7 @@ async function loadFriendsies(id) {
 
   // Now it's safe to replace the avatar.
   clearAvatar();
+  avatarGroup.visible = false;
 
   bodyRoot = nextBodyRoot;
   loadedParts.push(bodyRoot);
@@ -2124,7 +2126,7 @@ async function loadFriendsies(id) {
     avatarGroup.add(part);
   }
   avatarGroup.updateMatrixWorld(true);
-  avatarGroup.visible = previousAvatarVisible;
+  avatarGroup.visible = true;
 
   applyLookControls();
   controls.target.set(0, 1.0, 0);
