@@ -1976,7 +1976,8 @@ async function loadFriendsies(id) {
   if (!allFriendsies) return;
 
   const loadId = ++currentLoadId;
-  clearAvatar();
+  // IMPORTANT: don't clear the existing avatar until the new one is confirmed loadable.
+  // Otherwise a transient load failure leaves the viewer empty (background only).
   setStatus(`loading #${id}…`);
 
   const entry = getEntryById(id);
@@ -2045,16 +2046,22 @@ async function loadFriendsies(id) {
     return setStatus("body load failed ❌");
   }
 
-  bodyRoot = bodyRes.gltf.scene;
-  loadedParts.push(bodyRoot);
-  loadedPartsMeta.push({ trait_type: "Body", value: "body" });
-
-  bodySkinned = findFirstSkinnedMesh(bodyRoot);
-  if (!bodySkinned?.skeleton) {
+  // Validate the new body before clearing the existing avatar.
+  const nextBodyRoot = bodyRes.gltf.scene;
+  const nextBodySkinned = findFirstSkinnedMesh(nextBodyRoot);
+  if (!nextBodySkinned?.skeleton) {
     restoreAvatarVisibility();
     return setStatus("body loaded but no skeleton ❌");
   }
 
+  // Now it's safe to replace the avatar.
+  clearAvatar();
+
+  bodyRoot = nextBodyRoot;
+  loadedParts.push(bodyRoot);
+  loadedPartsMeta.push({ trait_type: "Body", value: "body" });
+
+  bodySkinned = nextBodySkinned;
   bodySkeleton = bodySkinned.skeleton;
   collectRigInfo();
 
@@ -2072,8 +2079,6 @@ async function loadFriendsies(id) {
   }
 
   // (bodyRoot already tracked/added above)
-  avatarGroup.add(bodyRoot);
-  avatarGroup.updateMatrixWorld(true);
 
   const headRes = results[1];
   const faceTexture = await faceTexturePromise;
