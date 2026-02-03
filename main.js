@@ -2256,7 +2256,68 @@ function setWalletUiState({ busy = false, tokenIds = null, hint = null } = {}) {
 }
 
 var carouselAllTokenIds = [];
-var carouselWindowStart = 0;
+var carouselWindowStart = 0; // legacy window paging (no longer used by dial-style carousel)
+
+function wrapIndex(i, n) {
+  if (n <= 0) return 0;
+  return ((i % n) + n) % n;
+}
+
+function orderTokenIds(tokenIdsRaw) {
+  // Stable, deterministic ordering: numeric ascending.
+  return (tokenIdsRaw || [])
+    .map((x) => Number(x))
+    .filter((x) => Number.isFinite(x) && x > 0)
+    .sort((a, b) => a - b);
+}
+
+function findCurrentIndex(orderedIds, currentId) {
+  if (!Number.isFinite(currentId) || currentId <= 0) return -1;
+  return orderedIds.indexOf(currentId);
+}
+
+function computeWindowIds(orderedIds, currentId, W, preferredDialRepeats = true) {
+  const N = orderedIds.length;
+  if (N === 0) return { N, W: 0, center: 0, currentIndex: -1, visible: [] };
+
+  let currentIndex = findCurrentIndex(orderedIds, currentId);
+  if (currentIndex < 0) currentIndex = 0;
+
+  let windowSize = W;
+  if (!preferredDialRepeats) windowSize = Math.min(W, N);
+
+  const center = Math.floor(windowSize / 2);
+  const visible = [];
+
+  for (let i = 0; i < windowSize; i++) {
+    const offset = i - center;
+    visible.push(orderedIds[wrapIndex(currentIndex + offset, N)]);
+  }
+
+  return { N, W: windowSize, center, currentIndex, visible };
+}
+
+function selectNextId(orderedIds, currentId) {
+  const N = orderedIds.length;
+  if (N === 0) return null;
+  if (N === 1) return orderedIds[0];
+
+  let idx = findCurrentIndex(orderedIds, currentId);
+  if (idx < 0) idx = 0;
+
+  return orderedIds[wrapIndex(idx + 1, N)];
+}
+
+function selectPrevId(orderedIds, currentId) {
+  const N = orderedIds.length;
+  if (N === 0) return null;
+  if (N === 1) return orderedIds[0];
+
+  let idx = findCurrentIndex(orderedIds, currentId);
+  if (idx < 0) idx = 0;
+
+  return orderedIds[wrapIndex(idx - 1, N)];
+}
 
 function getCarouselWindowSize() {
   const w = window.innerWidth || 0;
@@ -2326,9 +2387,15 @@ function scrollCarouselByPage(dir) {
   // If the user is paging, keep the carousel open.
   setCarouselOpen(true);
 
-  // In windowed mode, paging means shifting the window.
-  shiftCarouselWindow(dir);
-  renderCarousel(carouselAllTokenIds);
+  // Dial-style behavior: arrows step selection (wrap-around), not page the window.
+  const ordered = carouselAllTokenIds || [];
+  const currentId = Number(el.friendsiesId?.value || 0);
+  const nextId = dir > 0 ? selectNextId(ordered, currentId) : selectPrevId(ordered, currentId);
+  if (!nextId) return;
+
+  if (el.friendsiesId) el.friendsiesId.value = String(nextId);
+  loadFriendsies(nextId);
+  updateCarouselActive();
 }
 
 function renderCarousel(tokenIds) {
@@ -2342,23 +2409,17 @@ function renderCarousel(tokenIds) {
     return;
   }
 
-  carouselAllTokenIds = tokenIds.slice();
+  // Canonical ordering (stable per wallet)
+  carouselAllTokenIds = orderTokenIds(tokenIds);
   const currentId = Number(el.friendsiesId?.value || 0);
 
-  // Keep the user's current window while paging.
-  // Only re-center the window around the active token if it's NOT currently visible.
   const size = getCarouselWindowSize();
-  const maxStart = Math.max(0, tokenIds.length - size);
-  carouselWindowStart = clamp(carouselWindowStart, 0, maxStart);
-
-  if (Number.isFinite(currentId) && currentId > 0) {
-    const idx = tokenIds.indexOf(currentId);
-    const startNow = carouselWindowStart;
-    const endNow = startNow + size;
-    if (idx >= 0 && (idx < startNow || idx >= endNow)) {
-      setCarouselWindowAroundId(currentId);
-    }
-  }
+  const { visible, center } = computeWindowIds(
+    carouselAllTokenIds,
+    currentId,
+    size,
+    true // dial repeats when N < W
+  );
 
   setCarouselVisible(true);
 
@@ -2372,13 +2433,12 @@ function renderCarousel(tokenIds) {
     setCarouselOpen(carouselIsOpen);
   }
 
-  const start = clamp(carouselWindowStart, 0, Math.max(0, tokenIds.length - size));
-  const slice = tokenIds.slice(start, start + size);
-
-  for (const id of slice) {
+  for (let i = 0; i < visible.length; i++) {
+    const id = visible[i];
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "carouselItem" + (id === currentId ? " active" : "");
+    btn.className =
+      "carouselItem" + (i === center ? " needle" : "") + (id === currentId ? " active" : "");
     btn.textContent = `#${id}`;
     btn.setAttribute("role", "listitem");
     btn.addEventListener("click", () => {
@@ -2394,22 +2454,9 @@ function updateCarouselActive() {
   if (!el.carouselTrack) return;
   const currentId = Number(el.friendsiesId?.value || 0);
 
-  // If active token isn't in the current window, re-render around it.
-  if (Number.isFinite(currentId) && carouselAllTokenIds?.length) {
-    const idsOnScreen = Array.from(el.carouselTrack.children).map((n) =>
-      Number(String(n.textContent || "").replace(/^#/, ""))
-    );
-    if (!idsOnScreen.includes(currentId)) {
-      setCarouselWindowAroundId(currentId);
-      renderCarousel(carouselAllTokenIds);
-      return;
-    }
-  }
-
-  for (const node of Array.from(el.carouselTrack.children)) {
-    const text = String(node.textContent || "");
-    const id = Number(text.replace(/^#/, ""));
-    node.classList.toggle("active", Number.isFinite(id) && id === currentId);
+  // Dial-style carousel: selection change affects the entire window.
+  if (carouselAllTokenIds?.length) {
+    renderCarousel(carouselAllTokenIds);
   }
 
   // Peek button shows current token briefly when closed (showcase mode)
