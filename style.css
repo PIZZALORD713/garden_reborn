@@ -146,12 +146,18 @@ canvas { display: block; }
 .pillLabel { font-size: 12px; opacity: 0.7; }
 
 .pill input[type="number"],
+.pill input[type="text"],
 .pill select {
   border: none;
   outline: none;
   background: transparent;
   font-size: 13px;
   width: 130px;
+}
+
+.pill input[type="text"] {
+  width: 100%;
+  min-width: 220px;
 }
 
 .pill.wide select {
@@ -166,6 +172,12 @@ canvas { display: block; }
   padding: 8px 12px;
   font-size: 13px;
   cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
 }
 .btn:hover { transform: translateY(-1px); }
 .btn:active { transform: translateY(0); }

@@ -47,6 +47,37 @@
         </div>
 
         <div class="row">
+          <div class="pill wide">
+            <span class="pillLabel">Wallet / ENS</span>
+            <input
+              type="text"
+              id="walletInput"
+              placeholder="0x… or pizzalord.eth"
+              spellcheck="false"
+              autocomplete="off"
+            />
+          </div>
+
+          <button id="walletLookupBtn" class="btn primary">Lookup</button>
+          <button id="walletDownloadJsonBtn" class="btn" title="Download results as JSON" disabled>
+            ⬇ Wallet JSON
+          </button>
+        </div>
+
+        <div class="row">
+          <div class="pill wide">
+            <span class="pillLabel">Your Friendsies</span>
+            <select id="walletTokensSelect" disabled>
+              <option value="">(lookup a wallet)</option>
+            </select>
+          </div>
+
+          <button id="walletLoadSelectedBtn" class="btn">Load Selected</button>
+
+          <span class="hintText" id="walletHint">Tip: lookup → pick token → Load Selected</span>
+        </div>
+
+        <div class="row">
           <div class="pill">
             <span class="pillLabel">ID</span>
             <input type="number" id="friendsiesId" min="1" max="10000" value="5" />
