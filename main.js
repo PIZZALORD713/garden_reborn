@@ -19,7 +19,7 @@
 // ----------------------------
 // Cache busting for static assets (update this when you replace files)
 // ----------------------------
-const ASSET_VERSION = "2026-01-27a";
+const ASSET_VERSION = "2026-02-03c";
 
 // ----------------------------
 // Assets in your repo root
@@ -445,8 +445,10 @@ function applyLogCollapsed(collapsed) {
 }
 
 // initialize UI states
-applyUIHidden(getBoolLS(LS_UI_HIDDEN, false));
-applyLogCollapsed(getBoolLS(LS_LOG_COLLAPSED, false));
+// Default to a clean, “showcase” first-load: controls hidden + transcript collapsed.
+// Users can still open via the gear button (or H/L).
+applyUIHidden(getBoolLS(LS_UI_HIDDEN, true));
+applyLogCollapsed(getBoolLS(LS_LOG_COLLAPSED, true));
 
 // Buttons + keyboard shortcuts
 el.uiToggleBtn?.addEventListener("click", () => {
