@@ -2196,6 +2196,14 @@ syncOwnedModeLabels();
 // ----------------------------
 var lastWalletLookup = null;
 
+// ----------------------------
+// Modes
+// ----------------------------
+// "Showcase mode" is enabled ONLY when the wallet is provided via URL path
+// (e.g. /pizzalord.eth or /0x...).
+var IS_SHOWCASE_MODE = false;
+var SHOWCASE_PENDING_TOKEN_ID = null;
+
 function getWalletTokenIds() {
   const ids = lastWalletLookup?.tokenIds;
   if (!Array.isArray(ids) || !ids.length) return null;
@@ -2349,6 +2357,28 @@ async function doWalletLookup() {
     );
 
     setStatus("ready ✅");
+
+    // Showcase mode: if the wallet was provided via deep-link URL,
+    // auto-pick an owned token, enable auto-random (owned), and hide UI+transcript.
+    if (IS_SHOWCASE_MODE && tokenIds.length) {
+      const pick = getRandomFromArray(tokenIds);
+      if (Number.isFinite(pick)) {
+        if (el.friendsiesId) el.friendsiesId.value = String(pick);
+        // Turn on auto-random (owned)
+        setAutoRandom(true);
+        // Hide UI + transcript
+        applyUIHidden(true);
+        applyLogCollapsed(true);
+
+        // If metadata is ready, load immediately; otherwise queue it.
+        if (allFriendsies) {
+          loadFriendsies(pick);
+        } else {
+          SHOWCASE_PENDING_TOKEN_ID = pick;
+        }
+      }
+    }
+
     setWalletUiState({
       busy: false,
       tokenIds,
@@ -2448,6 +2478,9 @@ el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
   const ownerFromPath = path && path !== "index.html" ? decodeURIComponent(path) : "";
   const owner = (ownerFromQuery || ownerFromPath || "").trim();
 
+  // Showcase mode ONLY when wallet is provided via URL path (not query, not manual).
+  IS_SHOWCASE_MODE = !!ownerFromPath;
+
   if (owner && el.walletInput) {
     el.walletInput.value = owner;
     // Don't block boot if wallet lookup fails.
@@ -2474,6 +2507,16 @@ el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
     .then((data) => {
       allFriendsies = data;
       setStatus("ready ✅");
+
+      // If showcase mode queued a token before metadata was ready, load it now.
+      if (IS_SHOWCASE_MODE && Number.isFinite(SHOWCASE_PENDING_TOKEN_ID)) {
+        const id = Number(SHOWCASE_PENDING_TOKEN_ID);
+        SHOWCASE_PENDING_TOKEN_ID = null;
+        if (el.friendsiesId) el.friendsiesId.value = String(id);
+        loadFriendsies(id);
+        return;
+      }
+
       loadByInput();
     })
     .catch((e) => {
