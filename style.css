@@ -303,7 +303,61 @@ kbd {
   box-shadow: 0 10px 30px rgba(0,0,0,0.12);
   border: 1px solid rgba(255,255,255,0.55);
   overflow: hidden;
-  display: none; /* hidden by default; enabled after wallet lookup */
+  display: none; /* enabled after wallet lookup */
+  transform: translateY(56px);
+  opacity: 0.94;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+/* Open state */
+.carousel.open {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Desktop hover reveal near bottom */
+@media (hover: hover) {
+  .carousel.hoverReveal:hover {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.carouselToggle {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  transform: translateX(-50%);
+  z-index: 2;
+  width: 34px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.75);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.carouselNav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.75);
+  cursor: pointer;
+  display: none; /* shown on non-touch */
+}
+.carouselNav:hover { transform: translateY(-50%) translateY(-1px); }
+
+.carouselNav#carouselPrevBtn { left: 8px; }
+.carouselNav#carouselNextBtn { right: 8px; }
+
+@media (hover: hover) {
+  .carouselNav { display: grid; place-items: center; }
 }
 
 .carouselTrack {
@@ -311,11 +365,17 @@ kbd {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 10px 46px; /* room for nav buttons */
   overflow-x: auto;
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
+}
+
+.carouselTrack::-webkit-scrollbar { height: 8px; }
+.carouselTrack::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+  border-radius: 999px;
 }
 
 .carouselItem {

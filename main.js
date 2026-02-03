@@ -307,6 +307,9 @@ const el = {
   logPanel: document.getElementById("logPanel"),
   carousel: document.getElementById("carousel"),
   carouselTrack: document.getElementById("carouselTrack"),
+  carouselToggleBtn: document.getElementById("carouselToggleBtn"),
+  carouselPrevBtn: document.getElementById("carouselPrevBtn"),
+  carouselNextBtn: document.getElementById("carouselNextBtn"),
   logToggleBtn: document.getElementById("logToggleBtn"),
   logChevron: document.getElementById("logChevron"),
   lookPanel: document.getElementById("lookPanel"),
@@ -2258,6 +2261,19 @@ function setCarouselVisible(visible) {
   el.carousel.setAttribute("aria-hidden", visible ? "false" : "true");
 }
 
+function setCarouselOpen(open) {
+  if (!el.carousel) return;
+  el.carousel.classList.toggle("open", !!open);
+  // Hover reveal only in showcase mode (otherwise it can get in the way)
+  el.carousel.classList.toggle("hoverReveal", !!IS_SHOWCASE_MODE);
+}
+
+function scrollCarouselByPage(dir) {
+  if (!el.carouselTrack) return;
+  const w = el.carouselTrack.clientWidth;
+  el.carouselTrack.scrollBy({ left: dir * Math.max(120, w * 0.8), behavior: "smooth" });
+}
+
 function renderCarousel(tokenIds) {
   if (!el.carouselTrack) return;
   el.carouselTrack.innerHTML = "";
@@ -2268,6 +2284,10 @@ function renderCarousel(tokenIds) {
   }
 
   setCarouselVisible(true);
+  // Default behavior:
+  // - In showcase mode, keep it hidden until hover/toggle.
+  // - In normal mode, keep it open so users can explore.
+  setCarouselOpen(!IS_SHOWCASE_MODE);
 
   const currentId = Number(el.friendsiesId?.value || 0);
 
@@ -2280,6 +2300,7 @@ function renderCarousel(tokenIds) {
     btn.addEventListener("click", () => {
       if (el.friendsiesId) el.friendsiesId.value = String(id);
       loadFriendsies(id);
+      updateCarouselActive();
     });
     el.carouselTrack.appendChild(btn);
   }
@@ -2291,7 +2312,14 @@ function updateCarouselActive() {
   for (const node of Array.from(el.carouselTrack.children)) {
     const text = String(node.textContent || "");
     const id = Number(text.replace(/^#/, ""));
-    node.classList.toggle("active", Number.isFinite(id) && id === currentId);
+    const isActive = Number.isFinite(id) && id === currentId;
+    node.classList.toggle("active", isActive);
+    if (isActive) {
+      // Keep active token roughly visible.
+      try {
+        node.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      } catch {}
+    }
   }
 }
 
@@ -2446,6 +2474,14 @@ async function doWalletLookup() {
 }
 
 el.walletLookupBtn?.addEventListener("click", doWalletLookup);
+
+// Carousel controls
+el.carouselToggleBtn?.addEventListener("click", () => {
+  const open = !!el.carousel?.classList.contains("open");
+  setCarouselOpen(!open);
+});
+el.carouselPrevBtn?.addEventListener("click", () => scrollCarouselByPage(-1));
+el.carouselNextBtn?.addEventListener("click", () => scrollCarouselByPage(1));
 
 el.walletInput?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") doWalletLookup();
