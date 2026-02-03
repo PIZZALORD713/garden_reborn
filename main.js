@@ -38,6 +38,12 @@ const METADATA_URL =
   "https://gist.githubusercontent.com/IntergalacticPizzaLord/a7b0eeac98041a483d715c8320ccf660/raw/ce7d37a94c33c63e2b50d5922e0711e72494c8dd/fRiENDSiES";
 
 // ----------------------------
+// On-chain collection identity (wallet lookup)
+// ----------------------------
+const FRIENDSIES_CONTRACT = "0x28af3356C6aaF449d20C59d2531941DDfB94d713";
+const FRIENDSIES_CHAIN = "eth";
+
+// ----------------------------
 // UI state keys
 // ----------------------------
 const LS_UI_HIDDEN = "toybox_ui_hidden_v1";
@@ -304,6 +310,14 @@ const el = {
   copyLookBtn: document.getElementById("copyLookBtn"),
 
   status: document.getElementById("status"),
+
+  walletInput: document.getElementById("walletInput"),
+  walletLookupBtn: document.getElementById("walletLookupBtn"),
+  walletDownloadJsonBtn: document.getElementById("walletDownloadJsonBtn"),
+  walletTokensSelect: document.getElementById("walletTokensSelect"),
+  walletLoadSelectedBtn: document.getElementById("walletLoadSelectedBtn"),
+  walletHint: document.getElementById("walletHint"),
+
   friendsiesId: document.getElementById("friendsiesId"),
   loadBtn: document.getElementById("loadBtn"),
   randomBtn: document.getElementById("randomBtn"),
@@ -2170,6 +2184,100 @@ function setAutoRandom(on) {
 setAutoRandom(getBoolLS(LS_AUTORANDOM, false));
 
 // ----------------------------
+// Wallet lookup (Moralis via /api proxy)
+// ----------------------------
+let lastWalletLookup = null;
+
+function isLikelyEns(name) {
+  return typeof name === "string" && name.trim().toLowerCase().endsWith(".eth");
+}
+
+function isLikelyEvmAddress(addr) {
+  return typeof addr === "string" && /^0x[0-9a-fA-F]{40}$/.test(addr.trim());
+}
+
+function setWalletUiState({ busy = false, tokenIds = null, hint = null } = {}) {
+  if (el.walletLookupBtn) el.walletLookupBtn.disabled = busy;
+  if (el.walletInput) el.walletInput.disabled = busy;
+  if (el.walletLoadSelectedBtn) el.walletLoadSelectedBtn.disabled = busy;
+
+  if (el.walletTokensSelect) {
+    const hasTokens = Array.isArray(tokenIds) && tokenIds.length > 0;
+    el.walletTokensSelect.disabled = busy || !hasTokens;
+  }
+
+  if (el.walletDownloadJsonBtn) {
+    el.walletDownloadJsonBtn.disabled = busy || !lastWalletLookup;
+  }
+
+  if (el.walletHint && hint) el.walletHint.textContent = hint;
+}
+
+function setWalletTokensSelect(tokenIds) {
+  if (!el.walletTokensSelect) return;
+
+  el.walletTokensSelect.innerHTML = "";
+
+  if (!tokenIds || !tokenIds.length) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "(no Friendsies found)";
+    el.walletTokensSelect.appendChild(opt);
+    return;
+  }
+
+  const firstOpt = document.createElement("option");
+  firstOpt.value = "";
+  firstOpt.textContent = `(select a token — ${tokenIds.length} found)`;
+  el.walletTokensSelect.appendChild(firstOpt);
+
+  for (const id of tokenIds) {
+    const opt = document.createElement("option");
+    opt.value = String(id);
+    opt.textContent = `#${id}`;
+    el.walletTokensSelect.appendChild(opt);
+  }
+}
+
+async function lookupWalletTokens(ownerInput) {
+  const raw = String(ownerInput || "").trim();
+  if (!raw) throw new Error("Enter a wallet or ENS name");
+  if (!isLikelyEns(raw) && !isLikelyEvmAddress(raw)) {
+    throw new Error("Expected an ETH address (0x…) or ENS name (.eth)");
+  }
+
+  const url = `/api/friendsiesTokens?owner=${encodeURIComponent(raw)}&chain=${encodeURIComponent(
+    FRIENDSIES_CHAIN
+  )}&contract=${encodeURIComponent(FRIENDSIES_CONTRACT)}`;
+
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Lookup failed (${res.status}) ${text || ""}`.trim());
+  }
+
+  const data = await res.json();
+  const tokenIds = Array.isArray(data.tokenIds) ? data.tokenIds : [];
+  return { ...data, tokenIds };
+}
+
+function downloadJsonObject(obj, filename) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], {
+    type: "application/json"
+  });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ----------------------------
 // UI events
 // ----------------------------
 function loadByInput() {
@@ -2181,6 +2289,85 @@ function loadByInput() {
 }
 
 el.loadBtn?.addEventListener("click", loadByInput);
+
+async function doWalletLookup() {
+  const input = String(el.walletInput?.value || "").trim();
+  try {
+    setWalletUiState({ busy: true, hint: "Looking up wallet…" });
+    setStatus("wallet lookup…");
+
+    const data = await lookupWalletTokens(input);
+    lastWalletLookup = data;
+
+    // normalize + sort numeric
+    const tokenIds = (data.tokenIds || [])
+      .map((x) => Number(x))
+      .filter((n) => Number.isFinite(n))
+      .sort((a, b) => a - b);
+
+    setWalletTokensSelect(tokenIds);
+
+    const who = data.ownerResolved || data.ownerInput || input;
+    const display =
+      data.ownerInput && data.ownerResolved && data.ownerInput !== data.ownerResolved
+        ? `${data.ownerInput} → ${data.ownerResolved}`
+        : who;
+
+    logLine(`🔎 Wallet lookup: ${display}`);
+    logLine(
+      `🧺 Friendsies owned: ${tokenIds.length} (contract ${FRIENDSIES_CONTRACT})`
+    );
+
+    setStatus("ready ✅");
+    setWalletUiState({
+      busy: false,
+      tokenIds,
+      hint: tokenIds.length
+        ? `Found ${tokenIds.length}. Pick one from dropdown.`
+        : "No Friendsies found for that wallet."
+    });
+  } catch (err) {
+    console.error(err);
+    lastWalletLookup = null;
+    setWalletTokensSelect([]);
+    setWalletUiState({ busy: false, tokenIds: [], hint: "Lookup failed." });
+    setStatus("wallet lookup failed ❌");
+    logLine(`wallet lookup failed ❌ ${err?.message || err}`, "err");
+  }
+}
+
+el.walletLookupBtn?.addEventListener("click", doWalletLookup);
+
+el.walletInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") doWalletLookup();
+});
+
+el.walletDownloadJsonBtn?.addEventListener("click", () => {
+  if (!lastWalletLookup) return;
+  const safeOwner = String(lastWalletLookup.ownerResolved || lastWalletLookup.ownerInput || "wallet")
+    .replace(/[^a-zA-Z0-9_.-]/g, "_")
+    .slice(0, 60);
+  const filename = `friendsies_wallet_${safeOwner}.json`;
+  downloadJsonObject(lastWalletLookup, filename);
+  logLine(`⬇ Downloaded wallet JSON: ${filename}`);
+});
+
+el.walletLoadSelectedBtn?.addEventListener("click", () => {
+  const val = String(el.walletTokensSelect?.value || "").trim();
+  const id = Number(val);
+  if (!Number.isFinite(id) || id < 1 || id > 10000) {
+    return setStatus("select a token from dropdown");
+  }
+  if (el.friendsiesId) el.friendsiesId.value = String(id);
+  loadFriendsies(id);
+});
+
+el.walletTokensSelect?.addEventListener("change", () => {
+  const val = String(el.walletTokensSelect?.value || "").trim();
+  const id = Number(val);
+  if (!Number.isFinite(id) || id < 1 || id > 10000) return;
+  if (el.friendsiesId) el.friendsiesId.value = String(id);
+});
 
 el.randomBtn?.addEventListener("click", () => {
   const id = 1 + Math.floor(Math.random() * 10000);
