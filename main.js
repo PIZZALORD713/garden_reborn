@@ -307,7 +307,7 @@ const el = {
   logPanel: document.getElementById("logPanel"),
   carousel: document.getElementById("carousel"),
   carouselTrack: document.getElementById("carouselTrack"),
-  carouselToggleBtn: document.getElementById("carouselToggleBtn"),
+  carouselPeekBtn: document.getElementById("carouselPeekBtn"),
   carouselPrevBtn: document.getElementById("carouselPrevBtn"),
   carouselNextBtn: document.getElementById("carouselNextBtn"),
   logToggleBtn: document.getElementById("logToggleBtn"),
@@ -2255,23 +2255,60 @@ function setWalletUiState({ busy = false, tokenIds = null, hint = null } = {}) {
   if (el.walletHint && hint) el.walletHint.textContent = hint;
 }
 
+var carouselAllTokenIds = [];
+var carouselWindowStart = 0;
+
+function getCarouselWindowSize() {
+  const w = window.innerWidth || 0;
+  if (w >= 900) return 15;
+  if (w >= 600) return 10;
+  return 5;
+}
+
+function clamp(n, a, b) {
+  return Math.min(b, Math.max(a, n));
+}
+
 function setCarouselVisible(visible) {
-  if (!el.carousel) return;
-  el.carousel.style.display = visible ? "block" : "none";
-  el.carousel.setAttribute("aria-hidden", visible ? "false" : "true");
+  if (el.carousel) {
+    el.carousel.style.display = visible ? "block" : "none";
+    el.carousel.setAttribute("aria-hidden", visible ? "false" : "true");
+  }
+  if (el.carouselPeekBtn) {
+    el.carouselPeekBtn.style.display = visible ? "block" : "none";
+  }
 }
 
 function setCarouselOpen(open) {
-  if (!el.carousel) return;
-  el.carousel.classList.toggle("open", !!open);
-  // Hover reveal only in showcase mode (otherwise it can get in the way)
-  el.carousel.classList.toggle("hoverReveal", !!IS_SHOWCASE_MODE);
+  if (el.carousel) {
+    el.carousel.classList.toggle("open", !!open);
+    // Hover reveal only in showcase mode (otherwise it can get in the way)
+    el.carousel.classList.toggle("hoverReveal", !!IS_SHOWCASE_MODE);
+  }
+  if (el.carouselPeekBtn) {
+    el.carouselPeekBtn.classList.toggle("open", !!open);
+    el.carouselPeekBtn.textContent = open ? "▾" : "▴";
+  }
+}
+
+function setCarouselWindowAroundId(id) {
+  const idx = carouselAllTokenIds.indexOf(id);
+  if (idx < 0) return;
+  const size = getCarouselWindowSize();
+  const maxStart = Math.max(0, carouselAllTokenIds.length - size);
+  carouselWindowStart = clamp(idx - Math.floor(size / 2), 0, maxStart);
+}
+
+function shiftCarouselWindow(dir) {
+  const size = getCarouselWindowSize();
+  const maxStart = Math.max(0, carouselAllTokenIds.length - size);
+  carouselWindowStart = clamp(carouselWindowStart + dir * size, 0, maxStart);
 }
 
 function scrollCarouselByPage(dir) {
-  if (!el.carouselTrack) return;
-  const w = el.carouselTrack.clientWidth;
-  el.carouselTrack.scrollBy({ left: dir * Math.max(120, w * 0.8), behavior: "smooth" });
+  // In windowed mode, paging means shifting the window.
+  shiftCarouselWindow(dir);
+  renderCarousel(carouselAllTokenIds);
 }
 
 function renderCarousel(tokenIds) {
@@ -2279,19 +2316,29 @@ function renderCarousel(tokenIds) {
   el.carouselTrack.innerHTML = "";
 
   if (!tokenIds || !tokenIds.length) {
+    carouselAllTokenIds = [];
+    carouselWindowStart = 0;
     setCarouselVisible(false);
     return;
   }
 
+  carouselAllTokenIds = tokenIds.slice();
+  const currentId = Number(el.friendsiesId?.value || 0);
+  if (Number.isFinite(currentId) && currentId > 0) {
+    setCarouselWindowAroundId(currentId);
+  }
+
   setCarouselVisible(true);
   // Default behavior:
-  // - In showcase mode, keep it hidden until hover/toggle.
+  // - In showcase mode, keep it hidden until user hover/toggles.
   // - In normal mode, keep it open so users can explore.
   setCarouselOpen(!IS_SHOWCASE_MODE);
 
-  const currentId = Number(el.friendsiesId?.value || 0);
+  const size = getCarouselWindowSize();
+  const start = clamp(carouselWindowStart, 0, Math.max(0, tokenIds.length - size));
+  const slice = tokenIds.slice(start, start + size);
 
-  for (const id of tokenIds) {
+  for (const id of slice) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "carouselItem" + (id === currentId ? " active" : "");
@@ -2309,17 +2356,23 @@ function renderCarousel(tokenIds) {
 function updateCarouselActive() {
   if (!el.carouselTrack) return;
   const currentId = Number(el.friendsiesId?.value || 0);
+
+  // If active token isn't in the current window, re-render around it.
+  if (Number.isFinite(currentId) && carouselAllTokenIds?.length) {
+    const idsOnScreen = Array.from(el.carouselTrack.children).map((n) =>
+      Number(String(n.textContent || "").replace(/^#/, ""))
+    );
+    if (!idsOnScreen.includes(currentId)) {
+      setCarouselWindowAroundId(currentId);
+      renderCarousel(carouselAllTokenIds);
+      return;
+    }
+  }
+
   for (const node of Array.from(el.carouselTrack.children)) {
     const text = String(node.textContent || "");
     const id = Number(text.replace(/^#/, ""));
-    const isActive = Number.isFinite(id) && id === currentId;
-    node.classList.toggle("active", isActive);
-    if (isActive) {
-      // Keep active token roughly visible.
-      try {
-        node.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-      } catch {}
-    }
+    node.classList.toggle("active", Number.isFinite(id) && id === currentId);
   }
 }
 
@@ -2476,12 +2529,17 @@ async function doWalletLookup() {
 el.walletLookupBtn?.addEventListener("click", doWalletLookup);
 
 // Carousel controls
-el.carouselToggleBtn?.addEventListener("click", () => {
+el.carouselPeekBtn?.addEventListener("click", () => {
   const open = !!el.carousel?.classList.contains("open");
   setCarouselOpen(!open);
 });
 el.carouselPrevBtn?.addEventListener("click", () => scrollCarouselByPage(-1));
 el.carouselNextBtn?.addEventListener("click", () => scrollCarouselByPage(1));
+
+window.addEventListener("resize", () => {
+  // Re-render windowed carousel on resize so it snaps to 15/10/5 behavior.
+  if (carouselAllTokenIds?.length) renderCarousel(carouselAllTokenIds);
+});
 
 el.walletInput?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") doWalletLookup();

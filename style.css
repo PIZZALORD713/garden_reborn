@@ -304,38 +304,44 @@ kbd {
   border: 1px solid rgba(255,255,255,0.55);
   overflow: hidden;
   display: none; /* enabled after wallet lookup */
-  transform: translateY(56px);
-  opacity: 0.94;
-  transition: transform 160ms ease, opacity 160ms ease;
+  transform: translateY(110%); /* fully hidden when closed */
+  opacity: 1;
+  transition: transform 180ms ease;
 }
 
 /* Open state */
 .carousel.open {
   transform: translateY(0);
-  opacity: 1;
 }
 
 /* Desktop hover reveal near bottom */
 @media (hover: hover) {
   .carousel.hoverReveal:hover {
     transform: translateY(0);
-    opacity: 1;
   }
 }
 
-.carouselToggle {
+.carouselPeek {
+  pointer-events: auto;
   position: absolute;
   left: 50%;
-  top: 6px;
+  bottom: 14px;
   transform: translateX(-50%);
-  z-index: 2;
-  width: 34px;
-  height: 22px;
+  z-index: 4;
+  width: 44px;
+  height: 26px;
   border-radius: 999px;
   border: 1px solid rgba(0,0,0,0.10);
   background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.10);
   cursor: pointer;
   line-height: 1;
+  display: none; /* enabled after wallet lookup */
+}
+
+.carouselPeek.open {
+  bottom: 84px; /* sits just above the open carousel */
 }
 
 .carouselNav {
@@ -349,16 +355,13 @@ kbd {
   border: 1px solid rgba(0,0,0,0.10);
   background: rgba(255,255,255,0.75);
   cursor: pointer;
-  display: none; /* shown on non-touch */
+  display: grid;
+  place-items: center;
 }
 .carouselNav:hover { transform: translateY(-50%) translateY(-1px); }
 
 .carouselNav#carouselPrevBtn { left: 8px; }
 .carouselNav#carouselNextBtn { right: 8px; }
-
-@media (hover: hover) {
-  .carouselNav { display: grid; place-items: center; }
-}
 
 .carouselTrack {
   height: 100%;
@@ -478,4 +481,6 @@ kbd {
   .uiToggle { left: 10px; top: 10px; }
   .logPanel { left: 10px; bottom: 88px; width: calc(100vw - 20px); }
   .carousel { left: 10px; right: 10px; bottom: 10px; }
+  .carouselPeek { bottom: 10px; }
+  .carouselPeek.open { bottom: 80px; }
 }
