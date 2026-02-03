@@ -2194,7 +2194,7 @@ syncOwnedModeLabels();
 // ----------------------------
 // Wallet lookup (Moralis via /api proxy)
 // ----------------------------
-let lastWalletLookup = null;
+var lastWalletLookup = null;
 
 function getWalletTokenIds() {
   const ids = lastWalletLookup?.tokenIds;
