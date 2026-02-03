@@ -2450,29 +2450,30 @@ el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
 
   setStatus("fetching metadata…");
 
+  // Deep link support:
+  // - /pizzalord.eth
+  // - /0xabc...
+  // - ?owner=pizzalord.eth
+  // We rewrite to index.html (via vercel.json) and parse the path/query here.
+  const path = String(location.pathname || "/")
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "");
+  const ownerFromQuery = new URLSearchParams(location.search).get("owner");
+  const ownerFromPath = path && path !== "index.html" ? decodeURIComponent(path) : "";
+  const owner = (ownerFromQuery || ownerFromPath || "").trim();
+
+  // Kick off wallet lookup ASAP (doesn't depend on metadata).
+  if (owner && el.walletInput) {
+    el.walletInput.value = owner;
+    // Don't block boot if wallet lookup fails.
+    doWalletLookup();
+  }
+
   fetch(METADATA_URL)
     .then((r) => r.json())
-    .then(async (data) => {
+    .then((data) => {
       allFriendsies = data;
       setStatus("ready ✅");
-
-      // Deep link support:
-      // - /pizzalord.eth
-      // - /0xabc...
-      // - ?owner=pizzalord.eth
-      // We rewrite to index.html (via vercel.json) and parse the path/query here.
-      const path = String(location.pathname || "/")
-        .replace(/^\/+/, "")
-        .replace(/\/+$/, "");
-      const ownerFromQuery = new URLSearchParams(location.search).get("owner");
-      const ownerFromPath = path && path !== "index.html" ? decodeURIComponent(path) : "";
-      const owner = (ownerFromQuery || ownerFromPath || "").trim();
-
-      if (owner && el.walletInput) {
-        el.walletInput.value = owner;
-        await doWalletLookup();
-      }
-
       loadByInput();
     })
     .catch((e) => {
