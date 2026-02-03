@@ -525,10 +525,17 @@ scene.add(ambientLight);
 const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
 keyLight.position.set(-0.5, 2.5, 5);
 scene.add(keyLight);
+scene.add(keyLight.target);
 
 const rim = new THREE.DirectionalLight(0xffffff, 0.25);
 rim.position.set(2.5, 1.5, -3.5);
 scene.add(rim);
+scene.add(rim.target);
+
+// On mobile, orbiting often swings metals/gems into very dark angles because the key/rim
+// are fixed in world-space. Make them loosely follow the camera to keep a consistent fill.
+const MOBILE_CAMERA_FOLLOW_LIGHTS = isMobileLike();
+const tmpV3 = new THREE.Vector3();
 
 // ----------------------------
 // Loaders
@@ -2814,6 +2821,18 @@ function animate() {
   controls.enabled = orbitEnabled;
   controls.autoRotate = orbitEnabled && autoRot;
   if (controls.enabled) controls.update();
+
+  if (MOBILE_CAMERA_FOLLOW_LIGHTS) {
+    // Keep lights aimed at the orbit target and positioned relative to camera.
+    // This reduces the “bright → pitch black” flip as you rotate on mobile.
+    const t = controls.target;
+
+    keyLight.target.position.copy(t);
+    rim.target.position.copy(t);
+
+    keyLight.position.copy(camera.position).add(tmpV3.set(-1.2, 1.4, 1.6));
+    rim.position.copy(camera.position).add(tmpV3.set(1.8, 0.6, -2.2));
+  }
 
   renderer.render(scene, camera);
 }
