@@ -126,6 +126,21 @@ const LOOK_PRESETS = {
 };
 
 const DEFAULT_LOOK_PRESET = "Cinematic";
+const DEFAULT_LOOK_PRESET_MOBILE = "Punchy Toybox";
+
+function isMobileLike() {
+  // Coarse pointer + no hover catches most phones/tablets; width fallback helps small screens.
+  try {
+    if (window.matchMedia) {
+      if (window.matchMedia("(pointer: coarse)").matches) return true;
+      if (window.matchMedia("(hover: none)").matches) return true;
+      if (window.matchMedia("(max-width: 820px)").matches) return true;
+    }
+  } catch (_) {
+    // ignore
+  }
+  return false;
+}
 const LOOK_ALLOWED_KEYS = [
   "toneMapping",
   "toneMappingExposure",
@@ -606,7 +621,8 @@ avatarGroup.scale.setScalar(15);
 avatarGroup.position.y = -2.5;
 scene.add(avatarGroup);
 
-applyLookPreset(DEFAULT_LOOK_PRESET);
+// On mobile, default to a brighter preset so metallics/gems don't crush.
+applyLookPreset(isMobileLike() ? DEFAULT_LOOK_PRESET_MOBILE : DEFAULT_LOOK_PRESET);
 syncLookSliders();
 
 // ----------------------------
