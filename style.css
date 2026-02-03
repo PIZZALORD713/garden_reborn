@@ -293,10 +293,12 @@ kbd {
 .carousel {
   pointer-events: auto;
   position: absolute;
-  left: 14px;
-  right: 14px;
+  left: 50%;
   bottom: 14px;
+  transform: translate(-50%, 110%); /* fully hidden when closed */
   height: 64px;
+  width: fit-content;
+  max-width: calc(100vw - 28px);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(10px);
@@ -304,22 +306,24 @@ kbd {
   border: 1px solid rgba(255,255,255,0.55);
   overflow: hidden;
   display: none; /* enabled after wallet lookup */
-  transform: translateY(110%); /* fully hidden when closed */
   opacity: 1;
   transition: transform 180ms ease;
 }
 
 /* Open state */
 .carousel.open {
-  transform: translateY(0);
+  transform: translate(-50%, 0);
 }
 
 /* Desktop hover reveal near bottom */
 @media (hover: hover) {
   .carousel.hoverReveal:hover {
-    transform: translateY(0);
+    transform: translate(-50%, 0);
   }
 }
+
+/* Hide nav arrows unless carousel is open */
+.carousel:not(.open) .carouselNav { display: none; }
 
 .carouselPeek {
   pointer-events: auto;
@@ -367,12 +371,10 @@ kbd {
   height: 100%;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 10px 46px; /* room for nav buttons */
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden; /* windowed list, no scrolling */
 }
 
 .carouselTrack::-webkit-scrollbar { height: 8px; }

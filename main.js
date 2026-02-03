@@ -2279,6 +2279,8 @@ function setCarouselVisible(visible) {
   }
 }
 
+var peekTimer = null;
+
 function setCarouselOpen(open) {
   if (el.carousel) {
     el.carousel.classList.toggle("open", !!open);
@@ -2287,6 +2289,7 @@ function setCarouselOpen(open) {
   }
   if (el.carouselPeekBtn) {
     el.carouselPeekBtn.classList.toggle("open", !!open);
+    // default icon state; updateCarouselActive can temporarily show token id
     el.carouselPeekBtn.textContent = open ? "▾" : "▴";
   }
 }
@@ -2373,6 +2376,18 @@ function updateCarouselActive() {
     const text = String(node.textContent || "");
     const id = Number(text.replace(/^#/, ""));
     node.classList.toggle("active", Number.isFinite(id) && id === currentId);
+  }
+
+  // Peek button shows current token briefly when closed (showcase mode)
+  if (el.carouselPeekBtn && IS_SHOWCASE_MODE) {
+    const isOpen = !!el.carousel?.classList.contains("open");
+    if (!isOpen && Number.isFinite(currentId) && currentId > 0) {
+      if (peekTimer) clearTimeout(peekTimer);
+      el.carouselPeekBtn.textContent = `#${currentId}`;
+      peekTimer = setTimeout(() => {
+        el.carouselPeekBtn.textContent = "▴";
+      }, 1400);
+    }
   }
 }
 
