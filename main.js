@@ -64,8 +64,8 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   2000
 );
-// Zoom out ~10% from the initial framing
-camera.position.set(0, 1.2, 5.5);
+// Initial framing: a bit further back + slightly lower so full body fits better on mobile
+camera.position.set(0, 1.05, 6.6);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -295,7 +295,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.minDistance = 2;
 controls.maxDistance = 14;
-controls.target.set(0, 1.0, 0);
+controls.target.set(0, 0.92, 0);
 
 // ----------------------------
 // UI wiring
@@ -2132,7 +2132,7 @@ async function loadFriendsies(id) {
   avatarGroup.visible = true;
 
   applyLookControls();
-  controls.target.set(0, 1.0, 0);
+  controls.target.set(0, 0.92, 0);
 
   setStatus(
     `loaded #${id} ✅ parts:${loadedParts.length} bones:${bodySkeleton.bones.length} faceOverlays:${faceOverlayMeshes.length}`
