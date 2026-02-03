@@ -2344,8 +2344,20 @@ function renderCarousel(tokenIds) {
 
   carouselAllTokenIds = tokenIds.slice();
   const currentId = Number(el.friendsiesId?.value || 0);
+
+  // Keep the user's current window while paging.
+  // Only re-center the window around the active token if it's NOT currently visible.
+  const size = getCarouselWindowSize();
+  const maxStart = Math.max(0, tokenIds.length - size);
+  carouselWindowStart = clamp(carouselWindowStart, 0, maxStart);
+
   if (Number.isFinite(currentId) && currentId > 0) {
-    setCarouselWindowAroundId(currentId);
+    const idx = tokenIds.indexOf(currentId);
+    const startNow = carouselWindowStart;
+    const endNow = startNow + size;
+    if (idx >= 0 && (idx < startNow || idx >= endNow)) {
+      setCarouselWindowAroundId(currentId);
+    }
   }
 
   setCarouselVisible(true);
@@ -2360,7 +2372,6 @@ function renderCarousel(tokenIds) {
     setCarouselOpen(carouselIsOpen);
   }
 
-  const size = getCarouselWindowSize();
   const start = clamp(carouselWindowStart, 0, Math.max(0, tokenIds.length - size));
   const slice = tokenIds.slice(start, start + size);
 
