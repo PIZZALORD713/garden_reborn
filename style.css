@@ -23,6 +23,29 @@ canvas {
   pointer-events: none; /* orbit still works on canvas */
 }
 
+/* Toast (non-blocking) */
+.toast {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0,0,0,0.82);
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(0,0,0,0.08);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.10);
+  z-index: 6;
+}
+.toast.show { opacity: 1; }
+
+
 /* “Hide UI” state */
 #ui.uiHidden .panel,
 #ui.uiHidden .logPanel {
@@ -576,9 +599,27 @@ kbd {
   .subtitle { display: none; }
   .uiToggle { left: 10px; top: 10px; }
 
+  /* Remove header branding/copy on mobile (we'll rebrand later). */
+  .panelHeader { display: none; }
+
   /* Transcript is moved into the bottom sheet Log tab; don't overlay it separately. */
   .logPanel { display: none; }
   .tabPanel .logPanel { display: block; }
+
+  /* Bigger tap targets (thumb-friendly) */
+  .tabBtn {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+  .compactBtn { width: 44px; padding: 10px 0; }
+  .iconBtn { min-height: 40px; padding: 10px 12px; font-size: 13px; }
+
+  /* Tab strip: scroll + snap so buttons can be big without wrapping */
+  .tabs {
+    scroll-snap-type: x mandatory;
+  }
+  .tabBtn { scroll-snap-align: start; }
 
   .carousel {
     left: 10px;

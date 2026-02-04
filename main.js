@@ -639,6 +639,23 @@ function applyLogCollapsed(collapsed) {
   setBoolLS(LS_LOG_COLLAPSED, collapsed);
 }
 
+// ----------------------------
+// Toast helper
+// ----------------------------
+let toastTimer = null;
+function showToast(text, ms = 1000) {
+  const elToast = document.getElementById("toast");
+  if (!elToast) return;
+
+  elToast.textContent = String(text || "");
+  elToast.classList.add("show");
+
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    elToast.classList.remove("show");
+  }, Math.max(250, ms | 0));
+}
+
 // initialize UI states
 // Default to a clean, “showcase” first-load: controls hidden + transcript collapsed.
 // Users can still open via the gear button (or H/L).
@@ -2188,6 +2205,8 @@ async function loadFriendsies(id) {
   // IMPORTANT: don't clear the existing avatar until the new one is confirmed loadable.
   // Otherwise a transient load failure leaves the viewer empty (background only).
   setStatus(`loading #${id}…`);
+  // Minimal feedback (mobile-friendly): toast the token number briefly.
+  showToast(`#${id}`, 1000);
 
   const entry = getEntryById(id);
   if (!entry) {
