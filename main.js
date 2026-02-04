@@ -106,8 +106,9 @@ const LOOK_PRESETS = {
   "Punchy Toybox": {
     toneMapping: "ACES",
     toneMappingExposure: 1.2,
-    ambientIntensity: 0.12,
-    hemiIntensity: 0.2,
+    // Lift the floor so mobile doesn't crush metals/transparency into near-black.
+    ambientIntensity: 0.22,
+    hemiIntensity: 0.38,
     keyLightIntensity: 1.0,
     rimLightIntensity: 0.45,
     envIntensityMultiplier: 1.5,
