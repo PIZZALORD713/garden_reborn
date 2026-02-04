@@ -578,6 +578,7 @@ kbd {
 
   /* Transcript is moved into the bottom sheet Log tab; don't overlay it separately. */
   .logPanel { display: none; }
+  .tabPanel .logPanel { display: block; }
 
   .carousel {
     left: 10px;
