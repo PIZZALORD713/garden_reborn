@@ -370,6 +370,12 @@ controls.addEventListener("end", noteUserActivity);
 renderer.domElement.addEventListener("pointerdown", noteUserActivity);
 renderer.domElement.addEventListener("pointermove", noteUserActivity);
 
+// Count ALL UI interactions as activity too (buttons, sliders, typing, etc.)
+uiRoot?.addEventListener("pointerdown", noteUserActivity, true);
+uiRoot?.addEventListener("input", noteUserActivity, true);
+uiRoot?.addEventListener("change", noteUserActivity, true);
+uiRoot?.addEventListener("keydown", noteUserActivity, true);
+
 // ----------------------------
 // UI wiring
 // ----------------------------
