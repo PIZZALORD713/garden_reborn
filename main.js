@@ -54,6 +54,56 @@ const LS_LOG_COLLAPSED = "toybox_log_collapsed_v1";
 const LS_AUTORANDOM = "toybox_auto_random_v1";
 
 // ----------------------------
+// Auto-random (idle-based)
+// ----------------------------
+const AUTO_RANDOM_IDLE_MS = 4000;
+let autoRandomEnabled = false;
+let autoRandomTimer = null; // setTimeout handle
+let lastUserActivityMs = Date.now();
+
+function noteUserActivity() {
+  lastUserActivityMs = Date.now();
+  // If auto-random is on, any activity resets the idle timer.
+  if (autoRandomEnabled) scheduleAutoRandomFromIdle();
+}
+
+function clearAutoRandomTimer() {
+  if (autoRandomTimer) {
+    clearTimeout(autoRandomTimer);
+    autoRandomTimer = null;
+  }
+}
+
+function scheduleAutoRandomFromIdle() {
+  clearAutoRandomTimer();
+  if (!autoRandomEnabled) return;
+
+  autoRandomTimer = setTimeout(() => {
+    if (!autoRandomEnabled) return;
+
+    // If the user interacted recently, don’t switch yet.
+    const idleFor = Date.now() - lastUserActivityMs;
+    if (idleFor < AUTO_RANDOM_IDLE_MS) {
+      scheduleAutoRandomFromIdle();
+      return;
+    }
+
+    const walletIds = getWalletTokenIds();
+    const id = walletIds
+      ? getRandomFromArray(walletIds)
+      : 1 + Math.floor(Math.random() * 10000);
+
+    if (id) {
+      if (el.friendsiesId) el.friendsiesId.value = String(id);
+      loadFriendsies(id);
+    }
+
+    // Continue cycling while idle.
+    scheduleAutoRandomFromIdle();
+  }, AUTO_RANDOM_IDLE_MS);
+}
+
+// ----------------------------
 // Scene / Camera / Renderer
 // ----------------------------
 const scene = new THREE.Scene();
@@ -312,6 +362,13 @@ controls.dampingFactor = 0.06;
 controls.minDistance = 2;
 controls.maxDistance = 14;
 controls.target.set(0, 0.92, 0);
+
+// Any camera/orbit interaction counts as "activity" for idle-based auto-random.
+controls.addEventListener("start", noteUserActivity);
+controls.addEventListener("change", noteUserActivity);
+controls.addEventListener("end", noteUserActivity);
+renderer.domElement.addEventListener("pointerdown", noteUserActivity);
+renderer.domElement.addEventListener("pointermove", noteUserActivity);
 
 // ----------------------------
 // UI wiring
@@ -658,8 +715,6 @@ let restPosByBone = new Map();
 let faceOverlayMeshes = [];
 let faceAnchor = null;
 let lastFaceTexture = null;
-
-let autoRandomTimer = null;
 
 // Stability defaults (no longer UI toggles)
 const SAFE_MODE = true;
@@ -2201,29 +2256,23 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
 }
 
 // ----------------------------
-// Auto-random every 4 seconds
+// Auto-random (switch after X ms of inactivity)
 // ----------------------------
 function setAutoRandom(on) {
-  if (autoRandomTimer) {
-    clearInterval(autoRandomTimer);
-    autoRandomTimer = null;
-  }
+  autoRandomEnabled = !!on;
+  clearAutoRandomTimer();
 
-  if (on) {
-    autoRandomTimer = setInterval(() => {
-      const walletIds = getWalletTokenIds();
-      const id = walletIds ? getRandomFromArray(walletIds) : 1 + Math.floor(Math.random() * 10000);
-      if (!id) return;
-      if (el.friendsiesId) el.friendsiesId.value = String(id);
-      loadFriendsies(id);
-    }, 4000);
-    logLine("✅ Auto-random ON (every 4s)");
+  if (autoRandomEnabled) {
+    // Treat turning it on as the start of an idle period.
+    lastUserActivityMs = Date.now();
+    scheduleAutoRandomFromIdle();
+    logLine(`✅ Auto-random ON (after ${Math.round(AUTO_RANDOM_IDLE_MS / 1000)}s idle)`);
   } else {
     logLine("Auto-random OFF");
   }
 
-  setBoolLS(LS_AUTORANDOM, on);
-  if (el.autoRandomOn) el.autoRandomOn.checked = on;
+  setBoolLS(LS_AUTORANDOM, autoRandomEnabled);
+  if (el.autoRandomOn) el.autoRandomOn.checked = autoRandomEnabled;
 }
 
 // restore auto-random preference
