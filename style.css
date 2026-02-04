@@ -124,6 +124,38 @@ canvas {
 }
 
 /* Controls */
+
+/* Settings tabs */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 2px 6px 2px;
+  margin: 0 0 2px 0;
+}
+
+.tabBtn {
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.70);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tabBtn:hover { transform: translateY(-1px); }
+.tabBtn:active { transform: translateY(0); }
+
+.tabBtn[aria-selected="true"] {
+  background: rgba(33, 150, 83, 0.90);
+  border-color: rgba(33, 150, 83, 0.95);
+  color: #fff;
+}
+
+.tabPanels { margin-top: 2px; }
+.tabPanel .row:first-child { margin-top: 0; }
+
 .row {
   display: flex;
   align-items: center;

@@ -44,180 +44,289 @@
           <div id="status" class="status">booting…</div>
         </div>
 
-        <div class="row">
-          <div class="pill wide">
-            <span class="pillLabel">Wallet / ENS</span>
-            <input
-              type="text"
-              id="walletInput"
-              placeholder="0x… or pizzalord.eth"
-              spellcheck="false"
-              autocomplete="off"
-            />
-          </div>
-
-          <button id="walletLookupBtn" class="btn primary">Lookup</button>
-          <button id="walletDownloadJsonBtn" class="btn" title="Download results as JSON" disabled>
-            ⬇ Wallet JSON
-          </button>
-        </div>
-
-        <div class="row">
-          <div class="pill wide">
-            <span class="pillLabel">Your Friendsies</span>
-            <select id="walletTokensSelect" disabled>
-              <option value="">(lookup a wallet)</option>
-            </select>
-          </div>
-
-          <button id="walletLoadSelectedBtn" class="btn">Load Selected</button>
-
-          <span class="hintText" id="walletHint">Tip: lookup → pick token → Load Selected</span>
-        </div>
-
-        <div class="row">
-          <div class="pill">
-            <span class="pillLabel">ID</span>
-            <input type="number" id="friendsiesId" min="1" max="10000" value="5" />
-          </div>
-
-          <button id="loadBtn" class="btn primary">Load</button>
-          <button id="randomBtn" class="btn"><span id="randomBtnText">🎲 Random</span></button>
-
-          <label class="chip" title="Auto-random every 4 seconds">
-            <input type="checkbox" id="autoRandomOn" />
-            <span id="autoRandomLabelText">✅ Auto</span>
-          </label>
-        </div>
-
-        <div class="row">
-          <div class="pill wide">
-            <span class="pillLabel">Anim</span>
-            <select id="animSelect"></select>
-          </div>
-
-          <button id="playBtn" class="btn primary">▶ Play</button>
-          <button id="stopBtn" class="btn danger">■ Stop</button>
-
-          <label class="chip">
-            <input type="checkbox" id="orbitOn" checked />
-            🛰 Orbit
-          </label>
-
-          <label class="chip">
-            <input type="checkbox" id="autoRotateOn" />
-            🔄 Auto
-          </label>
-        </div>
-
-        <div class="lookPanel collapsed" id="lookPanel">
+        <!-- Tabbed settings (keeps existing control element IDs for JS wiring) -->
+        <div class="tabs" role="tablist" aria-label="Settings" data-tabs="settings">
           <button
-            id="lookToggleBtn"
-            class="panelToggle"
+            class="tabBtn"
             type="button"
-            aria-expanded="false"
-            aria-controls="lookControls"
+            role="tab"
+            id="settingsTabToken"
+            aria-selected="true"
+            aria-controls="settingsPanelToken"
           >
-            <span>🎨 Look Tuning</span>
-            <span class="panelChevron" aria-hidden="true">▾</span>
+            Token
           </button>
-          <div id="lookControls" class="lookControls" aria-hidden="true">
-            <div class="sliderRow">
-              <label for="lookExposure">toneMappingExposure</label>
-              <input
-                type="range"
-                id="lookExposure"
-                min="0.6"
-                max="1.8"
-                step="0.01"
-                data-look-control="toneMappingExposure"
-              />
-              <span class="sliderValue" data-look-value="toneMappingExposure"></span>
-            </div>
-            <div class="sliderRow">
-              <label for="lookHemi">hemiIntensity</label>
-              <input
-                type="range"
-                id="lookHemi"
-                min="0"
-                max="1"
-                step="0.01"
-                data-look-control="hemiIntensity"
-              />
-              <span class="sliderValue" data-look-value="hemiIntensity"></span>
-            </div>
-            <div class="sliderRow">
-              <label for="lookAmbient">ambientIntensity</label>
-              <input
-                type="range"
-                id="lookAmbient"
-                min="0"
-                max="1"
-                step="0.01"
-                data-look-control="ambientIntensity"
-              />
-              <span class="sliderValue" data-look-value="ambientIntensity"></span>
-            </div>
-            <div class="sliderRow">
-              <label for="lookKey">keyLightIntensity</label>
-              <input
-                type="range"
-                id="lookKey"
-                min="0"
-                max="2"
-                step="0.01"
-                data-look-control="keyLightIntensity"
-              />
-              <span class="sliderValue" data-look-value="keyLightIntensity"></span>
-            </div>
-            <div class="sliderRow">
-              <label for="lookRim">rimLightIntensity</label>
-              <input
-                type="range"
-                id="lookRim"
-                min="0"
-                max="2"
-                step="0.01"
-                data-look-control="rimLightIntensity"
-              />
-              <span class="sliderValue" data-look-value="rimLightIntensity"></span>
-            </div>
-            <div class="sliderRow">
-              <label for="lookEnv">envIntensityMultiplier</label>
-              <input
-                type="range"
-                id="lookEnv"
-                min="0"
-                max="3"
-                step="0.05"
-                data-look-control="envIntensityMultiplier"
-              />
-              <span class="sliderValue" data-look-value="envIntensityMultiplier"></span>
-            </div>
-            <div class="sliderRow">
-              <label for="lookEmissive">emissiveIntensityMultiplier</label>
-              <input
-                type="range"
-                id="lookEmissive"
-                min="0"
-                max="4"
-                step="0.05"
-                data-look-control="emissiveIntensityMultiplier"
-              />
-              <span class="sliderValue" data-look-value="emissiveIntensityMultiplier"></span>
-            </div>
-            <div class="lookActions">
-              <button id="copyLookBtn" class="btn">📋 Copy Current Look</button>
-              <span class="hintText">Press <kbd>P</kbd> to print JSON.</span>
-            </div>
-          </div>
+          <button
+            class="tabBtn"
+            type="button"
+            role="tab"
+            id="settingsTabAnim"
+            aria-selected="false"
+            aria-controls="settingsPanelAnim"
+            tabindex="-1"
+          >
+            Anim
+          </button>
+          <button
+            class="tabBtn"
+            type="button"
+            role="tab"
+            id="settingsTabLook"
+            aria-selected="false"
+            aria-controls="settingsPanelLook"
+            tabindex="-1"
+          >
+            Look
+          </button>
+          <button
+            class="tabBtn"
+            type="button"
+            role="tab"
+            id="settingsTabWallet"
+            aria-selected="false"
+            aria-controls="settingsPanelWallet"
+            tabindex="-1"
+          >
+            Wallet
+          </button>
+          <button
+            class="tabBtn"
+            type="button"
+            role="tab"
+            id="settingsTabExport"
+            aria-selected="false"
+            aria-controls="settingsPanelExport"
+            tabindex="-1"
+          >
+            Export
+          </button>
         </div>
 
-        <div class="row tiny">
-          <button id="printTraitsBtn" class="btn">🧩 Trait URLs</button>
-          <button id="printRigBtn" class="btn">🛠 Rig Bones</button>
-          <button id="downloadGlbBtn" class="btn primary">⬇ Download Rig (.glb)</button>
-          <span class="hintText">Tip: press <kbd>H</kbd> to hide UI, <kbd>L</kbd> to collapse transcript.</span>
+        <div class="tabPanels">
+          <!-- TOKEN -->
+          <div
+            id="settingsPanelToken"
+            class="tabPanel"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="settingsTabToken"
+          >
+            <div class="row">
+              <div class="pill">
+                <span class="pillLabel">ID</span>
+                <input type="number" id="friendsiesId" min="1" max="10000" value="5" />
+              </div>
+
+              <button id="loadBtn" class="btn primary">Load</button>
+              <button id="randomBtn" class="btn"><span id="randomBtnText">🎲 Random</span></button>
+
+              <label class="chip" title="Auto-random every 4 seconds">
+                <input type="checkbox" id="autoRandomOn" />
+                <span id="autoRandomLabelText">✅ Auto</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- ANIM -->
+          <div
+            id="settingsPanelAnim"
+            class="tabPanel"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="settingsTabAnim"
+            hidden
+          >
+            <div class="row">
+              <div class="pill wide">
+                <span class="pillLabel">Anim</span>
+                <select id="animSelect"></select>
+              </div>
+
+              <button id="playBtn" class="btn primary">▶ Play</button>
+              <button id="stopBtn" class="btn danger">■ Stop</button>
+
+              <label class="chip">
+                <input type="checkbox" id="orbitOn" checked />
+                🛰 Orbit
+              </label>
+
+              <label class="chip">
+                <input type="checkbox" id="autoRotateOn" />
+                🔄 Auto
+              </label>
+            </div>
+          </div>
+
+          <!-- LOOK -->
+          <div
+            id="settingsPanelLook"
+            class="tabPanel"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="settingsTabLook"
+            hidden
+          >
+            <div class="lookPanel collapsed" id="lookPanel">
+              <button
+                id="lookToggleBtn"
+                class="panelToggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="lookControls"
+              >
+                <span>🎨 Look Tuning</span>
+                <span class="panelChevron" aria-hidden="true">▾</span>
+              </button>
+              <div id="lookControls" class="lookControls" aria-hidden="true">
+                <div class="sliderRow">
+                  <label for="lookExposure">toneMappingExposure</label>
+                  <input
+                    type="range"
+                    id="lookExposure"
+                    min="0.6"
+                    max="1.8"
+                    step="0.01"
+                    data-look-control="toneMappingExposure"
+                  />
+                  <span class="sliderValue" data-look-value="toneMappingExposure"></span>
+                </div>
+                <div class="sliderRow">
+                  <label for="lookHemi">hemiIntensity</label>
+                  <input
+                    type="range"
+                    id="lookHemi"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    data-look-control="hemiIntensity"
+                  />
+                  <span class="sliderValue" data-look-value="hemiIntensity"></span>
+                </div>
+                <div class="sliderRow">
+                  <label for="lookAmbient">ambientIntensity</label>
+                  <input
+                    type="range"
+                    id="lookAmbient"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    data-look-control="ambientIntensity"
+                  />
+                  <span class="sliderValue" data-look-value="ambientIntensity"></span>
+                </div>
+                <div class="sliderRow">
+                  <label for="lookKey">keyLightIntensity</label>
+                  <input
+                    type="range"
+                    id="lookKey"
+                    min="0"
+                    max="2"
+                    step="0.01"
+                    data-look-control="keyLightIntensity"
+                  />
+                  <span class="sliderValue" data-look-value="keyLightIntensity"></span>
+                </div>
+                <div class="sliderRow">
+                  <label for="lookRim">rimLightIntensity</label>
+                  <input
+                    type="range"
+                    id="lookRim"
+                    min="0"
+                    max="2"
+                    step="0.01"
+                    data-look-control="rimLightIntensity"
+                  />
+                  <span class="sliderValue" data-look-value="rimLightIntensity"></span>
+                </div>
+                <div class="sliderRow">
+                  <label for="lookEnv">envIntensityMultiplier</label>
+                  <input
+                    type="range"
+                    id="lookEnv"
+                    min="0"
+                    max="3"
+                    step="0.05"
+                    data-look-control="envIntensityMultiplier"
+                  />
+                  <span class="sliderValue" data-look-value="envIntensityMultiplier"></span>
+                </div>
+                <div class="sliderRow">
+                  <label for="lookEmissive">emissiveIntensityMultiplier</label>
+                  <input
+                    type="range"
+                    id="lookEmissive"
+                    min="0"
+                    max="4"
+                    step="0.05"
+                    data-look-control="emissiveIntensityMultiplier"
+                  />
+                  <span class="sliderValue" data-look-value="emissiveIntensityMultiplier"></span>
+                </div>
+                <div class="lookActions">
+                  <button id="copyLookBtn" class="btn">📋 Copy Current Look</button>
+                  <span class="hintText">Press <kbd>P</kbd> to print JSON.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- WALLET -->
+          <div
+            id="settingsPanelWallet"
+            class="tabPanel"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="settingsTabWallet"
+            hidden
+          >
+            <div class="row">
+              <div class="pill wide">
+                <span class="pillLabel">Wallet / ENS</span>
+                <input
+                  type="text"
+                  id="walletInput"
+                  placeholder="0x… or pizzalord.eth"
+                  spellcheck="false"
+                  autocomplete="off"
+                />
+              </div>
+
+              <button id="walletLookupBtn" class="btn primary">Lookup</button>
+              <button id="walletDownloadJsonBtn" class="btn" title="Download results as JSON" disabled>
+                ⬇ Wallet JSON
+              </button>
+            </div>
+
+            <div class="row">
+              <div class="pill wide">
+                <span class="pillLabel">Your Friendsies</span>
+                <select id="walletTokensSelect" disabled>
+                  <option value="">(lookup a wallet)</option>
+                </select>
+              </div>
+
+              <button id="walletLoadSelectedBtn" class="btn">Load Selected</button>
+
+              <span class="hintText" id="walletHint">Tip: lookup → pick token → Load Selected</span>
+            </div>
+          </div>
+
+          <!-- EXPORT -->
+          <div
+            id="settingsPanelExport"
+            class="tabPanel"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="settingsTabExport"
+            hidden
+          >
+            <div class="row tiny">
+              <button id="printTraitsBtn" class="btn">🧩 Trait URLs</button>
+              <button id="printRigBtn" class="btn">🛠 Rig Bones</button>
+              <button id="downloadGlbBtn" class="btn primary">⬇ Download Rig (.glb)</button>
+              <span class="hintText">Tip: press <kbd>H</kbd> to hide UI, <kbd>L</kbd> to collapse transcript.</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -227,7 +336,13 @@
           <div class="logTitle">📟 Transcript</div>
           <div class="logActions">
             <button id="clearLogBtn" class="iconBtn" type="button" title="Clear transcript">Clear</button>
-            <button id="logToggleBtn" class="iconBtn" type="button" aria-label="Toggle transcript" title="Toggle transcript (L)">
+            <button
+              id="logToggleBtn"
+              class="iconBtn"
+              type="button"
+              aria-label="Toggle transcript"
+              title="Toggle transcript (L)"
+            >
               <span id="logChevron" aria-hidden="true">▾</span>
             </button>
           </div>
@@ -253,21 +368,20 @@
       </div>
     </div>
 
-          <!-- Three.js r128 + loaders/controls -->
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-      
-      <!-- REQUIRED for EXRLoader when EXR uses ZIP compression -->
-      <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
-      
-      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
-      
-      <script src="/main.js?v=2026-02-03c"></script>
+    <!-- Three.js r128 + loaders/controls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
+    <!-- REQUIRED for EXRLoader when EXR uses ZIP compression -->
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+
+    <script src="/main.js?v=2026-02-03c"></script>
   </body>
 </html>

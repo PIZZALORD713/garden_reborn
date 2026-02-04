@@ -371,10 +371,10 @@ renderer.domElement.addEventListener("pointerdown", noteUserActivity);
 renderer.domElement.addEventListener("pointermove", noteUserActivity);
 
 // Count ALL UI interactions as activity too (buttons, sliders, typing, etc.)
-uiRoot?.addEventListener("pointerdown", noteUserActivity, true);
-uiRoot?.addEventListener("input", noteUserActivity, true);
-uiRoot?.addEventListener("change", noteUserActivity, true);
-uiRoot?.addEventListener("keydown", noteUserActivity, true);
+document.getElementById("ui")?.addEventListener("pointerdown", noteUserActivity, true);
+document.getElementById("ui")?.addEventListener("input", noteUserActivity, true);
+document.getElementById("ui")?.addEventListener("change", noteUserActivity, true);
+document.getElementById("ui")?.addEventListener("keydown", noteUserActivity, true);
 
 // ----------------------------
 // UI wiring
@@ -427,6 +427,69 @@ const el = {
   log: document.getElementById("log"),
   clearLogBtn: document.getElementById("clearLogBtn")
 };
+
+// Settings tabs (minimal-impact; preserves existing control IDs)
+function initSettingsTabs() {
+  const tablist = document.querySelector('[data-tabs="settings"][role="tablist"]');
+  if (!tablist) return;
+
+  const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
+  if (!tabs.length) return;
+
+  const getPanel = (tab) => {
+    const id = tab.getAttribute("aria-controls");
+    return id ? document.getElementById(id) : null;
+  };
+
+  const activate = (tabToActivate, focus = false) => {
+    tabs.forEach((tab) => {
+      const selected = tab === tabToActivate;
+      tab.setAttribute("aria-selected", selected ? "true" : "false");
+      tab.tabIndex = selected ? 0 : -1;
+
+      const panel = getPanel(tab);
+      if (panel) {
+        panel.hidden = !selected;
+        panel.setAttribute("aria-hidden", selected ? "false" : "true");
+      }
+    });
+
+    if (focus) tabToActivate.focus();
+  };
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => activate(tab, true));
+  });
+
+  tablist.addEventListener("keydown", (e) => {
+    const key = e.key;
+    const current = document.activeElement;
+    const idx = tabs.indexOf(current);
+    if (idx === -1) return;
+
+    let next = idx;
+    if (key === "ArrowRight") next = (idx + 1) % tabs.length;
+    else if (key === "ArrowLeft") next = (idx - 1 + tabs.length) % tabs.length;
+    else if (key === "Home") next = 0;
+    else if (key === "End") next = tabs.length - 1;
+    else if (key === "Enter" || key === " ") {
+      activate(tabs[idx], false);
+      return;
+    } else {
+      return;
+    }
+
+    e.preventDefault();
+    tabs[next].focus();
+    activate(tabs[next], false);
+  });
+
+  // Default tab: Token (or first with aria-selected=true)
+  const initial = tabs.find((t) => t.getAttribute("aria-selected") === "true") || tabs[0];
+  activate(initial, false);
+}
+
+initSettingsTabs();
 
 function setStatus(s) {
   if (el.status) el.status.textContent = s;
