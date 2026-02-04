@@ -461,7 +461,12 @@ function initSettingsTabs() {
   };
 
   // Restore compact state
-  setCompact(getBool(LS_PANEL_COMPACT, false));
+  // Mobile default: collapsed (tabs-only) bottom sheet.
+  if (isMobileLike()) {
+    setCompact(getBool(LS_PANEL_COMPACT, true));
+  } else {
+    setCompact(getBool(LS_PANEL_COMPACT, false));
+  }
 
   compactBtn?.addEventListener("click", () => {
     if (!panelRoot) return;
@@ -470,6 +475,15 @@ function initSettingsTabs() {
 
   const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
   if (!tabs.length) return;
+
+  // Mobile: move transcript panel into the Log tab (prevents mid-screen overlay).
+  if (isMobileLike()) {
+    const logHost = document.getElementById("settingsPanelLog");
+    const logPanel = document.getElementById("logPanel");
+    if (logHost && logPanel && logPanel.parentElement !== logHost) {
+      logHost.appendChild(logPanel);
+    }
+  }
 
   const getPanel = (tab) => {
     const id = tab.getAttribute("aria-controls");

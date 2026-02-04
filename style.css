@@ -175,6 +175,42 @@ canvas {
   transform: rotate(-90deg);
 }
 
+/* When transcript is moved into a tab panel on mobile, it must behave like normal flow */
+.tabPanel .logPanel {
+  position: static;
+  left: auto;
+  bottom: auto;
+  width: auto;
+  transform: none;
+}
+
+@media (max-width: 520px) {
+  /* Mobile bottom sheet: controls live at the bottom to avoid covering the face/torso */
+  .panel {
+    left: 10px;
+    right: 10px;
+    top: auto;
+    bottom: 10px;
+    width: auto;
+    max-width: none;
+    padding: 10px;
+  }
+
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tabs::-webkit-scrollbar { height: 6px; }
+
+  /* Collapsed-by-default on mobile: only the tab strip/dock shows */
+  .panel.compact {
+    padding: 8px;
+  }
+}
+
+
 .row {
   display: flex;
   align-items: center;
@@ -538,9 +574,11 @@ kbd {
 
 @media (max-width: 520px) {
   .subtitle { display: none; }
-  .panel { left: 10px; top: 60px; width: calc(100vw - 20px); }
   .uiToggle { left: 10px; top: 10px; }
-  .logPanel { left: 10px; bottom: 88px; width: calc(100vw - 20px); }
+
+  /* Transcript is moved into the bottom sheet Log tab; don't overlay it separately. */
+  .logPanel { display: none; }
+
   .carousel {
     left: 10px;
     right: 10px;

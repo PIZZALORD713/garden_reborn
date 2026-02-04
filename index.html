@@ -102,11 +102,23 @@
           </button>
 
           <button
+            class="tabBtn"
+            type="button"
+            role="tab"
+            id="settingsTabLog"
+            aria-selected="false"
+            aria-controls="settingsPanelLog"
+            tabindex="-1"
+          >
+            Log
+          </button>
+
+          <button
             id="settingsCompactBtn"
             class="tabBtn compactBtn"
             type="button"
-            aria-label="Toggle compact settings"
-            title="Toggle compact settings"
+            aria-label="Toggle controls"
+            title="Toggle controls"
           >
             ▾
           </button>
@@ -337,6 +349,16 @@
               <span class="hintText">Tip: press <kbd>H</kbd> to hide UI, <kbd>L</kbd> to collapse transcript.</span>
             </div>
           </div>
+
+          <!-- LOG (mobile: transcript is moved here via JS) -->
+          <div
+            id="settingsPanelLog"
+            class="tabPanel"
+            role="tabpanel"
+            tabindex="0"
+            aria-labelledby="settingsTabLog"
+            hidden
+          ></div>
         </div>
       </div>
 
