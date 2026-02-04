@@ -156,6 +156,25 @@ canvas {
 .tabPanels { margin-top: 2px; }
 .tabPanel .row:first-child { margin-top: 0; }
 
+/* Compact settings mode: keep header + tabs, hide panels to maximize 3D visibility */
+.panel.compact {
+  width: auto;
+  max-width: 360px;
+}
+.panel.compact .subtitle { display: none; }
+.panel.compact .tabPanels { display: none; }
+.panel.compact .panelHeader { padding-bottom: 6px; }
+
+.compactBtn {
+  margin-left: auto;
+  width: 34px;
+  padding: 6px 0;
+  font-weight: 700;
+}
+.panel.compact .compactBtn {
+  transform: rotate(-90deg);
+}
+
 .row {
   display: flex;
   align-items: center;

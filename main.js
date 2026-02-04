@@ -433,6 +433,41 @@ function initSettingsTabs() {
   const tablist = document.querySelector('[data-tabs="settings"][role="tablist"]');
   if (!tablist) return;
 
+  const panelRoot = document.getElementById("panel");
+  const compactBtn = document.getElementById("settingsCompactBtn");
+
+  const LS_PANEL_COMPACT = "toybox_panel_compact_v1";
+  const getBool = (k, fallback) => {
+    try {
+      const v = localStorage.getItem(k);
+      if (v === null) return fallback;
+      return v === "true";
+    } catch (_) {
+      return fallback;
+    }
+  };
+  const setBool = (k, v) => {
+    try {
+      localStorage.setItem(k, v ? "true" : "false");
+    } catch (_) {
+      // ignore
+    }
+  };
+
+  const setCompact = (on) => {
+    if (!panelRoot) return;
+    panelRoot.classList.toggle("compact", !!on);
+    setBool(LS_PANEL_COMPACT, !!on);
+  };
+
+  // Restore compact state
+  setCompact(getBool(LS_PANEL_COMPACT, false));
+
+  compactBtn?.addEventListener("click", () => {
+    if (!panelRoot) return;
+    setCompact(!panelRoot.classList.contains("compact"));
+  });
+
   const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
   if (!tabs.length) return;
 
@@ -442,6 +477,9 @@ function initSettingsTabs() {
   };
 
   const activate = (tabToActivate, focus = false) => {
+    // If the user activates a tab while compact, expand so the controls are visible.
+    if (panelRoot?.classList.contains("compact")) setCompact(false);
+
     tabs.forEach((tab) => {
       const selected = tab === tabToActivate;
       tab.setAttribute("aria-selected", selected ? "true" : "false");
