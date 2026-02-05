@@ -2313,7 +2313,15 @@ function setWalletUiState({ busy = false, tokenIds = null, hint = null } = {}) {
   if (walletUi.walletHint && hint) walletUi.walletHint.textContent = hint;
 }
 
-var carouselAllTokenIds = [];
+const DEFAULT_CAROUSEL_TOKEN_IDS = Array.from({ length: 10000 }, (_, i) => i + 1);
+const CAROUSEL_MODES = Object.freeze({
+  defaultRange: "defaultRange",
+  walletOwned: "walletOwned"
+});
+
+var carouselMode = CAROUSEL_MODES.defaultRange;
+var walletOwnedTokenIds = [];
+var carouselAllTokenIds = [...DEFAULT_CAROUSEL_TOKEN_IDS];
 var carouselWindowStart = 0; // legacy window paging (no longer used by dial-style carousel)
 
 function wrapIndex(i, n) {
@@ -2389,13 +2397,28 @@ function clamp(n, a, b) {
 }
 
 function setCarouselVisible(visible) {
+  // Kept for compatibility; carousel stays visible in default range mode.
+  const shouldShow = visible || carouselMode === CAROUSEL_MODES.defaultRange;
   if (sceneUiAdapter.tokenCarousel) {
-    sceneUiAdapter.tokenCarousel.style.display = visible ? "block" : "none";
-    sceneUiAdapter.tokenCarousel.setAttribute("aria-hidden", visible ? "false" : "true");
+    sceneUiAdapter.tokenCarousel.style.display = shouldShow ? "block" : "none";
+    sceneUiAdapter.tokenCarousel.setAttribute("aria-hidden", shouldShow ? "false" : "true");
   }
   if (sceneUiAdapter.tokenPeekBtn) {
-    sceneUiAdapter.tokenPeekBtn.style.display = visible ? "block" : "none";
+    sceneUiAdapter.tokenPeekBtn.style.display = shouldShow ? "block" : "none";
   }
+}
+
+function getCarouselTokenIdsForMode() {
+  if (carouselMode === CAROUSEL_MODES.walletOwned && walletOwnedTokenIds.length) {
+    return walletOwnedTokenIds;
+  }
+  return DEFAULT_CAROUSEL_TOKEN_IDS;
+}
+
+function setCarouselMode(mode) {
+  if (!Object.values(CAROUSEL_MODES).includes(mode)) return;
+  carouselMode = mode;
+  renderCarousel(getCarouselTokenIdsForMode());
 }
 
 var peekTimer = null;
@@ -2461,14 +2484,13 @@ function renderCarousel(tokenIds) {
   sceneUiAdapter.tokenTrack.innerHTML = "";
 
   if (!tokenIds || !tokenIds.length) {
-    carouselAllTokenIds = [];
+    carouselAllTokenIds = [...DEFAULT_CAROUSEL_TOKEN_IDS];
     carouselWindowStart = 0;
-    setCarouselVisible(false);
-    return;
+    setCarouselVisible(true);
+  } else {
+    // Canonical ordering (stable per wallet)
+    carouselAllTokenIds = orderTokenIds(tokenIds);
   }
-
-  // Canonical ordering (stable per wallet)
-  carouselAllTokenIds = orderTokenIds(tokenIds);
   const currentId = Number(sceneUi.friendsiesId?.value || 0);
 
   const size = getCarouselWindowSize();
@@ -2586,7 +2608,7 @@ async function doWalletLookup() {
   const input = String(walletUi.walletInput?.value || "").trim();
   try {
     setWalletUiState({ busy: true, hint: "Looking up wallet…" });
-    setStatus("wallet lookup…");
+    setStatus("looking up wallet…");
 
     const data = await lookupWalletTokens(input);
     lastWalletLookup = data;
@@ -2598,10 +2620,12 @@ async function doWalletLookup() {
       .filter((n) => Number.isFinite(n))
       .sort((a, b) => a - b);
 
+    walletOwnedTokenIds = tokenIds;
+
     // reset carousel init for new wallet results
     if (sceneUiAdapter.tokenCarousel) delete sceneUiAdapter.tokenCarousel.dataset.carouselInit;
 
-    renderCarousel(tokenIds);
+    renderCarousel(getCarouselTokenIdsForMode());
 
     const who = data.ownerResolved || data.ownerInput || input;
     const display =
@@ -2641,14 +2665,15 @@ async function doWalletLookup() {
       busy: false,
       tokenIds,
       hint: tokenIds.length
-        ? `Found ${tokenIds.length}. Pick one from dropdown.`
+        ? `Found ${tokenIds.length} wallet-owned tokens.`
         : "No Friendsies found for that wallet."
     });
   } catch (err) {
     console.error(err);
     lastWalletLookup = null;
+    walletOwnedTokenIds = [];
     syncOwnedModeLabels();
-    renderCarousel([]);
+    renderCarousel(getCarouselTokenIdsForMode());
     setWalletUiState({ busy: false, tokenIds: [], hint: "Lookup failed." });
     setStatus("wallet lookup failed ❌");
     logLine(`wallet lookup failed ❌ ${err?.message || err}`, "err");
@@ -2729,6 +2754,9 @@ sceneUi.stopBtn?.addEventListener("click", () => {
 
   // Showcase mode ONLY when wallet is provided via URL path (not query, not manual).
   IS_SHOWCASE_MODE = !!ownerFromPath;
+
+  // Always start in default full-range carousel mode (1..10000), independent of wallet lookup.
+  setCarouselMode(CAROUSEL_MODES.defaultRange);
 
   if (owner && walletUi.walletInput) {
     walletUi.walletInput.value = owner;
