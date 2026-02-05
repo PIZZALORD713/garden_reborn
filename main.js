@@ -94,7 +94,7 @@ function scheduleAutoRandomFromIdle() {
       : 1 + Math.floor(Math.random() * 10000);
 
     if (id) {
-      if (el.friendsiesId) el.friendsiesId.value = String(id);
+      if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(id);
       loadFriendsies(id);
     }
 
@@ -104,29 +104,106 @@ function scheduleAutoRandomFromIdle() {
 }
 
 // ----------------------------
-// Scene / Camera / Renderer
+// Scene bootstrap
 // ----------------------------
-const scene = new THREE.Scene();
+function initScene() {
+  const scene = new THREE.Scene();
 
-const camera = new THREE.PerspectiveCamera(
-  60,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  2000
-);
-// Initial framing: a bit further back + slightly lower so full body fits better on mobile
-camera.position.set(0, 1.05, 6.6);
+  const camera = new THREE.PerspectiveCamera(
+    60,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    2000
+  );
+  // Initial framing: a bit further back + slightly lower so full body fits better on mobile
+  camera.position.set(0, 1.05, 6.6);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-renderer.setClearColor(0xffffff);
-renderer.outputEncoding = THREE.sRGBEncoding;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
-renderer.physicallyCorrectLights = true;
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0xffffff);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.physicallyCorrectLights = true;
 
-document.body.appendChild(renderer.domElement);
+  document.body.appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.minDistance = 2;
+  controls.maxDistance = 14;
+  controls.target.set(0, 0.92, 0);
+
+  // Any camera/orbit interaction counts as "activity" for idle-based auto-random.
+  controls.addEventListener("start", noteUserActivity);
+  controls.addEventListener("change", noteUserActivity);
+  controls.addEventListener("end", noteUserActivity);
+  renderer.domElement.addEventListener("pointerdown", noteUserActivity);
+  renderer.domElement.addEventListener("pointermove", noteUserActivity);
+
+  return { scene, camera, renderer, controls };
+}
+
+function initLighting(scene) {
+  const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35);
+  scene.add(hemisphereLight);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+  scene.add(ambientLight);
+
+  const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
+  keyLight.position.set(-0.5, 2.5, 5);
+  scene.add(keyLight);
+  scene.add(keyLight.target);
+
+  const rim = new THREE.DirectionalLight(0xffffff, 0.25);
+  rim.position.set(2.5, 1.5, -3.5);
+  scene.add(rim);
+  scene.add(rim.target);
+
+  return { hemisphereLight, ambientLight, keyLight, rim };
+}
+
+function initCharacterLoader() {
+  const dracoLoader = new THREE.DRACOLoader();
+  dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/");
+
+  const gltfLoader = new THREE.GLTFLoader();
+  gltfLoader.setDRACOLoader(dracoLoader);
+
+  const textureLoader = new THREE.TextureLoader();
+  textureLoader.setCrossOrigin("anonymous");
+
+  return { dracoLoader, gltfLoader, textureLoader };
+}
+
+function initEnvironment(scene) {
+  const panoGroup = new THREE.Group();
+  scene.add(panoGroup);
+  return { panoGroup };
+}
+
+const sceneBoot = initScene();
+const scene = sceneBoot.scene;
+const camera = sceneBoot.camera;
+const renderer = sceneBoot.renderer;
+const controls = sceneBoot.controls;
+
+const loaderBoot = initCharacterLoader();
+const dracoLoader = loaderBoot.dracoLoader;
+const gltfLoader = loaderBoot.gltfLoader;
+const textureLoader = loaderBoot.textureLoader;
+
+const lighting = initLighting(scene);
+const hemisphereLight = lighting.hemisphereLight;
+const ambientLight = lighting.ambientLight;
+const keyLight = lighting.keyLight;
+const rim = lighting.rim;
+
+const environment = initEnvironment(scene);
+const panoGroup = environment.panoGroup;
 
 // ----------------------------
 // Look controls + presets
@@ -355,219 +432,78 @@ function applyLookPreset(name) {
   logLine(msg);
 }
 
-// OrbitControls (debug camera)
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.06;
-controls.minDistance = 2;
-controls.maxDistance = 14;
-controls.target.set(0, 0.92, 0);
-
-// Any camera/orbit interaction counts as "activity" for idle-based auto-random.
-controls.addEventListener("start", noteUserActivity);
-controls.addEventListener("change", noteUserActivity);
-controls.addEventListener("end", noteUserActivity);
-renderer.domElement.addEventListener("pointerdown", noteUserActivity);
-renderer.domElement.addEventListener("pointermove", noteUserActivity);
-
 // Count ALL UI interactions as activity too (buttons, sliders, typing, etc.)
-document.getElementById("ui")?.addEventListener("pointerdown", noteUserActivity, true);
-document.getElementById("ui")?.addEventListener("input", noteUserActivity, true);
-document.getElementById("ui")?.addEventListener("change", noteUserActivity, true);
-document.getElementById("ui")?.addEventListener("keydown", noteUserActivity, true);
-
-// ----------------------------
-// UI wiring
-// ----------------------------
 const uiRoot = document.getElementById("ui");
+uiRoot?.addEventListener("pointerdown", noteUserActivity, true);
+uiRoot?.addEventListener("input", noteUserActivity, true);
+uiRoot?.addEventListener("change", noteUserActivity, true);
+uiRoot?.addEventListener("keydown", noteUserActivity, true);
 
-const el = {
-  uiToggleBtn: document.getElementById("uiToggleBtn"),
-  panel: document.getElementById("panel"),
-  logPanel: document.getElementById("logPanel"),
-  carousel: document.getElementById("carousel"),
-  carouselTrack: document.getElementById("carouselTrack"),
-  carouselPeekBtn: document.getElementById("carouselPeekBtn"),
-  carouselPrevBtn: document.getElementById("carouselPrevBtn"),
-  carouselNextBtn: document.getElementById("carouselNextBtn"),
-  logToggleBtn: document.getElementById("logToggleBtn"),
-  logChevron: document.getElementById("logChevron"),
-  lookPanel: document.getElementById("lookPanel"),
-  lookToggleBtn: document.getElementById("lookToggleBtn"),
-  lookControls: document.getElementById("lookControls"),
-  copyLookBtn: document.getElementById("copyLookBtn"),
-
+// ----------------------------
+// UI adapters (scoped per feature)
+// ----------------------------
+const sceneUi = {
   status: document.getElementById("status"),
-
-  walletInput: document.getElementById("walletInput"),
-  walletLookupBtn: document.getElementById("walletLookupBtn"),
-  walletDownloadJsonBtn: document.getElementById("walletDownloadJsonBtn"),
-  walletTokensSelect: document.getElementById("walletTokensSelect"),
-  walletLoadSelectedBtn: document.getElementById("walletLoadSelectedBtn"),
-  walletHint: document.getElementById("walletHint"),
-
   friendsiesId: document.getElementById("friendsiesId"),
   loadBtn: document.getElementById("loadBtn"),
   randomBtn: document.getElementById("randomBtn"),
   randomBtnText: document.getElementById("randomBtnText"),
   autoRandomOn: document.getElementById("autoRandomOn"),
   autoRandomLabelText: document.getElementById("autoRandomLabelText"),
-
   animSelect: document.getElementById("animSelect"),
   playBtn: document.getElementById("playBtn"),
   stopBtn: document.getElementById("stopBtn"),
-
   orbitOn: document.getElementById("orbitOn"),
-  autoRotateOn: document.getElementById("autoRotateOn"),
-
-  printTraitsBtn: document.getElementById("printTraitsBtn"),
-  printRigBtn: document.getElementById("printRigBtn"),
-  downloadGlbBtn: document.getElementById("downloadGlbBtn"),
-
-  log: document.getElementById("log"),
-  clearLogBtn: document.getElementById("clearLogBtn")
+  autoRotateOn: document.getElementById("autoRotateOn")
 };
 
-// Settings tabs (minimal-impact; preserves existing control IDs)
-function initSettingsTabs() {
-  const tablist = document.querySelector('[data-tabs="settings"][role="tablist"]');
-  if (!tablist) return;
+const walletUi = {
+  walletInput: document.getElementById("walletInput"),
+  walletLookupBtn: document.getElementById("walletLookupBtn"),
+  walletDownloadJsonBtn: document.getElementById("walletDownloadJsonBtn"),
+  walletHint: document.getElementById("walletHint")
+};
 
-  const panelRoot = document.getElementById("panel");
-  const compactBtn = document.getElementById("settingsCompactBtn");
+const debugUi = {
+  log: document.getElementById("log")
+};
 
-  const LS_PANEL_COMPACT = "toybox_panel_compact_v1";
-  const getBool = (k, fallback) => {
-    try {
-      const v = localStorage.getItem(k);
-      if (v === null) return fallback;
-      return v === "true";
-    } catch (_) {
-      return fallback;
-    }
+function initUiAdapter() {
+  return {
+    tokenCarousel: document.getElementById("tokenCarousel") || document.getElementById("carousel"),
+    tokenTrack: document.getElementById("tokenTrack") || document.getElementById("carouselTrack"),
+    menuButton: document.getElementById("uiToggleBtn") || document.getElementById("menuBtn"),
+    tokenPrevBtn: document.getElementById("carouselPrevBtn"),
+    tokenNextBtn: document.getElementById("carouselNextBtn"),
+    tokenPeekBtn: document.getElementById("carouselPeekBtn")
   };
-  const setBool = (k, v) => {
-    try {
-      localStorage.setItem(k, v ? "true" : "false");
-    } catch (_) {
-      // ignore
-    }
-  };
-
-  const setCompact = (on) => {
-    if (!panelRoot) return;
-    panelRoot.classList.toggle("compact", !!on);
-    setBool(LS_PANEL_COMPACT, !!on);
-  };
-
-  // Restore compact state
-  // Mobile default: collapsed (tabs-only) bottom sheet.
-  if (isMobileLike()) {
-    setCompact(getBool(LS_PANEL_COMPACT, true));
-  } else {
-    setCompact(getBool(LS_PANEL_COMPACT, false));
-  }
-
-  compactBtn?.addEventListener("click", () => {
-    if (!panelRoot) return;
-    setCompact(!panelRoot.classList.contains("compact"));
-  });
-
-  const tabs = Array.from(tablist.querySelectorAll('[role="tab"]'));
-  if (!tabs.length) return;
-
-  // Mobile: move transcript panel into the Log tab (prevents mid-screen overlay).
-  if (isMobileLike()) {
-    const logHost = document.getElementById("settingsPanelLog");
-    const logPanel = document.getElementById("logPanel");
-    if (logHost && logPanel && logPanel.parentElement !== logHost) {
-      logHost.appendChild(logPanel);
-    }
-  }
-
-  const getPanel = (tab) => {
-    const id = tab.getAttribute("aria-controls");
-    return id ? document.getElementById(id) : null;
-  };
-
-  const activate = (tabToActivate, focus = false) => {
-    // If the user activates a tab while compact, expand so the controls are visible.
-    if (panelRoot?.classList.contains("compact")) setCompact(false);
-
-    tabs.forEach((tab) => {
-      const selected = tab === tabToActivate;
-      tab.setAttribute("aria-selected", selected ? "true" : "false");
-      tab.tabIndex = selected ? 0 : -1;
-
-      const panel = getPanel(tab);
-      if (panel) {
-        panel.hidden = !selected;
-        panel.setAttribute("aria-hidden", selected ? "false" : "true");
-      }
-    });
-
-    if (focus) tabToActivate.focus();
-  };
-
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => activate(tab, true));
-  });
-
-  tablist.addEventListener("keydown", (e) => {
-    const key = e.key;
-    const current = document.activeElement;
-    const idx = tabs.indexOf(current);
-    if (idx === -1) return;
-
-    let next = idx;
-    if (key === "ArrowRight") next = (idx + 1) % tabs.length;
-    else if (key === "ArrowLeft") next = (idx - 1 + tabs.length) % tabs.length;
-    else if (key === "Home") next = 0;
-    else if (key === "End") next = tabs.length - 1;
-    else if (key === "Enter" || key === " ") {
-      activate(tabs[idx], false);
-      return;
-    } else {
-      return;
-    }
-
-    e.preventDefault();
-    tabs[next].focus();
-    activate(tabs[next], false);
-  });
-
-  // Default tab: Token (or first with aria-selected=true)
-  const initial = tabs.find((t) => t.getAttribute("aria-selected") === "true") || tabs[0];
-  activate(initial, false);
 }
 
-initSettingsTabs();
+const sceneUiAdapter = initUiAdapter();
 
 function setStatus(s) {
-  if (el.status) el.status.textContent = s;
+  if (sceneUi.status) sceneUi.status.textContent = s;
   logLine(`• ${s}`, "dim");
 }
 
 // Transcript helpers
 function logLine(text, cls = "") {
-  if (!el.log) return;
+  if (!debugUi.log) return;
 
-  // Keep scroll “sticky” only if user is already near bottom
   const nearBottom =
-    el.log.scrollTop + el.log.clientHeight >= el.log.scrollHeight - 30;
+    debugUi.log.scrollTop + debugUi.log.clientHeight >= debugUi.log.scrollHeight - 30;
 
   const div = document.createElement("div");
   div.className = `logLine ${cls}`.trim();
   div.textContent = String(text);
-  el.log.appendChild(div);
+  debugUi.log.appendChild(div);
 
-  // Cap lines so it doesn’t grow forever
   const MAX_LINES = 220;
-  while (el.log.childNodes.length > MAX_LINES) {
-    el.log.removeChild(el.log.firstChild);
+  while (debugUi.log.childNodes.length > MAX_LINES) {
+    debugUi.log.removeChild(debugUi.log.firstChild);
   }
 
-  if (nearBottom) el.log.scrollTop = el.log.scrollHeight;
+  if (nearBottom) debugUi.log.scrollTop = debugUi.log.scrollHeight;
 }
 
 function logSection(title) {
@@ -576,7 +512,7 @@ function logSection(title) {
 }
 
 function clearLog() {
-  if (el.log) el.log.innerHTML = "";
+  if (debugUi.log) debugUi.log.innerHTML = "";
   logLine("Transcript cleared.");
 }
 
@@ -616,32 +552,6 @@ function copyCurrentLook() {
   console.log("Current Look JSON", json);
 }
 
-// UI visibility
-function getBoolLS(key, fallback = false) {
-  const v = localStorage.getItem(key);
-  if (v === null) return fallback;
-  return v === "1";
-}
-function setBoolLS(key, val) {
-  localStorage.setItem(key, val ? "1" : "0");
-}
-
-function applyUIHidden(hidden) {
-  uiRoot.classList.toggle("uiHidden", hidden);
-  if (el.panel) el.panel.setAttribute("aria-hidden", hidden ? "true" : "false");
-  if (el.logPanel)
-    el.logPanel.setAttribute("aria-hidden", hidden ? "true" : "false");
-  setBoolLS(LS_UI_HIDDEN, hidden);
-}
-
-function applyLogCollapsed(collapsed) {
-  uiRoot.classList.toggle("logCollapsed", collapsed);
-  setBoolLS(LS_LOG_COLLAPSED, collapsed);
-}
-
-// ----------------------------
-// Toast helper
-// ----------------------------
 let toastTimer = null;
 function showToast(text, ms = 1000) {
   const elToast = document.getElementById("toast");
@@ -656,100 +566,14 @@ function showToast(text, ms = 1000) {
   }, Math.max(250, ms | 0));
 }
 
-// initialize UI states
-// Default to a clean, “showcase” first-load: controls hidden + transcript collapsed.
-// Users can still open via the gear button (or H/L).
-applyUIHidden(getBoolLS(LS_UI_HIDDEN, true));
-applyLogCollapsed(getBoolLS(LS_LOG_COLLAPSED, true));
-
-// Buttons + keyboard shortcuts
-el.uiToggleBtn?.addEventListener("click", () => {
-  applyUIHidden(!uiRoot.classList.contains("uiHidden"));
+sceneUiAdapter.menuButton?.addEventListener("click", () => {
+  uiRoot?.classList.toggle("uiHidden");
 });
-
-el.logToggleBtn?.addEventListener("click", () => {
-  applyLogCollapsed(!uiRoot.classList.contains("logCollapsed"));
-});
-
-el.clearLogBtn?.addEventListener("click", clearLog);
-
-el.lookToggleBtn?.addEventListener("click", () => {
-  if (!el.lookPanel || !el.lookControls) return;
-  const collapsed = !el.lookPanel.classList.contains("collapsed");
-  el.lookPanel.classList.toggle("collapsed", collapsed);
-  el.lookToggleBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
-  el.lookControls.setAttribute("aria-hidden", collapsed ? "true" : "false");
-});
-
-el.copyLookBtn?.addEventListener("click", copyCurrentLook);
-
-document.querySelectorAll("[data-look-control]").forEach((slider) => {
-  slider.addEventListener("input", (event) => {
-    const key = event.target.dataset.lookControl;
-    const value = Number(event.target.value);
-    if (!key || !Number.isFinite(value)) return;
-    updateLookControl(key, value);
-  });
-});
-
-document.addEventListener("keydown", (e) => {
-  const tag = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : "";
-  const typing = tag === "input" || tag === "select" || tag === "textarea";
-  if (typing) return;
-
-  if (e.key.toLowerCase() === "h") {
-    applyUIHidden(!uiRoot.classList.contains("uiHidden"));
-  }
-  if (e.key.toLowerCase() === "l") {
-    applyLogCollapsed(!uiRoot.classList.contains("logCollapsed"));
-  }
-  if (e.key === "1") applyLookPreset("Cinematic");
-  if (e.key === "2") applyLookPreset("Punchy Toybox");
-  if (e.key === "3") applyLookPreset("Soft Pastel");
-  if (e.key.toLowerCase() === "p") copyCurrentLook();
-});
-
-// ----------------------------
-// Lights (plus a tiny rim for metals)
-// ----------------------------
-const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35);
-scene.add(hemisphereLight);
-
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
-scene.add(ambientLight);
-
-const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
-keyLight.position.set(-0.5, 2.5, 5);
-scene.add(keyLight);
-scene.add(keyLight.target);
-
-const rim = new THREE.DirectionalLight(0xffffff, 0.25);
-rim.position.set(2.5, 1.5, -3.5);
-scene.add(rim);
-scene.add(rim.target);
 
 // On mobile, orbiting often swings metals/gems into very dark angles because the key/rim
 // are fixed in world-space. Make them loosely follow the camera to keep a consistent fill.
 const MOBILE_CAMERA_FOLLOW_LIGHTS = isMobileLike();
 const tmpV3 = new THREE.Vector3();
-
-// ----------------------------
-// Loaders
-// ----------------------------
-const dracoLoader = new THREE.DRACOLoader();
-dracoLoader.setDecoderPath("https://www.gstatic.com/draco/v1/decoders/");
-
-const gltfLoader = new THREE.GLTFLoader();
-gltfLoader.setDRACOLoader(dracoLoader);
-
-const textureLoader = new THREE.TextureLoader();
-textureLoader.setCrossOrigin("anonymous");
-
-// ----------------------------
-// Background panorama sphere + EXR environment
-// ----------------------------
-const panoGroup = new THREE.Group();
-scene.add(panoGroup);
 
 async function loadPanoramaSphere() {
   return new Promise((resolve) => {
@@ -1978,7 +1802,7 @@ function downloadRigGlb() {
 
   // Build a clean export root (avoid nested Scene roots + dead armatures from parts)
   const exportRoot = new THREE.Group();
-  const id = Number(el.friendsiesId?.value || 0) || 0;
+  const id = Number(sceneUi.friendsiesId?.value || 0) || 0;
   const idStr = String(id || 0).padStart(4, "0");
   exportRoot.name = `fRiENDSiES_${idStr}`;
 
@@ -2162,20 +1986,20 @@ const ANIM_PRESETS = [
 
 // Populate dropdown
 (function initAnimSelect() {
-  if (!el.animSelect) return;
-  el.animSelect.innerHTML = "";
+  if (!sceneUi.animSelect) return;
+  sceneUi.animSelect.innerHTML = "";
   for (const [label, url] of ANIM_PRESETS) {
     const opt = document.createElement("option");
     opt.value = url;
     opt.textContent = label;
-    el.animSelect.appendChild(opt);
+    sceneUi.animSelect.appendChild(opt);
   }
   // default: WalkStart
-  el.animSelect.value = ANIM_PRESETS[0][1];
+  sceneUi.animSelect.value = ANIM_PRESETS[0][1];
 })();
 
 function getSelectedAnimUrl() {
-  return el.animSelect?.value || ANIM_PRESETS[0][1];
+  return sceneUi.animSelect?.value || ANIM_PRESETS[0][1];
 }
 
 // ----------------------------
@@ -2395,6 +2219,24 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
   logLine(`▶ Playing: ${clip.name || "unnamed"} (${url})`);
 }
 
+function getBoolLS(key, fallback = false) {
+  try {
+    const v = localStorage.getItem(key);
+    if (v === null) return fallback;
+    return v === "1";
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function setBoolLS(key, val) {
+  try {
+    localStorage.setItem(key, val ? "1" : "0");
+  } catch (_) {
+    // ignore
+  }
+}
+
 // ----------------------------
 // Auto-random (switch after X ms of inactivity)
 // ----------------------------
@@ -2412,7 +2254,7 @@ function setAutoRandom(on) {
   }
 
   setBoolLS(LS_AUTORANDOM, autoRandomEnabled);
-  if (el.autoRandomOn) el.autoRandomOn.checked = autoRandomEnabled;
+  if (sceneUi.autoRandomOn) sceneUi.autoRandomOn.checked = autoRandomEnabled;
 }
 
 // restore auto-random preference
@@ -2448,9 +2290,9 @@ function getRandomFromArray(arr) {
 
 function syncOwnedModeLabels() {
   const owned = !!getWalletTokenIds();
-  if (el.randomBtnText) el.randomBtnText.textContent = owned ? "🎲 Random (Owned)" : "🎲 Random";
-  if (el.autoRandomLabelText)
-    el.autoRandomLabelText.textContent = owned ? "✅ Auto (Owned)" : "✅ Auto";
+  if (sceneUi.randomBtnText) sceneUi.randomBtnText.textContent = owned ? "🎲 Random (Owned)" : "🎲 Random";
+  if (sceneUi.autoRandomLabelText)
+    sceneUi.autoRandomLabelText.textContent = owned ? "✅ Auto (Owned)" : "✅ Auto";
 }
 
 function isLikelyEns(name) {
@@ -2462,20 +2304,13 @@ function isLikelyEvmAddress(addr) {
 }
 
 function setWalletUiState({ busy = false, tokenIds = null, hint = null } = {}) {
-  if (el.walletLookupBtn) el.walletLookupBtn.disabled = busy;
-  if (el.walletInput) el.walletInput.disabled = busy;
-  if (el.walletLoadSelectedBtn) el.walletLoadSelectedBtn.disabled = busy;
-
-  if (el.walletTokensSelect) {
-    const hasTokens = Array.isArray(tokenIds) && tokenIds.length > 0;
-    el.walletTokensSelect.disabled = busy || !hasTokens;
+  if (walletUi.walletLookupBtn) walletUi.walletLookupBtn.disabled = busy;
+  if (walletUi.walletInput) walletUi.walletInput.disabled = busy;
+  if (walletUi.walletDownloadJsonBtn) {
+    walletUi.walletDownloadJsonBtn.disabled = busy || !lastWalletLookup;
   }
 
-  if (el.walletDownloadJsonBtn) {
-    el.walletDownloadJsonBtn.disabled = busy || !lastWalletLookup;
-  }
-
-  if (el.walletHint && hint) el.walletHint.textContent = hint;
+  if (walletUi.walletHint && hint) walletUi.walletHint.textContent = hint;
 }
 
 var carouselAllTokenIds = [];
@@ -2554,12 +2389,12 @@ function clamp(n, a, b) {
 }
 
 function setCarouselVisible(visible) {
-  if (el.carousel) {
-    el.carousel.style.display = visible ? "block" : "none";
-    el.carousel.setAttribute("aria-hidden", visible ? "false" : "true");
+  if (sceneUiAdapter.tokenCarousel) {
+    sceneUiAdapter.tokenCarousel.style.display = visible ? "block" : "none";
+    sceneUiAdapter.tokenCarousel.setAttribute("aria-hidden", visible ? "false" : "true");
   }
-  if (el.carouselPeekBtn) {
-    el.carouselPeekBtn.style.display = visible ? "block" : "none";
+  if (sceneUiAdapter.tokenPeekBtn) {
+    sceneUiAdapter.tokenPeekBtn.style.display = visible ? "block" : "none";
   }
 }
 
@@ -2568,15 +2403,15 @@ var carouselIsOpen = false;
 
 function setCarouselOpen(open) {
   carouselIsOpen = !!open;
-  if (el.carousel) {
-    el.carousel.classList.toggle("open", carouselIsOpen);
+  if (sceneUiAdapter.tokenCarousel) {
+    sceneUiAdapter.tokenCarousel.classList.toggle("open", carouselIsOpen);
     // Hover reveal only in showcase mode (otherwise it can get in the way)
-    el.carousel.classList.toggle("hoverReveal", !!IS_SHOWCASE_MODE);
+    sceneUiAdapter.tokenCarousel.classList.toggle("hoverReveal", !!IS_SHOWCASE_MODE);
   }
-  if (el.carouselPeekBtn) {
-    el.carouselPeekBtn.classList.toggle("open", carouselIsOpen);
+  if (sceneUiAdapter.tokenPeekBtn) {
+    sceneUiAdapter.tokenPeekBtn.classList.toggle("open", carouselIsOpen);
     // default icon state; updateCarouselActive can temporarily show token id
-    el.carouselPeekBtn.textContent = carouselIsOpen ? "▾" : "▴";
+    sceneUiAdapter.tokenPeekBtn.textContent = carouselIsOpen ? "▾" : "▴";
   }
 }
 
@@ -2612,18 +2447,18 @@ function scrollCarouselByPage(dir) {
 
   // Dial-style behavior: arrows step selection (wrap-around), not page the window.
   const ordered = carouselAllTokenIds || [];
-  const currentId = Number(el.friendsiesId?.value || 0);
+  const currentId = Number(sceneUi.friendsiesId?.value || 0);
   const nextId = dir > 0 ? selectNextId(ordered, currentId) : selectPrevId(ordered, currentId);
   if (!nextId) return;
 
-  if (el.friendsiesId) el.friendsiesId.value = String(nextId);
+  if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(nextId);
   loadFriendsies(nextId);
   updateCarouselActive();
 }
 
 function renderCarousel(tokenIds) {
-  if (!el.carouselTrack) return;
-  el.carouselTrack.innerHTML = "";
+  if (!sceneUiAdapter.tokenTrack) return;
+  sceneUiAdapter.tokenTrack.innerHTML = "";
 
   if (!tokenIds || !tokenIds.length) {
     carouselAllTokenIds = [];
@@ -2634,7 +2469,7 @@ function renderCarousel(tokenIds) {
 
   // Canonical ordering (stable per wallet)
   carouselAllTokenIds = orderTokenIds(tokenIds);
-  const currentId = Number(el.friendsiesId?.value || 0);
+  const currentId = Number(sceneUi.friendsiesId?.value || 0);
 
   const size = getCarouselWindowSize();
   const { visible, center } = computeWindowIds(
@@ -2649,9 +2484,9 @@ function renderCarousel(tokenIds) {
   // Don't stomp the user's open/closed state on every re-render.
   // Only set a default the first time we ever show the carousel.
   if (typeof carouselIsOpen !== "boolean") carouselIsOpen = false;
-  if (!el.carousel?.dataset?.carouselInit) {
+  if (!sceneUiAdapter.tokenCarousel?.dataset?.carouselInit) {
     setCarouselOpen(!IS_SHOWCASE_MODE);
-    if (el.carousel) el.carousel.dataset.carouselInit = "1";
+    if (sceneUiAdapter.tokenCarousel) sceneUiAdapter.tokenCarousel.dataset.carouselInit = "1";
   } else {
     setCarouselOpen(carouselIsOpen);
   }
@@ -2665,17 +2500,17 @@ function renderCarousel(tokenIds) {
     btn.textContent = `#${id}`;
     btn.setAttribute("role", "listitem");
     btn.addEventListener("click", () => {
-      if (el.friendsiesId) el.friendsiesId.value = String(id);
+      if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(id);
       loadFriendsies(id);
       updateCarouselActive();
     });
-    el.carouselTrack.appendChild(btn);
+    sceneUiAdapter.tokenTrack.appendChild(btn);
   }
 }
 
 function updateCarouselActive() {
-  if (!el.carouselTrack) return;
-  const currentId = Number(el.friendsiesId?.value || 0);
+  if (!sceneUiAdapter.tokenTrack) return;
+  const currentId = Number(sceneUi.friendsiesId?.value || 0);
 
   // Dial-style carousel: selection change affects the entire window.
   if (carouselAllTokenIds?.length) {
@@ -2683,41 +2518,15 @@ function updateCarouselActive() {
   }
 
   // Peek button shows current token briefly when closed (showcase mode)
-  if (el.carouselPeekBtn && IS_SHOWCASE_MODE) {
-    const isOpen = !!el.carousel?.classList.contains("open");
+  if (sceneUiAdapter.tokenPeekBtn && IS_SHOWCASE_MODE) {
+    const isOpen = !!sceneUiAdapter.tokenCarousel?.classList.contains("open");
     if (!isOpen && Number.isFinite(currentId) && currentId > 0) {
       if (peekTimer) clearTimeout(peekTimer);
-      el.carouselPeekBtn.textContent = `#${currentId}`;
+      sceneUiAdapter.tokenPeekBtn.textContent = `#${currentId}`;
       peekTimer = setTimeout(() => {
-        el.carouselPeekBtn.textContent = "▴";
+        sceneUiAdapter.tokenPeekBtn.textContent = "▴";
       }, 1400);
     }
-  }
-}
-
-function setWalletTokensSelect(tokenIds) {
-  if (!el.walletTokensSelect) return;
-
-  el.walletTokensSelect.innerHTML = "";
-
-  if (!tokenIds || !tokenIds.length) {
-    const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "(no Friendsies found)";
-    el.walletTokensSelect.appendChild(opt);
-    return;
-  }
-
-  const firstOpt = document.createElement("option");
-  firstOpt.value = "";
-  firstOpt.textContent = `(select a token — ${tokenIds.length} found)`;
-  el.walletTokensSelect.appendChild(firstOpt);
-
-  for (const id of tokenIds) {
-    const opt = document.createElement("option");
-    opt.value = String(id);
-    opt.textContent = `#${id}`;
-    el.walletTokensSelect.appendChild(opt);
   }
 }
 
@@ -2763,7 +2572,7 @@ function downloadJsonObject(obj, filename) {
 // UI events
 // ----------------------------
 function loadByInput() {
-  const id = Number(el.friendsiesId?.value);
+  const id = Number(sceneUi.friendsiesId?.value);
   if (!Number.isFinite(id) || id < 1 || id > 10000) {
     return setStatus("enter a valid ID (1–10000)");
   }
@@ -2771,10 +2580,10 @@ function loadByInput() {
   updateCarouselActive();
 }
 
-el.loadBtn?.addEventListener("click", loadByInput);
+sceneUi.loadBtn?.addEventListener("click", loadByInput);
 
 async function doWalletLookup() {
-  const input = String(el.walletInput?.value || "").trim();
+  const input = String(walletUi.walletInput?.value || "").trim();
   try {
     setWalletUiState({ busy: true, hint: "Looking up wallet…" });
     setStatus("wallet lookup…");
@@ -2790,9 +2599,8 @@ async function doWalletLookup() {
       .sort((a, b) => a - b);
 
     // reset carousel init for new wallet results
-    if (el.carousel) delete el.carousel.dataset.carouselInit;
+    if (sceneUiAdapter.tokenCarousel) delete sceneUiAdapter.tokenCarousel.dataset.carouselInit;
 
-    setWalletTokensSelect(tokenIds);
     renderCarousel(tokenIds);
 
     const who = data.ownerResolved || data.ownerInput || input;
@@ -2813,12 +2621,12 @@ async function doWalletLookup() {
     if (IS_SHOWCASE_MODE && tokenIds.length) {
       const pick = getRandomFromArray(tokenIds);
       if (Number.isFinite(pick)) {
-        if (el.friendsiesId) el.friendsiesId.value = String(pick);
+        if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(pick);
         // Turn on auto-random (owned)
         setAutoRandom(true);
         // Hide UI + transcript
-        applyUIHidden(true);
-        applyLogCollapsed(true);
+        uiRoot?.classList.add("uiHidden");
+        uiRoot?.classList.add("logCollapsed");
 
         // If metadata is ready, load immediately; otherwise queue it.
         if (allFriendsies) {
@@ -2840,7 +2648,6 @@ async function doWalletLookup() {
     console.error(err);
     lastWalletLookup = null;
     syncOwnedModeLabels();
-    setWalletTokensSelect([]);
     renderCarousel([]);
     setWalletUiState({ busy: false, tokenIds: [], hint: "Lookup failed." });
     setStatus("wallet lookup failed ❌");
@@ -2848,25 +2655,25 @@ async function doWalletLookup() {
   }
 }
 
-el.walletLookupBtn?.addEventListener("click", doWalletLookup);
+walletUi.walletLookupBtn?.addEventListener("click", doWalletLookup);
 
 // Carousel controls
-el.carouselPeekBtn?.addEventListener("click", () => {
+sceneUiAdapter.tokenPeekBtn?.addEventListener("click", () => {
   setCarouselOpen(!carouselIsOpen);
 });
-el.carouselPrevBtn?.addEventListener("click", () => scrollCarouselByPage(-1));
-el.carouselNextBtn?.addEventListener("click", () => scrollCarouselByPage(1));
+sceneUiAdapter.tokenPrevBtn?.addEventListener("click", () => scrollCarouselByPage(-1));
+sceneUiAdapter.tokenNextBtn?.addEventListener("click", () => scrollCarouselByPage(1));
 
 window.addEventListener("resize", () => {
   // Re-render windowed carousel on resize so it snaps to 15/10/5 behavior.
   if (carouselAllTokenIds?.length) renderCarousel(carouselAllTokenIds);
 });
 
-el.walletInput?.addEventListener("keydown", (e) => {
+walletUi.walletInput?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") doWalletLookup();
 });
 
-el.walletDownloadJsonBtn?.addEventListener("click", () => {
+walletUi.walletDownloadJsonBtn?.addEventListener("click", () => {
   if (!lastWalletLookup) return;
   const safeOwner = String(lastWalletLookup.ownerResolved || lastWalletLookup.ownerInput || "wallet")
     .replace(/[^a-zA-Z0-9_.-]/g, "_")
@@ -2876,56 +2683,32 @@ el.walletDownloadJsonBtn?.addEventListener("click", () => {
   logLine(`⬇ Downloaded wallet JSON: ${filename}`);
 });
 
-el.walletLoadSelectedBtn?.addEventListener("click", () => {
-  const val = String(el.walletTokensSelect?.value || "").trim();
-  const id = Number(val);
-  if (!Number.isFinite(id) || id < 1 || id > 10000) {
-    return setStatus("select a token from dropdown");
-  }
-  if (el.friendsiesId) el.friendsiesId.value = String(id);
-  loadFriendsies(id);
-  updateCarouselActive();
-});
-
-el.walletTokensSelect?.addEventListener("change", () => {
-  const val = String(el.walletTokensSelect?.value || "").trim();
-  const id = Number(val);
-  if (!Number.isFinite(id) || id < 1 || id > 10000) return;
-  if (el.friendsiesId) el.friendsiesId.value = String(id);
-  // Auto-load immediately on selection (better UX)
-  loadFriendsies(id);
-  updateCarouselActive();
-});
-
-el.randomBtn?.addEventListener("click", () => {
+sceneUi.randomBtn?.addEventListener("click", () => {
   const walletIds = getWalletTokenIds();
   const id = walletIds ? getRandomFromArray(walletIds) : 1 + Math.floor(Math.random() * 10000);
   if (!id) return;
-  if (el.friendsiesId) el.friendsiesId.value = String(id);
+  if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(id);
   loadFriendsies(id);
   updateCarouselActive();
 });
 
-el.friendsiesId?.addEventListener("keydown", (e) => {
+sceneUi.friendsiesId?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") loadByInput();
 });
 
-el.autoRandomOn?.addEventListener("change", (e) => {
+sceneUi.autoRandomOn?.addEventListener("change", (e) => {
   setAutoRandom(!!e.target.checked);
 });
 
-el.playBtn?.addEventListener("click", () => playAnimUrl(getSelectedAnimUrl()));
+sceneUi.playBtn?.addEventListener("click", () => playAnimUrl(getSelectedAnimUrl()));
 
-el.stopBtn?.addEventListener("click", () => {
+sceneUi.stopBtn?.addEventListener("click", () => {
   if (mixer) mixer.stopAllAction();
   currentAction = null;
   setStatus("anim stopped");
   logLine("■ Animation stopped");
 });
 
-el.printTraitsBtn?.addEventListener("click", printTraits);
-el.printRigBtn?.addEventListener("click", printRigBones);
-el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
 
 // ----------------------------
 // Boot sequence
@@ -2947,8 +2730,8 @@ el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
   // Showcase mode ONLY when wallet is provided via URL path (not query, not manual).
   IS_SHOWCASE_MODE = !!ownerFromPath;
 
-  if (owner && el.walletInput) {
-    el.walletInput.value = owner;
+  if (owner && walletUi.walletInput) {
+    walletUi.walletInput.value = owner;
     // Don't block boot if wallet lookup fails.
     doWalletLookup();
   }
@@ -2978,7 +2761,7 @@ el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
       if (IS_SHOWCASE_MODE && Number.isFinite(SHOWCASE_PENDING_TOKEN_ID)) {
         const id = Number(SHOWCASE_PENDING_TOKEN_ID);
         SHOWCASE_PENDING_TOKEN_ID = null;
-        if (el.friendsiesId) el.friendsiesId.value = String(id);
+        if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(id);
         loadFriendsies(id);
         return;
       }
@@ -3005,8 +2788,8 @@ function animate() {
   if (FREEZE_POS && bodySkeleton) restoreRestPositionsExceptHips();
 
   // Camera controls
-  const orbitEnabled = el.orbitOn?.checked ?? true;
-  const autoRot = el.autoRotateOn?.checked ?? false;
+  const orbitEnabled = sceneUi.orbitOn?.checked ?? true;
+  const autoRot = sceneUi.autoRotateOn?.checked ?? false;
 
   controls.enabled = orbitEnabled;
   controls.autoRotate = orbitEnabled && autoRot;
