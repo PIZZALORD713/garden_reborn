@@ -428,6 +428,215 @@ const el = {
   clearLogBtn: document.getElementById("clearLogBtn")
 };
 
+class TokenWheel3D {
+  constructor(scene, { onTokenSnap } = {}) {
+    this.scene = scene;
+    this.onTokenSnap = typeof onTokenSnap === "function" ? onTokenSnap : null;
+
+    this.tokenIds = [];
+    this.billboards = [];
+    this.wheelGroup = new THREE.Group();
+    this.wheelGroup.name = "TokenWheel3D";
+    this.wheelGroup.position.set(0, 1.25, 0);
+    this.scene.add(this.wheelGroup);
+
+    this.radius = 2.2;
+    this.wheelAngle = 0;
+    this.wheelVelocity = 0;
+    this.damping = 0.94;
+    this.snapThreshold = 0.002;
+    this.impulseStrength = 0.04;
+    this.selectedIndex = -1;
+    this.isUserInteracting = false;
+  }
+
+  setTokens(tokenIds) {
+    const ordered = (tokenIds || [])
+      .map((x) => Number(x))
+      .filter((x) => Number.isFinite(x) && x > 0)
+      .sort((a, b) => a - b);
+
+    const currentTokenId = this.tokenIds[this.selectedIndex] || null;
+
+    this.disposeBillboards();
+    this.tokenIds = ordered;
+    this.wheelAngle = 0;
+    this.wheelVelocity = 0;
+    this.selectedIndex = -1;
+
+    if (!this.tokenIds.length) {
+      this.wheelGroup.visible = false;
+      return;
+    }
+
+    this.wheelGroup.visible = true;
+    for (let i = 0; i < this.tokenIds.length; i++) {
+      const id = this.tokenIds[i];
+      const billboard = this.createBillboard(id);
+      this.billboards.push(billboard);
+      this.wheelGroup.add(billboard.mesh);
+    }
+
+    const nextToken = currentTokenId && this.tokenIds.includes(currentTokenId)
+      ? currentTokenId
+      : this.tokenIds[0];
+    this.setSelectedToken(nextToken, { emit: false });
+  }
+
+  setSelectedToken(tokenId, { emit = true } = {}) {
+    const id = Number(tokenId);
+    const idx = this.tokenIds.indexOf(id);
+    if (idx < 0) return;
+
+    this.selectedIndex = idx;
+    this.wheelAngle = this.angleForIndex(idx);
+    this.wheelVelocity = 0;
+    this.isUserInteracting = false;
+    this.syncBillboardScales();
+
+    if (emit && this.onTokenSnap) {
+      this.onTokenSnap(id);
+    }
+  }
+
+  impulse(direction) {
+    if (!this.tokenIds.length) return;
+    const dir = Math.sign(Number(direction) || 0);
+    if (!dir) return;
+    this.isUserInteracting = true;
+    this.wheelVelocity += dir * this.impulseStrength;
+  }
+
+  update(dt, camera) {
+    if (!this.tokenIds.length) return;
+
+    const frameScale = Math.max(0, dt * 60);
+    this.wheelAngle += this.wheelVelocity * frameScale;
+    this.wheelVelocity *= Math.pow(this.damping, frameScale);
+
+    if (Math.abs(this.wheelVelocity) < this.snapThreshold) {
+      const nextIndex = this.getNearestIndex();
+      const targetAngle = this.angleForIndex(nextIndex);
+      const angleDelta = targetAngle - this.wheelAngle;
+
+      this.wheelAngle += angleDelta * Math.min(1, dt * 18);
+
+      if (Math.abs(angleDelta) < 0.0005) {
+        this.wheelAngle = targetAngle;
+        this.wheelVelocity = 0;
+
+        const changed = this.selectedIndex !== nextIndex;
+        this.selectedIndex = nextIndex;
+        this.isUserInteracting = false;
+
+        if (changed && this.onTokenSnap) {
+          this.onTokenSnap(this.tokenIds[this.selectedIndex]);
+        }
+      }
+    }
+
+    this.layout(camera);
+    this.syncBillboardScales();
+  }
+
+  dispose() {
+    this.disposeBillboards();
+    if (this.wheelGroup?.parent) this.wheelGroup.parent.remove(this.wheelGroup);
+  }
+
+  createBillboard(tokenId) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "rgba(10, 14, 25, 0.72)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+
+    ctx.font = "600 52px Inter, system-ui, -apple-system, sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`#${tokenId}`, canvas.width / 2, canvas.height / 2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.anisotropy = 2;
+    texture.needsUpdate = true;
+
+    const geometry = new THREE.PlaneGeometry(0.9, 0.45);
+    const material = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.userData.tokenId = tokenId;
+
+    return { mesh, texture, material, geometry };
+  }
+
+  layout(camera) {
+    if (!camera) return;
+    const count = this.billboards.length;
+    if (!count) return;
+
+    const step = (Math.PI * 2) / count;
+
+    for (let i = 0; i < count; i++) {
+      const a = this.wheelAngle + i * step;
+      const x = Math.sin(a) * this.radius;
+      const z = Math.cos(a) * this.radius;
+      const y = Math.sin(a * 2.0) * 0.05;
+
+      const item = this.billboards[i];
+      item.mesh.position.set(x, y, z);
+      item.mesh.lookAt(camera.position);
+    }
+  }
+
+  angleForIndex(index) {
+    const step = (Math.PI * 2) / Math.max(1, this.tokenIds.length);
+    return -index * step;
+  }
+
+  getNearestIndex() {
+    if (!this.tokenIds.length) return -1;
+    const step = (Math.PI * 2) / this.tokenIds.length;
+    const idx = Math.round(-this.wheelAngle / step);
+    return ((idx % this.tokenIds.length) + this.tokenIds.length) % this.tokenIds.length;
+  }
+
+  syncBillboardScales() {
+    for (let i = 0; i < this.billboards.length; i++) {
+      const selected = i === this.selectedIndex;
+      this.billboards[i].mesh.scale.setScalar(selected ? 1.2 : 1.0);
+    }
+  }
+
+  disposeBillboards() {
+    for (const item of this.billboards) {
+      if (item.mesh?.parent) item.mesh.parent.remove(item.mesh);
+      item.texture?.dispose();
+      item.material?.dispose();
+      item.geometry?.dispose();
+    }
+    this.billboards = [];
+  }
+}
+
+const tokenWheel = new TokenWheel3D(scene, {
+  onTokenSnap: (tokenId) => {
+    if (!Number.isFinite(tokenId)) return;
+    if (el.friendsiesId) el.friendsiesId.value = String(tokenId);
+    loadFriendsies(tokenId);
+  }
+});
+
 // Settings tabs (minimal-impact; preserves existing control IDs)
 function initSettingsTabs() {
   const tablist = document.querySelector('[data-tabs="settings"][role="tablist"]');
@@ -2418,6 +2627,7 @@ function setAutoRandom(on) {
 // restore auto-random preference
 setAutoRandom(getBoolLS(LS_AUTORANDOM, false));
 syncOwnedModeLabels();
+setTokenWheelVisible(false);
 
 // ----------------------------
 // Wallet lookup (Moralis via /api proxy)
@@ -2478,221 +2688,16 @@ function setWalletUiState({ busy = false, tokenIds = null, hint = null } = {}) {
   if (el.walletHint && hint) el.walletHint.textContent = hint;
 }
 
-var carouselAllTokenIds = [];
-var carouselWindowStart = 0; // legacy window paging (no longer used by dial-style carousel)
+function setTokenWheelVisible(visible) {
+  const isVisible = !!visible;
+  if (tokenWheel?.wheelGroup) tokenWheel.wheelGroup.visible = isVisible;
 
-function wrapIndex(i, n) {
-  if (n <= 0) return 0;
-  return ((i % n) + n) % n;
-}
-
-function orderTokenIds(tokenIdsRaw) {
-  // Stable, deterministic ordering: numeric ascending.
-  return (tokenIdsRaw || [])
-    .map((x) => Number(x))
-    .filter((x) => Number.isFinite(x) && x > 0)
-    .sort((a, b) => a - b);
-}
-
-function findCurrentIndex(orderedIds, currentId) {
-  if (!Number.isFinite(currentId) || currentId <= 0) return -1;
-  return orderedIds.indexOf(currentId);
-}
-
-function computeWindowIds(orderedIds, currentId, W, preferredDialRepeats = true) {
-  const N = orderedIds.length;
-  if (N === 0) return { N, W: 0, center: 0, currentIndex: -1, visible: [] };
-
-  let currentIndex = findCurrentIndex(orderedIds, currentId);
-  if (currentIndex < 0) currentIndex = 0;
-
-  let windowSize = W;
-  if (!preferredDialRepeats) windowSize = Math.min(W, N);
-
-  const center = Math.floor(windowSize / 2);
-  const visible = [];
-
-  for (let i = 0; i < windowSize; i++) {
-    const offset = i - center;
-    visible.push(orderedIds[wrapIndex(currentIndex + offset, N)]);
-  }
-
-  return { N, W: windowSize, center, currentIndex, visible };
-}
-
-function selectNextId(orderedIds, currentId) {
-  const N = orderedIds.length;
-  if (N === 0) return null;
-  if (N === 1) return orderedIds[0];
-
-  let idx = findCurrentIndex(orderedIds, currentId);
-  if (idx < 0) idx = 0;
-
-  return orderedIds[wrapIndex(idx + 1, N)];
-}
-
-function selectPrevId(orderedIds, currentId) {
-  const N = orderedIds.length;
-  if (N === 0) return null;
-  if (N === 1) return orderedIds[0];
-
-  let idx = findCurrentIndex(orderedIds, currentId);
-  if (idx < 0) idx = 0;
-
-  return orderedIds[wrapIndex(idx - 1, N)];
-}
-
-function getCarouselWindowSize() {
-  const w = window.innerWidth || 0;
-  if (w >= 900) return 15;
-  if (w >= 600) return 10;
-  return 5;
-}
-
-function clamp(n, a, b) {
-  return Math.min(b, Math.max(a, n));
-}
-
-function setCarouselVisible(visible) {
   if (el.carousel) {
-    el.carousel.style.display = visible ? "block" : "none";
-    el.carousel.setAttribute("aria-hidden", visible ? "false" : "true");
+    el.carousel.style.display = isVisible ? "block" : "none";
+    el.carousel.setAttribute("aria-hidden", isVisible ? "false" : "true");
   }
-  if (el.carouselPeekBtn) {
-    el.carouselPeekBtn.style.display = visible ? "block" : "none";
-  }
-}
-
-var peekTimer = null;
-var carouselIsOpen = false;
-
-function setCarouselOpen(open) {
-  carouselIsOpen = !!open;
-  if (el.carousel) {
-    el.carousel.classList.toggle("open", carouselIsOpen);
-    // Hover reveal only in showcase mode (otherwise it can get in the way)
-    el.carousel.classList.toggle("hoverReveal", !!IS_SHOWCASE_MODE);
-  }
-  if (el.carouselPeekBtn) {
-    el.carouselPeekBtn.classList.toggle("open", carouselIsOpen);
-    // default icon state; updateCarouselActive can temporarily show token id
-    el.carouselPeekBtn.textContent = carouselIsOpen ? "▾" : "▴";
-  }
-}
-
-function setCarouselWindowAroundId(id) {
-  const idx = carouselAllTokenIds.indexOf(id);
-  if (idx < 0) return;
-  const size = getCarouselWindowSize();
-  const maxStart = Math.max(0, carouselAllTokenIds.length - size);
-  carouselWindowStart = clamp(idx - Math.floor(size / 2), 0, maxStart);
-}
-
-function shiftCarouselWindow(dir) {
-  const size = getCarouselWindowSize();
-  const maxStart = Math.max(0, carouselAllTokenIds.length - size);
-  const next = carouselWindowStart + dir * size;
-
-  // Wrap-around paging so arrows can be used indefinitely.
-  if (dir > 0 && next > maxStart) {
-    carouselWindowStart = 0;
-    return;
-  }
-  if (dir < 0 && next < 0) {
-    carouselWindowStart = maxStart;
-    return;
-  }
-
-  carouselWindowStart = clamp(next, 0, maxStart);
-}
-
-function scrollCarouselByPage(dir) {
-  // If the user is paging, keep the carousel open.
-  setCarouselOpen(true);
-
-  // Dial-style behavior: arrows step selection (wrap-around), not page the window.
-  const ordered = carouselAllTokenIds || [];
-  const currentId = Number(el.friendsiesId?.value || 0);
-  const nextId = dir > 0 ? selectNextId(ordered, currentId) : selectPrevId(ordered, currentId);
-  if (!nextId) return;
-
-  if (el.friendsiesId) el.friendsiesId.value = String(nextId);
-  loadFriendsies(nextId);
-  updateCarouselActive();
-}
-
-function renderCarousel(tokenIds) {
-  if (!el.carouselTrack) return;
-  el.carouselTrack.innerHTML = "";
-
-  if (!tokenIds || !tokenIds.length) {
-    carouselAllTokenIds = [];
-    carouselWindowStart = 0;
-    setCarouselVisible(false);
-    return;
-  }
-
-  // Canonical ordering (stable per wallet)
-  carouselAllTokenIds = orderTokenIds(tokenIds);
-  const currentId = Number(el.friendsiesId?.value || 0);
-
-  const size = getCarouselWindowSize();
-  const { visible, center } = computeWindowIds(
-    carouselAllTokenIds,
-    currentId,
-    size,
-    true // dial repeats when N < W
-  );
-
-  setCarouselVisible(true);
-
-  // Don't stomp the user's open/closed state on every re-render.
-  // Only set a default the first time we ever show the carousel.
-  if (typeof carouselIsOpen !== "boolean") carouselIsOpen = false;
-  if (!el.carousel?.dataset?.carouselInit) {
-    setCarouselOpen(!IS_SHOWCASE_MODE);
-    if (el.carousel) el.carousel.dataset.carouselInit = "1";
-  } else {
-    setCarouselOpen(carouselIsOpen);
-  }
-
-  for (let i = 0; i < visible.length; i++) {
-    const id = visible[i];
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className =
-      "carouselItem" + (i === center ? " needle" : "") + (id === currentId ? " active" : "");
-    btn.textContent = `#${id}`;
-    btn.setAttribute("role", "listitem");
-    btn.addEventListener("click", () => {
-      if (el.friendsiesId) el.friendsiesId.value = String(id);
-      loadFriendsies(id);
-      updateCarouselActive();
-    });
-    el.carouselTrack.appendChild(btn);
-  }
-}
-
-function updateCarouselActive() {
-  if (!el.carouselTrack) return;
-  const currentId = Number(el.friendsiesId?.value || 0);
-
-  // Dial-style carousel: selection change affects the entire window.
-  if (carouselAllTokenIds?.length) {
-    renderCarousel(carouselAllTokenIds);
-  }
-
-  // Peek button shows current token briefly when closed (showcase mode)
-  if (el.carouselPeekBtn && IS_SHOWCASE_MODE) {
-    const isOpen = !!el.carousel?.classList.contains("open");
-    if (!isOpen && Number.isFinite(currentId) && currentId > 0) {
-      if (peekTimer) clearTimeout(peekTimer);
-      el.carouselPeekBtn.textContent = `#${currentId}`;
-      peekTimer = setTimeout(() => {
-        el.carouselPeekBtn.textContent = "▴";
-      }, 1400);
-    }
-  }
+  if (el.carouselTrack) el.carouselTrack.style.display = "none";
+  if (el.carouselPeekBtn) el.carouselPeekBtn.style.display = "none";
 }
 
 function setWalletTokensSelect(tokenIds) {
@@ -2768,7 +2773,7 @@ function loadByInput() {
     return setStatus("enter a valid ID (1–10000)");
   }
   loadFriendsies(id);
-  updateCarouselActive();
+  tokenWheel.setSelectedToken(id, { emit: false });
 }
 
 el.loadBtn?.addEventListener("click", loadByInput);
@@ -2789,11 +2794,9 @@ async function doWalletLookup() {
       .filter((n) => Number.isFinite(n))
       .sort((a, b) => a - b);
 
-    // reset carousel init for new wallet results
-    if (el.carousel) delete el.carousel.dataset.carouselInit;
-
     setWalletTokensSelect(tokenIds);
-    renderCarousel(tokenIds);
+    tokenWheel.setTokens(tokenIds);
+    setTokenWheelVisible(tokenIds.length > 0);
 
     const who = data.ownerResolved || data.ownerInput || input;
     const display =
@@ -2822,6 +2825,7 @@ async function doWalletLookup() {
 
         // If metadata is ready, load immediately; otherwise queue it.
         if (allFriendsies) {
+          tokenWheel.setSelectedToken(pick, { emit: false });
           loadFriendsies(pick);
         } else {
           SHOWCASE_PENDING_TOKEN_ID = pick;
@@ -2841,7 +2845,8 @@ async function doWalletLookup() {
     lastWalletLookup = null;
     syncOwnedModeLabels();
     setWalletTokensSelect([]);
-    renderCarousel([]);
+    tokenWheel.setTokens([]);
+    setTokenWheelVisible(false);
     setWalletUiState({ busy: false, tokenIds: [], hint: "Lookup failed." });
     setStatus("wallet lookup failed ❌");
     logLine(`wallet lookup failed ❌ ${err?.message || err}`, "err");
@@ -2850,17 +2855,9 @@ async function doWalletLookup() {
 
 el.walletLookupBtn?.addEventListener("click", doWalletLookup);
 
-// Carousel controls
-el.carouselPeekBtn?.addEventListener("click", () => {
-  setCarouselOpen(!carouselIsOpen);
-});
-el.carouselPrevBtn?.addEventListener("click", () => scrollCarouselByPage(-1));
-el.carouselNextBtn?.addEventListener("click", () => scrollCarouselByPage(1));
-
-window.addEventListener("resize", () => {
-  // Re-render windowed carousel on resize so it snaps to 15/10/5 behavior.
-  if (carouselAllTokenIds?.length) renderCarousel(carouselAllTokenIds);
-});
+// Token wheel controls
+el.carouselPrevBtn?.addEventListener("click", () => tokenWheel.impulse(-1));
+el.carouselNextBtn?.addEventListener("click", () => tokenWheel.impulse(1));
 
 el.walletInput?.addEventListener("keydown", (e) => {
   if (e.key === "Enter") doWalletLookup();
@@ -2884,7 +2881,7 @@ el.walletLoadSelectedBtn?.addEventListener("click", () => {
   }
   if (el.friendsiesId) el.friendsiesId.value = String(id);
   loadFriendsies(id);
-  updateCarouselActive();
+  tokenWheel.setSelectedToken(id, { emit: false });
 });
 
 el.walletTokensSelect?.addEventListener("change", () => {
@@ -2894,7 +2891,7 @@ el.walletTokensSelect?.addEventListener("change", () => {
   if (el.friendsiesId) el.friendsiesId.value = String(id);
   // Auto-load immediately on selection (better UX)
   loadFriendsies(id);
-  updateCarouselActive();
+  tokenWheel.setSelectedToken(id, { emit: false });
 });
 
 el.randomBtn?.addEventListener("click", () => {
@@ -2903,7 +2900,7 @@ el.randomBtn?.addEventListener("click", () => {
   if (!id) return;
   if (el.friendsiesId) el.friendsiesId.value = String(id);
   loadFriendsies(id);
-  updateCarouselActive();
+  tokenWheel.setSelectedToken(id, { emit: false });
 });
 
 el.friendsiesId?.addEventListener("keydown", (e) => {
@@ -2979,6 +2976,7 @@ el.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
         const id = Number(SHOWCASE_PENDING_TOKEN_ID);
         SHOWCASE_PENDING_TOKEN_ID = null;
         if (el.friendsiesId) el.friendsiesId.value = String(id);
+        tokenWheel.setSelectedToken(id, { emit: false });
         loadFriendsies(id);
         return;
       }
@@ -3011,6 +3009,8 @@ function animate() {
   controls.enabled = orbitEnabled;
   controls.autoRotate = orbitEnabled && autoRot;
   if (controls.enabled) controls.update();
+
+  tokenWheel.update(dt, camera);
 
   if (MOBILE_CAMERA_FOLLOW_LIGHTS) {
     // Keep lights aimed at the orbit target and positioned relative to camera.
