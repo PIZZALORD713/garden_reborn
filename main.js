@@ -473,8 +473,6 @@ function initUiAdapter() {
     tokenCarousel: document.getElementById("tokenCarousel") || document.getElementById("carousel"),
     tokenTrack: document.getElementById("tokenTrack") || document.getElementById("carouselTrack"),
     menuButton: document.getElementById("uiToggleBtn") || document.getElementById("menuBtn"),
-    tokenPrevBtn: document.getElementById("carouselPrevBtn"),
-    tokenNextBtn: document.getElementById("carouselNextBtn"),
     tokenPeekBtn: document.getElementById("carouselPeekBtn")
   };
 }
@@ -2322,7 +2320,8 @@ const CAROUSEL_MODES = Object.freeze({
 var carouselMode = CAROUSEL_MODES.defaultRange;
 var walletOwnedTokenIds = [];
 var carouselAllTokenIds = [...DEFAULT_CAROUSEL_TOKEN_IDS];
-var carouselWindowStart = 0; // legacy window paging (no longer used by dial-style carousel)
+var carouselSnapDebounceTimer = null;
+var carouselScrollDebounceMs = 120;
 
 function wrapIndex(i, n) {
   if (n <= 0) return 0;
@@ -2340,27 +2339,6 @@ function orderTokenIds(tokenIdsRaw) {
 function findCurrentIndex(orderedIds, currentId) {
   if (!Number.isFinite(currentId) || currentId <= 0) return -1;
   return orderedIds.indexOf(currentId);
-}
-
-function computeWindowIds(orderedIds, currentId, W, preferredDialRepeats = true) {
-  const N = orderedIds.length;
-  if (N === 0) return { N, W: 0, center: 0, currentIndex: -1, visible: [] };
-
-  let currentIndex = findCurrentIndex(orderedIds, currentId);
-  if (currentIndex < 0) currentIndex = 0;
-
-  let windowSize = W;
-  if (!preferredDialRepeats) windowSize = Math.min(W, N);
-
-  const center = Math.floor(windowSize / 2);
-  const visible = [];
-
-  for (let i = 0; i < windowSize; i++) {
-    const offset = i - center;
-    visible.push(orderedIds[wrapIndex(currentIndex + offset, N)]);
-  }
-
-  return { N, W: windowSize, center, currentIndex, visible };
 }
 
 function selectNextId(orderedIds, currentId) {
@@ -2383,17 +2361,6 @@ function selectPrevId(orderedIds, currentId) {
   if (idx < 0) idx = 0;
 
   return orderedIds[wrapIndex(idx - 1, N)];
-}
-
-function getCarouselWindowSize() {
-  const w = window.innerWidth || 0;
-  if (w >= 900) return 15;
-  if (w >= 600) return 10;
-  return 5;
-}
-
-function clamp(n, a, b) {
-  return Math.min(b, Math.max(a, n));
 }
 
 function setCarouselVisible(visible) {
@@ -2438,45 +2405,65 @@ function setCarouselOpen(open) {
   }
 }
 
-function setCarouselWindowAroundId(id) {
-  const idx = carouselAllTokenIds.indexOf(id);
-  if (idx < 0) return;
-  const size = getCarouselWindowSize();
-  const maxStart = Math.max(0, carouselAllTokenIds.length - size);
-  carouselWindowStart = clamp(idx - Math.floor(size / 2), 0, maxStart);
+function getCarouselCenteredIndex() {
+  const track = sceneUiAdapter.tokenTrack;
+  if (!track) return -1;
+  const trackRect = track.getBoundingClientRect();
+  const trackCenterX = trackRect.left + trackRect.width / 2;
+  const nodes = Array.from(track.querySelectorAll(".carouselItem"));
+  if (!nodes.length) return -1;
+
+  var minDistance = Number.POSITIVE_INFINITY;
+  var closestIndex = -1;
+  for (let i = 0; i < nodes.length; i++) {
+    const rect = nodes[i].getBoundingClientRect();
+    const center = rect.left + rect.width / 2;
+    const distance = Math.abs(center - trackCenterX);
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestIndex = i;
+    }
+  }
+  return closestIndex;
 }
 
-function shiftCarouselWindow(dir) {
-  const size = getCarouselWindowSize();
-  const maxStart = Math.max(0, carouselAllTokenIds.length - size);
-  const next = carouselWindowStart + dir * size;
+function onCarouselSnap({ fromKeyboard = false } = {}) {
+  const track = sceneUiAdapter.tokenTrack;
+  if (!track) return;
+  const centeredIndex = getCarouselCenteredIndex();
+  if (centeredIndex < 0) return;
 
-  // Wrap-around paging so arrows can be used indefinitely.
-  if (dir > 0 && next > maxStart) {
-    carouselWindowStart = 0;
-    return;
-  }
-  if (dir < 0 && next < 0) {
-    carouselWindowStart = maxStart;
-    return;
-  }
+  const centeredButton = track.children[centeredIndex];
+  if (!centeredButton) return;
 
-  carouselWindowStart = clamp(next, 0, maxStart);
-}
+  const centeredTokenId = Number(centeredButton.dataset.tokenId || 0);
+  if (!Number.isFinite(centeredTokenId) || centeredTokenId <= 0) return;
 
-function scrollCarouselByPage(dir) {
-  // If the user is paging, keep the carousel open.
-  setCarouselOpen(true);
-
-  // Dial-style behavior: arrows step selection (wrap-around), not page the window.
-  const ordered = carouselAllTokenIds || [];
   const currentId = Number(sceneUi.friendsiesId?.value || 0);
-  const nextId = dir > 0 ? selectNextId(ordered, currentId) : selectPrevId(ordered, currentId);
-  if (!nextId) return;
+  updateCarouselActive(centeredTokenId);
 
-  if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(nextId);
-  loadFriendsies(nextId);
-  updateCarouselActive();
+  if (currentId === centeredTokenId) return;
+
+  if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(centeredTokenId);
+  loadFriendsies(centeredTokenId);
+
+  if (!fromKeyboard) setCarouselOpen(true);
+}
+
+function queueCarouselSnapResolution() {
+  if (carouselSnapDebounceTimer) clearTimeout(carouselSnapDebounceTimer);
+  carouselSnapDebounceTimer = setTimeout(() => {
+    carouselSnapDebounceTimer = null;
+    onCarouselSnap();
+  }, carouselScrollDebounceMs);
+}
+
+function scrollCarouselToTokenId(id, behavior = "smooth") {
+  const track = sceneUiAdapter.tokenTrack;
+  if (!track) return;
+  const btn = track.querySelector(`.carouselItem[data-token-id=\"${id}\"]`);
+  if (!btn) return;
+  btn.scrollIntoView({ behavior, inline: "center", block: "nearest" });
 }
 
 function renderCarousel(tokenIds) {
@@ -2485,21 +2472,12 @@ function renderCarousel(tokenIds) {
 
   if (!tokenIds || !tokenIds.length) {
     carouselAllTokenIds = [...DEFAULT_CAROUSEL_TOKEN_IDS];
-    carouselWindowStart = 0;
     setCarouselVisible(true);
   } else {
     // Canonical ordering (stable per wallet)
     carouselAllTokenIds = orderTokenIds(tokenIds);
   }
   const currentId = Number(sceneUi.friendsiesId?.value || 0);
-
-  const size = getCarouselWindowSize();
-  const { visible, center } = computeWindowIds(
-    carouselAllTokenIds,
-    currentId,
-    size,
-    true // dial repeats when N < W
-  );
 
   setCarouselVisible(true);
 
@@ -2513,31 +2491,43 @@ function renderCarousel(tokenIds) {
     setCarouselOpen(carouselIsOpen);
   }
 
-  for (let i = 0; i < visible.length; i++) {
-    const id = visible[i];
+  for (let i = 0; i < carouselAllTokenIds.length; i++) {
+    const id = carouselAllTokenIds[i];
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className =
-      "carouselItem" + (i === center ? " needle" : "") + (id === currentId ? " active" : "");
+    btn.className = "carouselItem" + (id === currentId ? " active" : "");
     btn.textContent = `#${id}`;
-    btn.setAttribute("role", "listitem");
+    btn.dataset.tokenId = String(id);
+    btn.setAttribute("role", "option");
+    btn.setAttribute("aria-selected", id === currentId ? "true" : "false");
     btn.addEventListener("click", () => {
-      if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(id);
-      loadFriendsies(id);
-      updateCarouselActive();
+      btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      queueCarouselSnapResolution();
     });
     sceneUiAdapter.tokenTrack.appendChild(btn);
   }
+
+  sceneUiAdapter.tokenTrack.removeEventListener("scroll", queueCarouselSnapResolution);
+  sceneUiAdapter.tokenTrack.addEventListener("scroll", queueCarouselSnapResolution, {
+    passive: true
+  });
+
+  const fallbackId = Number.isFinite(currentId) && currentId > 0 ? currentId : carouselAllTokenIds[0];
+  if (fallbackId) {
+    scrollCarouselToTokenId(fallbackId, "auto");
+    onCarouselSnap();
+  }
 }
 
-function updateCarouselActive() {
+function updateCarouselActive(activeTokenId = Number(sceneUi.friendsiesId?.value || 0)) {
   if (!sceneUiAdapter.tokenTrack) return;
-  const currentId = Number(sceneUi.friendsiesId?.value || 0);
-
-  // Dial-style carousel: selection change affects the entire window.
-  if (carouselAllTokenIds?.length) {
-    renderCarousel(carouselAllTokenIds);
-  }
+  const currentId = Number(activeTokenId || 0);
+  sceneUiAdapter.tokenTrack.querySelectorAll(".carouselItem").forEach((item) => {
+    const id = Number(item.dataset.tokenId || 0);
+    const active = id === currentId;
+    item.classList.toggle("active", active);
+    item.setAttribute("aria-selected", active ? "true" : "false");
+  });
 
   // Peek button shows current token briefly when closed (showcase mode)
   if (sceneUiAdapter.tokenPeekBtn && IS_SHOWCASE_MODE) {
@@ -2686,12 +2676,30 @@ walletUi.walletLookupBtn?.addEventListener("click", doWalletLookup);
 sceneUiAdapter.tokenPeekBtn?.addEventListener("click", () => {
   setCarouselOpen(!carouselIsOpen);
 });
-sceneUiAdapter.tokenPrevBtn?.addEventListener("click", () => scrollCarouselByPage(-1));
-sceneUiAdapter.tokenNextBtn?.addEventListener("click", () => scrollCarouselByPage(1));
 
 window.addEventListener("resize", () => {
-  // Re-render windowed carousel on resize so it snaps to 15/10/5 behavior.
-  if (carouselAllTokenIds?.length) renderCarousel(carouselAllTokenIds);
+  queueCarouselSnapResolution();
+});
+
+window.addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  const t = e.target;
+  const tag = String(t?.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || tag === "select" || t?.isContentEditable) return;
+
+  const ordered = carouselAllTokenIds || [];
+  const currentId = Number(sceneUi.friendsiesId?.value || 0);
+  const nextId = e.key === "ArrowRight"
+    ? selectNextId(ordered, currentId)
+    : selectPrevId(ordered, currentId);
+  if (!nextId) return;
+  e.preventDefault();
+  scrollCarouselToTokenId(nextId, "smooth");
+  if (carouselSnapDebounceTimer) clearTimeout(carouselSnapDebounceTimer);
+  carouselSnapDebounceTimer = setTimeout(() => {
+    carouselSnapDebounceTimer = null;
+    onCarouselSnap({ fromKeyboard: true });
+  }, 0);
 });
 
 walletUi.walletInput?.addEventListener("keydown", (e) => {
