@@ -11,6 +11,18 @@ to the animated head without lag.
 
 ---
 
+## Minimalist mode (default)
+
+The UI now boots in a minimalist mode by default so the viewer does not depend on legacy tool surfaces.
+
+- `FEATURE_WALLET_UI = false` keeps wallet lookup UI wiring off (no automatic `/api/friendsiesTokens` call on default boot).
+- `FEATURE_ANIM_UI = false` keeps animation control wiring off.
+- `FEATURE_DEBUG_LOG = false` keeps transcript/look/export/debug wiring off.
+
+To re-enable those surfaces, flip the flags at the top of `main.js` to `true`.
+
+---
+
 ## Features
 
 - ✅ Load fRiENDSiES by token ID (1–10000)

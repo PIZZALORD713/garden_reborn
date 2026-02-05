@@ -22,6 +22,13 @@
 const ASSET_VERSION = "2026-02-03c";
 
 // ----------------------------
+// Feature flags (minimalist boot defaults)
+// ----------------------------
+const FEATURE_WALLET_UI = false;
+const FEATURE_ANIM_UI = false;
+const FEATURE_DEBUG_LOG = false;
+
+// ----------------------------
 // Assets in your repo root
 // ----------------------------
 const PANORAMA_URL = `/garden-cotton-clouds.png?v=${encodeURIComponent(
@@ -460,12 +467,25 @@ const sceneUi = {
 const walletUi = {
   walletInput: document.getElementById("walletInput"),
   walletLookupBtn: document.getElementById("walletLookupBtn"),
+  walletTokensSelect: document.getElementById("walletTokensSelect"),
+  walletLoadSelectedBtn: document.getElementById("walletLoadSelectedBtn"),
   walletDownloadJsonBtn: document.getElementById("walletDownloadJsonBtn"),
   walletHint: document.getElementById("walletHint")
 };
 
 const debugUi = {
-  log: document.getElementById("log")
+  log: FEATURE_DEBUG_LOG ? document.getElementById("log") : null
+};
+
+const toolSurfaceUi = {
+  logPanel: document.getElementById("logPanel"),
+  clearLogBtn: document.getElementById("clearLogBtn"),
+  logToggleBtn: document.getElementById("logToggleBtn"),
+  printTraitsBtn: document.getElementById("printTraitsBtn"),
+  printRigBtn: document.getElementById("printRigBtn"),
+  downloadGlbBtn: document.getElementById("downloadGlbBtn"),
+  lookToggleBtn: document.getElementById("lookToggleBtn"),
+  lookPanel: document.getElementById("lookPanel")
 };
 
 function initUiAdapter() {
@@ -567,6 +587,100 @@ function showToast(text, ms = 1000) {
 sceneUiAdapter.menuButton?.addEventListener("click", () => {
   uiRoot?.classList.toggle("uiHidden");
 });
+
+function setElementHidden(el, hidden) {
+  if (!el) return;
+  if (hidden) {
+    el.setAttribute("hidden", "");
+  } else {
+    el.removeAttribute("hidden");
+  }
+}
+
+function initLegacyToolSurfaces() {
+  const enableLegacyTools = FEATURE_WALLET_UI || FEATURE_ANIM_UI || FEATURE_DEBUG_LOG;
+
+  setElementHidden(document.getElementById("settingsTabAnim"), !FEATURE_ANIM_UI);
+  setElementHidden(document.getElementById("settingsPanelAnim"), !FEATURE_ANIM_UI);
+
+  setElementHidden(document.getElementById("settingsTabWallet"), !FEATURE_WALLET_UI);
+  setElementHidden(document.getElementById("settingsPanelWallet"), !FEATURE_WALLET_UI);
+  setWalletUiState({ tokenIds: [] });
+
+  setElementHidden(document.getElementById("settingsTabLook"), !FEATURE_DEBUG_LOG);
+  setElementHidden(document.getElementById("settingsPanelLook"), !FEATURE_DEBUG_LOG);
+  setElementHidden(document.getElementById("settingsTabExport"), !FEATURE_DEBUG_LOG);
+  setElementHidden(document.getElementById("settingsPanelExport"), !FEATURE_DEBUG_LOG);
+  setElementHidden(document.getElementById("settingsTabLog"), !FEATURE_DEBUG_LOG);
+  setElementHidden(document.getElementById("settingsPanelLog"), !FEATURE_DEBUG_LOG);
+
+  setElementHidden(toolSurfaceUi.logPanel, !FEATURE_DEBUG_LOG);
+  if (!enableLegacyTools) {
+    setStatus("minimal mode");
+  }
+}
+
+function initWalletUiBindings() {
+  if (!FEATURE_WALLET_UI) return;
+  walletUi.walletLookupBtn?.addEventListener("click", doWalletLookup);
+  walletUi.walletInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") doWalletLookup();
+  });
+  walletUi.walletTokensSelect?.addEventListener("change", () => {
+    const selectedId = Number(walletUi.walletTokensSelect?.value || 0);
+    if (!Number.isFinite(selectedId) || selectedId < 1) return;
+    if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(selectedId);
+  });
+  walletUi.walletLoadSelectedBtn?.addEventListener("click", () => {
+    const selectedId = Number(walletUi.walletTokensSelect?.value || 0);
+    if (!Number.isFinite(selectedId) || selectedId < 1) return;
+    if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(selectedId);
+    loadByInput();
+  });
+  walletUi.walletDownloadJsonBtn?.addEventListener("click", () => {
+    if (!lastWalletLookup) return;
+    const safeOwner = String(lastWalletLookup.ownerResolved || lastWalletLookup.ownerInput || "wallet")
+      .replace(/[^a-zA-Z0-9_.-]/g, "_")
+      .slice(0, 60);
+    const filename = `friendsies_wallet_${safeOwner}.json`;
+    downloadJsonObject(lastWalletLookup, filename);
+    logLine(`⬇ Downloaded wallet JSON: ${filename}`);
+  });
+}
+
+function initAnimUiBindings() {
+  if (!FEATURE_ANIM_UI) return;
+  sceneUi.playBtn?.addEventListener("click", () => playAnimUrl(getSelectedAnimUrl()));
+  sceneUi.stopBtn?.addEventListener("click", () => {
+    if (mixer) mixer.stopAllAction();
+    currentAction = null;
+    setStatus("anim stopped");
+    logLine("■ Animation stopped");
+  });
+}
+
+function initDebugUiBindings() {
+  if (!FEATURE_DEBUG_LOG) return;
+
+  toolSurfaceUi.clearLogBtn?.addEventListener("click", clearLog);
+  toolSurfaceUi.logToggleBtn?.addEventListener("click", () => {
+    uiRoot?.classList.toggle("logCollapsed");
+  });
+  toolSurfaceUi.printTraitsBtn?.addEventListener("click", printTraits);
+  toolSurfaceUi.printRigBtn?.addEventListener("click", printRigBones);
+  toolSurfaceUi.downloadGlbBtn?.addEventListener("click", downloadRigGlb);
+  toolSurfaceUi.lookToggleBtn?.addEventListener("click", () => {
+    const panel = toolSurfaceUi.lookPanel;
+    if (!panel) return;
+    panel.classList.toggle("collapsed");
+    const expanded = !panel.classList.contains("collapsed");
+    toolSurfaceUi.lookToggleBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
+    const lookControls = document.getElementById("lookControls");
+    if (lookControls) {
+      lookControls.setAttribute("aria-hidden", expanded ? "false" : "true");
+    }
+  });
+}
 
 // On mobile, orbiting often swings metals/gems into very dark angles because the key/rim
 // are fixed in world-space. Make them loosely follow the camera to keep a consistent fill.
@@ -2308,6 +2422,32 @@ function setWalletUiState({ busy = false, tokenIds = null, hint = null } = {}) {
     walletUi.walletDownloadJsonBtn.disabled = busy || !lastWalletLookup;
   }
 
+  if (walletUi.walletTokensSelect) {
+    if (Array.isArray(tokenIds)) {
+      walletUi.walletTokensSelect.innerHTML = "";
+      if (!tokenIds.length) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "(no wallet-owned tokens)";
+        walletUi.walletTokensSelect.appendChild(opt);
+      } else {
+        for (const id of tokenIds) {
+          const opt = document.createElement("option");
+          opt.value = String(id);
+          opt.textContent = `#${id}`;
+          walletUi.walletTokensSelect.appendChild(opt);
+        }
+      }
+    }
+
+    walletUi.walletTokensSelect.disabled = busy || !Array.isArray(tokenIds) || !tokenIds.length;
+  }
+
+  if (walletUi.walletLoadSelectedBtn) {
+    walletUi.walletLoadSelectedBtn.disabled =
+      busy || !Array.isArray(tokenIds) || !tokenIds.length;
+  }
+
   if (walletUi.walletHint && hint) walletUi.walletHint.textContent = hint;
 }
 
@@ -2670,8 +2810,6 @@ async function doWalletLookup() {
   }
 }
 
-walletUi.walletLookupBtn?.addEventListener("click", doWalletLookup);
-
 // Carousel controls
 sceneUiAdapter.tokenPeekBtn?.addEventListener("click", () => {
   setCarouselOpen(!carouselIsOpen);
@@ -2702,20 +2840,6 @@ window.addEventListener("keydown", (e) => {
   }, 0);
 });
 
-walletUi.walletInput?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") doWalletLookup();
-});
-
-walletUi.walletDownloadJsonBtn?.addEventListener("click", () => {
-  if (!lastWalletLookup) return;
-  const safeOwner = String(lastWalletLookup.ownerResolved || lastWalletLookup.ownerInput || "wallet")
-    .replace(/[^a-zA-Z0-9_.-]/g, "_")
-    .slice(0, 60);
-  const filename = `friendsies_wallet_${safeOwner}.json`;
-  downloadJsonObject(lastWalletLookup, filename);
-  logLine(`⬇ Downloaded wallet JSON: ${filename}`);
-});
-
 sceneUi.randomBtn?.addEventListener("click", () => {
   const walletIds = getWalletTokenIds();
   const id = walletIds ? getRandomFromArray(walletIds) : 1 + Math.floor(Math.random() * 10000);
@@ -2733,19 +2857,15 @@ sceneUi.autoRandomOn?.addEventListener("change", (e) => {
   setAutoRandom(!!e.target.checked);
 });
 
-sceneUi.playBtn?.addEventListener("click", () => playAnimUrl(getSelectedAnimUrl()));
-
-sceneUi.stopBtn?.addEventListener("click", () => {
-  if (mixer) mixer.stopAllAction();
-  currentAction = null;
-  setStatus("anim stopped");
-  logLine("■ Animation stopped");
-});
-
 
 // ----------------------------
 // Boot sequence
 // ----------------------------
+initLegacyToolSurfaces();
+initWalletUiBindings();
+initAnimUiBindings();
+initDebugUiBindings();
+
 (async function boot() {
   // Deep link support:
   // - /pizzalord.eth
@@ -2766,7 +2886,7 @@ sceneUi.stopBtn?.addEventListener("click", () => {
   // Always start in default full-range carousel mode (1..10000), independent of wallet lookup.
   setCarouselMode(CAROUSEL_MODES.defaultRange);
 
-  if (owner && walletUi.walletInput) {
+  if (FEATURE_WALLET_UI && owner && walletUi.walletInput) {
     walletUi.walletInput.value = owner;
     // Don't block boot if wallet lookup fails.
     doWalletLookup();
