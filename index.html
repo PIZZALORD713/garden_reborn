@@ -8,393 +8,66 @@
   </head>
 
   <body>
-    <div id="ui">
+    <div id="ui" class="ui">
       <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
-      <!-- Toggle ALL UI (controls + transcript) -->
-      <button
-        id="uiToggleBtn"
-        class="uiToggle"
-        type="button"
-        aria-label="Toggle UI"
-        title="Toggle UI (H)"
-      >
-        <!-- sliders icon (cleaner than the gear) -->
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M4 6h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <path d="M18 6h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <path d="M4 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <path d="M12 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <path d="M4 18h12" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <path d="M18 18h2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <path d="M14 4v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <path d="M8 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          <path d="M16 16v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-        </svg>
-      </button>
 
-      <!-- Controls panel -->
-      <div id="panel" class="panel" aria-hidden="false">
-        <div class="panelHeader">
-          <div class="brand">
-            <div class="logo" aria-hidden="true">🧸</div>
-            <div class="brandText">
-              <div class="title">fRiENDSiES Toy Box</div>
-              <div class="subtitle">Viewer + anim test (pano bg + EXR env)</div>
-            </div>
-          </div>
-          <div id="status" class="status">booting…</div>
-        </div>
-
-        <!-- Tabbed settings (keeps existing control element IDs for JS wiring) -->
-        <div class="tabs" role="tablist" aria-label="Settings" data-tabs="settings">
-          <button
-            class="tabBtn"
-            type="button"
-            role="tab"
-            id="settingsTabToken"
-            aria-selected="true"
-            aria-controls="settingsPanelToken"
-          >
-            Token
-          </button>
-          <button
-            class="tabBtn"
-            type="button"
-            role="tab"
-            id="settingsTabAnim"
-            aria-selected="false"
-            aria-controls="settingsPanelAnim"
-            tabindex="-1"
-          >
-            Anim
-          </button>
-          <button
-            class="tabBtn"
-            type="button"
-            role="tab"
-            id="settingsTabLook"
-            aria-selected="false"
-            aria-controls="settingsPanelLook"
-            tabindex="-1"
-          >
-            Look
-          </button>
-          <button
-            class="tabBtn"
-            type="button"
-            role="tab"
-            id="settingsTabWallet"
-            aria-selected="false"
-            aria-controls="settingsPanelWallet"
-            tabindex="-1"
-          >
-            Wallet
-          </button>
-          <button
-            class="tabBtn"
-            type="button"
-            role="tab"
-            id="settingsTabExport"
-            aria-selected="false"
-            aria-controls="settingsPanelExport"
-            tabindex="-1"
-          >
-            Export
-          </button>
-
-          <button
-            class="tabBtn"
-            type="button"
-            role="tab"
-            id="settingsTabLog"
-            aria-selected="false"
-            aria-controls="settingsPanelLog"
-            tabindex="-1"
-          >
-            Log
-          </button>
-
-          <button
-            id="settingsCompactBtn"
-            class="tabBtn compactBtn"
-            type="button"
-            aria-label="Toggle controls"
-            title="Toggle controls"
-          >
-            ▾
-          </button>
-        </div>
-
-        <div class="tabPanels">
-          <!-- TOKEN -->
-          <div
-            id="settingsPanelToken"
-            class="tabPanel"
-            role="tabpanel"
-            tabindex="0"
-            aria-labelledby="settingsTabToken"
-          >
-            <div class="row">
-              <div class="pill">
-                <span class="pillLabel">ID</span>
-                <input type="number" id="friendsiesId" min="1" max="10000" value="5" />
-              </div>
-
-              <button id="loadBtn" class="btn primary">Load</button>
-              <button id="randomBtn" class="btn"><span id="randomBtnText">🎲 Random</span></button>
-
-              <label class="chip" title="Auto-random every 4 seconds">
-                <input type="checkbox" id="autoRandomOn" />
-                <span id="autoRandomLabelText">✅ Auto</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- ANIM -->
-          <div
-            id="settingsPanelAnim"
-            class="tabPanel"
-            role="tabpanel"
-            tabindex="0"
-            aria-labelledby="settingsTabAnim"
-            hidden
-          >
-            <div class="row">
-              <div class="pill wide">
-                <span class="pillLabel">Anim</span>
-                <select id="animSelect"></select>
-              </div>
-
-              <button id="playBtn" class="btn primary">▶ Play</button>
-              <button id="stopBtn" class="btn danger">■ Stop</button>
-
-              <label class="chip">
-                <input type="checkbox" id="orbitOn" checked />
-                🛰 Orbit
-              </label>
-
-              <label class="chip">
-                <input type="checkbox" id="autoRotateOn" />
-                🔄 Auto
-              </label>
-            </div>
-          </div>
-
-          <!-- LOOK -->
-          <div
-            id="settingsPanelLook"
-            class="tabPanel"
-            role="tabpanel"
-            tabindex="0"
-            aria-labelledby="settingsTabLook"
-            hidden
-          >
-            <div class="lookPanel collapsed" id="lookPanel">
-              <button
-                id="lookToggleBtn"
-                class="panelToggle"
-                type="button"
-                aria-expanded="false"
-                aria-controls="lookControls"
-              >
-                <span>🎨 Look Tuning</span>
-                <span class="panelChevron" aria-hidden="true">▾</span>
-              </button>
-              <div id="lookControls" class="lookControls" aria-hidden="true">
-                <div class="sliderRow">
-                  <label for="lookExposure">toneMappingExposure</label>
-                  <input
-                    type="range"
-                    id="lookExposure"
-                    min="0.6"
-                    max="1.8"
-                    step="0.01"
-                    data-look-control="toneMappingExposure"
-                  />
-                  <span class="sliderValue" data-look-value="toneMappingExposure"></span>
-                </div>
-                <div class="sliderRow">
-                  <label for="lookHemi">hemiIntensity</label>
-                  <input
-                    type="range"
-                    id="lookHemi"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    data-look-control="hemiIntensity"
-                  />
-                  <span class="sliderValue" data-look-value="hemiIntensity"></span>
-                </div>
-                <div class="sliderRow">
-                  <label for="lookAmbient">ambientIntensity</label>
-                  <input
-                    type="range"
-                    id="lookAmbient"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    data-look-control="ambientIntensity"
-                  />
-                  <span class="sliderValue" data-look-value="ambientIntensity"></span>
-                </div>
-                <div class="sliderRow">
-                  <label for="lookKey">keyLightIntensity</label>
-                  <input
-                    type="range"
-                    id="lookKey"
-                    min="0"
-                    max="2"
-                    step="0.01"
-                    data-look-control="keyLightIntensity"
-                  />
-                  <span class="sliderValue" data-look-value="keyLightIntensity"></span>
-                </div>
-                <div class="sliderRow">
-                  <label for="lookRim">rimLightIntensity</label>
-                  <input
-                    type="range"
-                    id="lookRim"
-                    min="0"
-                    max="2"
-                    step="0.01"
-                    data-look-control="rimLightIntensity"
-                  />
-                  <span class="sliderValue" data-look-value="rimLightIntensity"></span>
-                </div>
-                <div class="sliderRow">
-                  <label for="lookEnv">envIntensityMultiplier</label>
-                  <input
-                    type="range"
-                    id="lookEnv"
-                    min="0"
-                    max="3"
-                    step="0.05"
-                    data-look-control="envIntensityMultiplier"
-                  />
-                  <span class="sliderValue" data-look-value="envIntensityMultiplier"></span>
-                </div>
-                <div class="sliderRow">
-                  <label for="lookEmissive">emissiveIntensityMultiplier</label>
-                  <input
-                    type="range"
-                    id="lookEmissive"
-                    min="0"
-                    max="4"
-                    step="0.05"
-                    data-look-control="emissiveIntensityMultiplier"
-                  />
-                  <span class="sliderValue" data-look-value="emissiveIntensityMultiplier"></span>
-                </div>
-                <div class="lookActions">
-                  <button id="copyLookBtn" class="btn">📋 Copy Current Look</button>
-                  <span class="hintText">Press <kbd>P</kbd> to print JSON.</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- WALLET -->
-          <div
-            id="settingsPanelWallet"
-            class="tabPanel"
-            role="tabpanel"
-            tabindex="0"
-            aria-labelledby="settingsTabWallet"
-            hidden
-          >
-            <div class="row">
-              <div class="pill wide">
-                <span class="pillLabel">Wallet / ENS</span>
-                <input
-                  type="text"
-                  id="walletInput"
-                  placeholder="0x… or pizzalord.eth"
-                  spellcheck="false"
-                  autocomplete="off"
-                />
-              </div>
-
-              <button id="walletLookupBtn" class="btn primary">Lookup</button>
-              <button id="walletDownloadJsonBtn" class="btn" title="Download results as JSON" disabled>
-                ⬇ Wallet JSON
-              </button>
-            </div>
-
-            <div class="row">
-              <div class="pill wide">
-                <span class="pillLabel">Wallet-owned Friendsies</span>
-                <select id="walletTokensSelect" disabled>
-                  <option value="">(wallet lookup optional)</option>
-                </select>
-              </div>
-
-              <button id="walletLoadSelectedBtn" class="btn">Load Highlighted</button>
-
-              <span class="hintText" id="walletHint">Tip: browse #1–#10000 in the carousel; wallet lookup is optional for owned-token overlays.</span>
-            </div>
-          </div>
-
-          <!-- EXPORT -->
-          <div
-            id="settingsPanelExport"
-            class="tabPanel"
-            role="tabpanel"
-            tabindex="0"
-            aria-labelledby="settingsTabExport"
-            hidden
-          >
-            <div class="row tiny">
-              <button id="printTraitsBtn" class="btn">🧩 Trait URLs</button>
-              <button id="printRigBtn" class="btn">🛠 Rig Bones</button>
-              <button id="downloadGlbBtn" class="btn primary">⬇ Download Rig (.glb)</button>
-              <span class="hintText">Tip: press <kbd>H</kbd> to hide UI, <kbd>L</kbd> to collapse transcript.</span>
-            </div>
-          </div>
-
-          <!-- LOG (mobile: transcript is moved here via JS) -->
-          <div
-            id="settingsPanelLog"
-            class="tabPanel"
-            role="tabpanel"
-            tabindex="0"
-            aria-labelledby="settingsTabLog"
-            hidden
-          ></div>
-        </div>
+      <div id="menuPanel" class="menuPanel" aria-hidden="true">
+        <button class="menuItem" type="button" data-action="find">
+          <span class="menuIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+              <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2" />
+              <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="menuLabel">Find</span>
+        </button>
+        <button class="menuItem" type="button" data-action="share">
+          <span class="menuIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+              <path
+                d="M4 7h16v10H4z"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linejoin="round"
+              />
+              <path d="M4 7l8 6 8-6" stroke="currentColor" stroke-width="2" />
+            </svg>
+          </span>
+          <span class="menuLabel">Share</span>
+        </button>
+        <button class="menuItem" type="button" data-action="vibe">
+          <span class="menuIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+              <path
+                d="M12 3v8"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <circle cx="12" cy="14.5" r="5.5" stroke="currentColor" stroke-width="2" />
+              <path
+                d="M9 18.5c1.5-1 4.5-1 6 0"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
+          </span>
+          <span class="menuLabel">Vibe</span>
+        </button>
       </div>
 
-      <!-- Transcript / pseudo console (collapsible) -->
-      <div id="logPanel" class="logPanel" aria-hidden="false">
-        <div class="logHeader">
-          <div class="logTitle">📟 Transcript</div>
-          <div class="logActions">
-            <button id="clearLogBtn" class="iconBtn" type="button" title="Clear transcript">Clear</button>
-            <button
-              id="logToggleBtn"
-              class="iconBtn"
-              type="button"
-              aria-label="Toggle transcript"
-              title="Toggle transcript (L)"
-            >
-              <span id="logChevron" aria-hidden="true">▾</span>
-            </button>
-          </div>
-        </div>
-        <div id="log" class="log"></div>
-      </div>
-
-      <!-- Bottom carousel (wallet tokens) -->
-      <button
-        id="carouselPeekBtn"
-        class="carouselPeek"
-        type="button"
-        aria-label="Toggle token carousel"
-        title="Toggle tokens"
-      >
-        ▴
+      <button id="menuBtn" class="menuBtn menuHidden" type="button" aria-label="Menu" title="Menu">
+        <span class="menuBars" aria-hidden="true"><span></span></span>
       </button>
 
-      <div id="carousel" class="carousel" aria-hidden="true">
+      <div id="tokenDial" class="tokenDial dialIdle">
+        <span class="dialLabel">Token</span>
+        <input type="number" id="friendsiesId" min="1" max="10000" value="5" />
+        <button id="loadBtn" class="dialBtn" type="button">Go</button>
+      </div>
+
+      <div id="carousel" class="carousel" aria-hidden="false">
         <div class="carouselTrack" id="carouselTrack" role="listbox" aria-label="Token picker"></div>
       </div>
     </div>

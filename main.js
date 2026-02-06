@@ -63,6 +63,7 @@ let lastUserActivityMs = Date.now();
 
 function noteUserActivity() {
   lastUserActivityMs = Date.now();
+  handleUiActivity();
   // If auto-random is on, any activity resets the idle timer.
   if (autoRandomEnabled) scheduleAutoRandomFromIdle();
 }
@@ -564,9 +565,104 @@ function showToast(text, ms = 1000) {
   }, Math.max(250, ms | 0));
 }
 
+const MENU_HIDE_AFTER_MS = 3000;
+const IDLE_THRESHOLD_MS = 10000;
+const DIAL_IDLE_AFTER_MS = 3500;
+const menuPanel = document.getElementById("menuPanel");
+const tokenDial = document.getElementById("tokenDial");
+
+let menuHideTimer = null;
+let idleTimer = null;
+let dialIdleTimer = null;
+let isIdle = false;
+let menuOpen = false;
+
+function setMenuOpen(open) {
+  menuOpen = !!open;
+  uiRoot?.classList.toggle("menuOpen", menuOpen);
+  if (menuPanel) menuPanel.setAttribute("aria-hidden", menuOpen ? "false" : "true");
+  if (menuOpen) {
+    showMenuButton();
+  } else {
+    scheduleMenuHide();
+  }
+}
+
+function showMenuButton() {
+  sceneUiAdapter.menuButton?.classList.remove("menuHidden");
+}
+
+function scheduleMenuHide() {
+  if (!sceneUiAdapter.menuButton || menuOpen) return;
+  if (menuHideTimer) clearTimeout(menuHideTimer);
+  menuHideTimer = setTimeout(() => {
+    sceneUiAdapter.menuButton?.classList.add("menuHidden");
+  }, MENU_HIDE_AFTER_MS);
+}
+
+function showMenuButtonTransient() {
+  showMenuButton();
+  scheduleMenuHide();
+}
+
+function setDialIdle(idle) {
+  tokenDial?.classList.toggle("dialIdle", idle);
+}
+
+function scheduleDialIdle() {
+  if (!tokenDial) return;
+  if (dialIdleTimer) clearTimeout(dialIdleTimer);
+  setDialIdle(false);
+  dialIdleTimer = setTimeout(() => {
+    setDialIdle(true);
+  }, DIAL_IDLE_AFTER_MS);
+}
+
+function markIdle() {
+  isIdle = true;
+  uiRoot?.classList.add("isIdle");
+}
+
+function resetIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    markIdle();
+  }, IDLE_THRESHOLD_MS);
+}
+
+function handleUiActivity() {
+  if (isIdle) {
+    isIdle = false;
+    uiRoot?.classList.remove("isIdle");
+    showMenuButtonTransient();
+  }
+  scheduleDialIdle();
+  resetIdleTimer();
+}
+
 sceneUiAdapter.menuButton?.addEventListener("click", () => {
-  uiRoot?.classList.toggle("uiHidden");
+  setMenuOpen(!menuOpen);
 });
+
+document.addEventListener("pointerdown", (event) => {
+  if (!menuOpen) return;
+  const target = event.target;
+  if (sceneUiAdapter.menuButton?.contains(target)) return;
+  if (menuPanel?.contains(target)) return;
+  setMenuOpen(false);
+});
+
+menuPanel?.querySelectorAll(".menuItem").forEach((item) => {
+  item.addEventListener("click", () => {
+    const action = item.dataset.action || "action";
+    showToast(`${action} coming soon`, 1200);
+    setMenuOpen(false);
+  });
+});
+
+showMenuButtonTransient();
+scheduleDialIdle();
+resetIdleTimer();
 
 // On mobile, orbiting often swings metals/gems into very dark angles because the key/rim
 // are fixed in world-space. Make them loosely follow the camera to keep a consistent fill.
