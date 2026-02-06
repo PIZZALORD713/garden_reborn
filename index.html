@@ -5,11 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>fRiENDSiES Toy Box</title>
     <link rel="stylesheet" href="/style.css?v=2026-02-03c" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@glidejs/glide@3.6.0/dist/css/glide.core.min.css"
+    />
   </head>
 
   <body>
     <div id="ui" class="ui">
       <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+      <input type="hidden" id="friendsiesId" value="13" />
 
       <div id="menuPanel" class="menuPanel" aria-hidden="true">
         <button class="menuItem" type="button" data-action="find">
@@ -61,14 +66,25 @@
         <span class="menuBars" aria-hidden="true"><span></span></span>
       </button>
 
-      <div id="tokenDial" class="tokenDial dialIdle">
-        <span class="dialLabel">Token</span>
-        <input type="number" id="friendsiesId" min="1" max="10000" value="5" />
-        <button id="loadBtn" class="dialBtn" type="button">Go</button>
+      <div id="menuSheets" class="menuSheets" aria-hidden="true">
+        <div id="sheetFind" class="menuSheet" aria-hidden="true">
+          <div class="sheetTitle">Find</div>
+          <div class="sheetBody">Search by token, trait, wallet, or ENS (coming soon).</div>
+        </div>
+        <div id="sheetShare" class="menuSheet" aria-hidden="true">
+          <div class="sheetTitle">Share</div>
+          <div class="sheetBody">Share sheet placeholder (coming soon).</div>
+        </div>
+        <div id="sheetVibe" class="menuSheet" aria-hidden="true">
+          <div class="sheetTitle">Vibe</div>
+          <div class="sheetBody">Dev + settings placeholder (coming soon).</div>
+        </div>
       </div>
 
-      <div id="carousel" class="carousel" aria-hidden="false">
-        <div class="carouselTrack" id="carouselTrack" role="listbox" aria-label="Token picker"></div>
+      <div id="tokenCarousel" class="glide carousel" aria-hidden="false">
+        <div class="glide__track" data-glide-el="track">
+          <ul class="glide__slides" id="carouselSlides" aria-label="Token picker"></ul>
+        </div>
       </div>
     </div>
 
@@ -85,6 +101,7 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@glidejs/glide@3.6.0/dist/glide.min.js"></script>
 
     <script src="/main.js?v=2026-02-03c"></script>
   </body>

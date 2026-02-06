@@ -167,58 +167,58 @@ canvas {
   color: var(--muted);
 }
 
-/* Token dial */
-.tokenDial {
-  pointer-events: auto;
+/* Menu sheets */
+.menuSheets {
+  pointer-events: none;
   position: absolute;
-  left: 18px;
-  bottom: 22px;
-  display: inline-flex;
-  align-items: center;
+  right: 18px;
+  bottom: 126px;
+  display: grid;
   gap: 10px;
-  padding: 10px 14px;
+  z-index: 4;
+}
+
+.menuSheets.isActive {
+  pointer-events: auto;
+}
+
+.menuSheet {
+  pointer-events: auto;
+  display: none;
+  padding: 12px 16px;
   border-radius: 16px;
   background: var(--glass);
   border: 1px solid var(--glass-border);
-  backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(20px) saturate(1.35);
   box-shadow: var(--glass-shadow);
-  color: var(--ink);
-  transition: opacity 220ms ease, transform 220ms ease;
+  max-width: 240px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 200ms ease, transform 200ms ease;
 }
 
-.tokenDial.dialIdle {
-  opacity: 0.45;
-  transform: translateY(6px);
+.menuSheet.isActive {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
 }
 
-.dialLabel {
-  font-size: 11px;
+.sheetTitle {
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+  margin-bottom: 6px;
 }
 
-.tokenDial input[type="number"] {
-  width: 80px;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 14px;
-  font-weight: 600;
+.sheetBody {
+  font-size: 13px;
   color: var(--ink);
+  line-height: 1.4;
 }
 
-.dialBtn {
-  border: none;
-  border-radius: 12px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  background: var(--accent);
-  color: #fff;
-}
-
+/* Bottom carousel */
 /* Bottom carousel */
 .carousel {
   pointer-events: auto;
@@ -226,8 +226,8 @@ canvas {
   left: 50%;
   bottom: 24px;
   transform: translateX(-50%);
-  height: 84px;
-  width: min(720px, calc(100vw - 40px));
+  height: 92px;
+  width: min(760px, calc(100vw - 40px));
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(20px) saturate(1.2);
@@ -238,31 +238,23 @@ canvas {
   display: block;
 }
 
-.carouselTrack {
+.glide__track {
   height: 100%;
+}
+
+.glide__slides {
+  margin: 0;
+  padding: 14px 0;
+  height: 100%;
+  list-style: none;
+}
+
+.glide__slide {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px calc(50% - 56px);
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.carouselTrack::-webkit-scrollbar { height: 6px; }
-.carouselTrack::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.15);
-  border-radius: 999px;
-}
-
-.carouselItem {
-  flex: 0 0 auto;
+  justify-content: center;
   min-width: 112px;
   text-align: center;
-  scroll-snap-align: center;
-  scroll-snap-stop: always;
   padding: 10px 14px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,0.42);
@@ -270,17 +262,27 @@ canvas {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 6px 18px rgba(20, 28, 60, 0.12);
   font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
   user-select: none;
   color: var(--muted);
+  opacity: 0.6;
+  transition: transform 160ms ease, opacity 160ms ease;
 }
 
-.carouselItem:hover { transform: translateY(-1px); }
+.glide__slide--active {
+  transform: translateY(-2px) scale(1.03);
+  opacity: 1;
+}
 
-.carouselItem.active {
+.glide__slide--active .slideToken {
   background: linear-gradient(180deg, rgba(74,163,255,0.96), rgba(30,122,219,0.96));
   border-color: rgba(166,216,255,0.95);
   color: #fff;
+}
+
+.slideToken {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid transparent;
 }
 
 @media (max-width: 720px) {
@@ -294,14 +296,14 @@ canvas {
     bottom: 16px;
   }
 
-  .tokenDial {
-    left: 12px;
-    bottom: 16px;
-  }
-
   .carousel {
     bottom: 88px;
     width: calc(100vw - 24px);
+  }
+
+  .menuSheets {
+    right: 12px;
+    bottom: 140px;
   }
 }
 
@@ -315,11 +317,7 @@ canvas {
     bottom: 96px;
   }
 
-  .carouselTrack {
-    padding: 14px calc(50% - 50px);
-  }
-
-  .carouselItem {
+  .glide__slide {
     min-width: 96px;
     padding: 9px 12px;
   }
