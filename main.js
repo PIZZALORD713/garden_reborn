@@ -2612,10 +2612,14 @@ async function doWalletLookup() {
 
     walletOwnedTokenIds = tokenIds;
 
+    // When wallet lookup succeeds, switch dial source to wallet-owned IDs.
+    // If wallet has no tokens, fall back to the default 1..10000 range.
+    setCarouselMode(
+      tokenIds.length ? CAROUSEL_MODES.walletOwned : CAROUSEL_MODES.defaultRange
+    );
+
     // reset carousel init for new wallet results
     if (sceneUiAdapter.tokenCarousel) delete sceneUiAdapter.tokenCarousel.dataset.carouselInit;
-
-    renderCarousel(getCarouselTokenIdsForMode());
 
     const who = data.ownerResolved || data.ownerInput || input;
     const display =
@@ -2662,8 +2666,8 @@ async function doWalletLookup() {
     console.error(err);
     lastWalletLookup = null;
     walletOwnedTokenIds = [];
+    setCarouselMode(CAROUSEL_MODES.defaultRange);
     syncOwnedModeLabels();
-    renderCarousel(getCarouselTokenIdsForMode());
     setWalletUiState({ busy: false, tokenIds: [], hint: "Lookup failed." });
     setStatus("wallet lookup failed ❌");
     logLine(`wallet lookup failed ❌ ${err?.message || err}`, "err");
