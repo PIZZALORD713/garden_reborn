@@ -2171,6 +2171,7 @@ let loadDebounceTimer = null;
 let carouselScrollTimer = null;
 let imageObserver = null;
 let carouselListenersBound = false;
+let carouselLockUntilMs = 0; // suppress scroll-end selection during programmatic scroll
 
 const PREVIEW_BASE_URL =
   "https://storage.googleapis.com/friendsies-rendered-97557c";
@@ -2498,6 +2499,8 @@ function scrollToCarouselIndex(index, behavior = "smooth") {
   if (!ui.carouselViewport || !ui.slides) return;
   const slide = ui.slides.querySelector(`[data-index=\"${index}\"]`);
   if (!slide) return;
+  // Prevent scroll-end logic from overriding explicit selections.
+  carouselLockUntilMs = Date.now() + 300;
   slide.scrollIntoView({ behavior, inline: "center", block: "nearest" });
 }
 
@@ -2539,15 +2542,13 @@ function getNearestCarouselIndex() {
 }
 
 function handleCarouselScrollEnd() {
+  if (Date.now() < carouselLockUntilMs) return;
   const index = getNearestCarouselIndex();
   setActiveCarouselIndex(index);
   renderCarouselRange(index);
 }
 
 function handleCarouselScroll() {
-  if (!carouselScrollTimer) {
-    handleCarouselScrollEnd();
-  }
   if (carouselScrollTimer) clearTimeout(carouselScrollTimer);
   carouselScrollTimer = setTimeout(() => {
     carouselScrollTimer = null;
