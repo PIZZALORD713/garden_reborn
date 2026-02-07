@@ -2755,7 +2755,9 @@ window.addEventListener("pointerdown", (event) => {
       if (pendingTokenId) {
         debounceTokenLoad(pendingTokenId);
       } else {
-        requestTokenLoad(DEFAULT_TOKEN_ID);
+        // Load whatever token the carousel was initialized to (wallet deep-link uses first owned).
+        const startId = carouselTokenIds?.[activeCarouselIndex] || carouselStartTokenId || DEFAULT_TOKEN_ID;
+        requestTokenLoad(startId, { force: true });
       }
     })
     .catch((e) => {
