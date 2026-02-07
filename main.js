@@ -2163,6 +2163,7 @@ function showHamburger() {
   if (!ui.hamburger) return;
   ui.hamburger.classList.remove("is-hidden");
   if (hamburgerTimer) clearTimeout(hamburgerTimer);
+  if (menuOpen) return;
   hamburgerTimer = setTimeout(() => {
     ui.hamburger?.classList.add("is-hidden");
   }, HAMBURGER_HIDE_MS);
@@ -2190,6 +2191,7 @@ function setMenuOpen(open) {
     ui.menu.setAttribute("aria-hidden", menuOpen ? "false" : "true");
   }
   if (!menuOpen) setActivePanel(null);
+  showHamburger();
 }
 
 function setActivePanel(name) {
@@ -2335,6 +2337,13 @@ ui.menu?.addEventListener("click", (event) => {
   } else {
     setActivePanel(panel);
   }
+});
+
+window.addEventListener("pointerdown", (event) => {
+  if (!menuOpen) return;
+  const target = event.target;
+  if (ui.menu?.contains(target) || ui.hamburger?.contains(target)) return;
+  setMenuOpen(false);
 });
 
 ["pointerdown", "touchstart", "keydown", "wheel"].forEach((evt) => {
