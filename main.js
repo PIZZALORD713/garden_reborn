@@ -2471,8 +2471,12 @@ function bindCarouselListeners() {
     if (!slide || !ui.slides.contains(slide)) return;
     const index = Number(slide.dataset.index || 0);
     if (Number.isNaN(index)) return;
-    scrollToCarouselIndex(index);
+
+    // Click = explicit selection.
+    // Center it and re-window the virtualized range so more tokens are revealed left/right.
     setActiveCarouselIndex(index);
+    renderCarouselRange(index);
+    scrollToCarouselIndex(index);
   });
 
   ui.carouselViewport.addEventListener("scroll", handleCarouselScroll, {
@@ -2546,6 +2550,8 @@ function handleCarouselScrollEnd() {
   const index = getNearestCarouselIndex();
   setActiveCarouselIndex(index);
   renderCarouselRange(index);
+  // Snap the chosen token to center after scroll settles.
+  scrollToCarouselIndex(index, "smooth");
 }
 
 function handleCarouselScroll() {
