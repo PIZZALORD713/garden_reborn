@@ -21,7 +21,7 @@
         </div>
       </div>
 
-      <div class="menuStack">
+      <div id="menuStack" class="menuStack">
         <button id="hamburger" class="hamburger" type="button" aria-label="Menu">
           <span></span>
           <span></span>
@@ -65,19 +65,43 @@
             </svg>
           </button>
         </div>
-      </div>
 
-      <div id="panel-find" class="sheet" aria-hidden="true">
-        <div class="sheetTitle">Find</div>
-        <div class="sheetBody">Search sheet placeholder</div>
-      </div>
-      <div id="panel-share" class="sheet" aria-hidden="true">
-        <div class="sheetTitle">Share</div>
-        <div class="sheetBody">Share sheet placeholder</div>
-      </div>
-      <div id="panel-vibe" class="sheet" aria-hidden="true">
-        <div class="sheetTitle">Vibe</div>
-        <div class="sheetBody">Dev/settings placeholder</div>
+        <div id="panel-find" class="sheet" aria-hidden="true">
+          <div class="sheetBody">
+            <input
+              id="searchInput"
+              class="searchInput"
+              type="text"
+              placeholder="Token #, ENS, or wallet"
+              autocomplete="off"
+              inputmode="search"
+            />
+            <button
+              id="resetCollectionBtn"
+              class="sheetAction viewAllChip"
+              type="button"
+              aria-hidden="true"
+            >
+              View all
+            </button>
+            <div id="searchResults" class="searchResults"></div>
+          </div>
+        </div>
+        <div id="panel-share" class="sheet" aria-hidden="true">
+          <div class="sheetBody">
+            <button id="copyLinkBtn" class="sheetAction" type="button">Copy link</button>
+            <button id="downloadGlbBtn" class="sheetAction" type="button">Download .glb</button>
+          </div>
+        </div>
+        <div id="panel-vibe" class="sheet" aria-hidden="true">
+          <div class="sheetBody">
+            <button class="sheetAction" data-preset="Cinematic" type="button">Cinematic</button>
+            <button class="sheetAction" data-preset="Punchy Toybox" type="button">
+              Punchy Toybox
+            </button>
+            <button class="sheetAction" data-preset="Soft Pastel" type="button">Soft Pastel</button>
+          </div>
+        </div>
       </div>
     </div>
 
