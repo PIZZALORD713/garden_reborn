@@ -2176,6 +2176,8 @@ const PREVIEW_BASE_URL =
   "https://storage.googleapis.com/friendsies-rendered-97557c";
 const FALLBACK_IMAGE =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><rect width='100%25' height='100%25' fill='%23f2f1fb'/></svg>";
+const VISIBLE_CARDS = 7;
+const BUFFER_CARDS = 3;
 
 function showHamburger() {
   if (!ui.hamburger) return;
@@ -2286,6 +2288,7 @@ async function handleSearch(query) {
   if (Number.isInteger(asNum) && asNum >= 1 && asNum <= 10000) {
     const index = carouselTokenIds.indexOf(asNum);
     if (index >= 0) {
+      renderCarouselRange(index);
       scrollToCarouselIndex(index);
       setActiveCarouselIndex(index);
     } else {
@@ -2347,8 +2350,9 @@ function ensureImageObserver() {
         if (!entry.isIntersecting) return;
         const img = entry.target;
         const src = img.dataset.src;
-        if (src) {
+        if (src && !img.dataset.loaded) {
           img.src = src;
+          img.dataset.loaded = "true";
           img.removeAttribute("data-src");
         }
         imageObserver?.unobserve(img);
@@ -2356,7 +2360,7 @@ function ensureImageObserver() {
     },
     {
       root: ui.carouselViewport || null,
-      rootMargin: "140px"
+      rootMargin: "60px"
     }
   );
 }
@@ -2372,12 +2376,111 @@ function observeTokenImage(img) {
   imageObserver.observe(img);
 }
 
+function createTokenSlide(id, index) {
+  const li = document.createElement("li");
+  li.className = "tokenSlide";
+  li.dataset.index = String(index);
+  li.dataset.tokenId = String(id);
+
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "tokenCard";
+  card.setAttribute("aria-label", `Load token ${id}`);
+
+  const imageWrap = document.createElement("div");
+  imageWrap.className = "tokenImageWrap is-loading";
+
+  const image = document.createElement("img");
+  image.className = "tokenImage";
+  image.alt = `Friendsies #${id} preview`;
+  image.loading = "lazy";
+  image.dataset.src = getPreviewUrl(id);
+  image.src = FALLBACK_IMAGE;
+
+  image.addEventListener("load", () => {
+    if (image.dataset.src) return;
+    imageWrap.classList.add("is-loaded");
+    imageWrap.classList.remove("is-loading");
+  });
+
+  image.addEventListener("error", () => {
+    imageWrap.classList.add("is-error", "is-loaded");
+    imageWrap.classList.remove("is-loading");
+    image.src = FALLBACK_IMAGE;
+  });
+
+  const fallback = document.createElement("span");
+  fallback.className = "tokenImageFallback";
+  fallback.textContent = "Preview";
+
+  imageWrap.appendChild(image);
+  imageWrap.appendChild(fallback);
+
+  const label = document.createElement("span");
+  label.className = "tokenLabel";
+  label.textContent = `#${id}`;
+
+  card.appendChild(imageWrap);
+  card.appendChild(label);
+  li.appendChild(card);
+
+  return li;
+}
+
+function renderCarouselRange(centerIndex) {
+  if (!ui.slides) return;
+  if (!carouselTokenIds.length) return;
+
+  const renderStart = Math.max(0, centerIndex - BUFFER_CARDS);
+  const renderEnd = Math.min(
+    carouselTokenIds.length,
+    centerIndex + VISIBLE_CARDS + BUFFER_CARDS
+  );
+
+  const currentStart = Number(ui.slides.dataset.renderStart || 0);
+  const currentEnd = Number(ui.slides.dataset.renderEnd || 0);
+
+  if (renderStart === currentStart && renderEnd === currentEnd) return;
+
+  ui.slides.dataset.renderStart = String(renderStart);
+  ui.slides.dataset.renderEnd = String(renderEnd);
+  ui.slides.innerHTML = "";
+
+  const fragment = document.createDocumentFragment();
+  for (let i = renderStart; i < renderEnd; i++) {
+    const id = carouselTokenIds[i];
+    fragment.appendChild(createTokenSlide(id, i));
+  }
+
+  ui.slides.appendChild(fragment);
+  ui.slides.querySelectorAll(".tokenImage").forEach((img) => observeTokenImage(img));
+  setActiveCarouselIndex(centerIndex, { loadToken: false });
+  scrollToCarouselIndex(centerIndex, "auto");
+}
+
+function bindCarouselListeners() {
+  if (carouselListenersBound) return;
+  ui.slides.addEventListener("click", (event) => {
+    const slide = event.target.closest(".tokenSlide");
+    if (!slide || !ui.slides.contains(slide)) return;
+    const index = Number(slide.dataset.index || 0);
+    if (Number.isNaN(index)) return;
+    scrollToCarouselIndex(index);
+    setActiveCarouselIndex(index);
+  });
+
+  ui.carouselViewport.addEventListener("scroll", handleCarouselScroll, {
+    passive: true
+  });
+  carouselListenersBound = true;
+}
+
 function setActiveCarouselIndex(index, { loadToken: shouldLoad = true } = {}) {
   if (!Number.isFinite(index) || !ui.slides) return;
   if (activeCarouselIndex === index) return;
-  const prev = ui.slides.children[activeCarouselIndex];
+  const prev = ui.slides.querySelector(`[data-index=\"${activeCarouselIndex}\"]`);
   if (prev) prev.classList.remove("is-active");
-  const next = ui.slides.children[index];
+  const next = ui.slides.querySelector(`[data-index=\"${index}\"]`);
   if (next) next.classList.add("is-active");
   activeCarouselIndex = index;
   const tokenId = carouselTokenIds[index];
@@ -2388,7 +2491,7 @@ function setActiveCarouselIndex(index, { loadToken: shouldLoad = true } = {}) {
 
 function scrollToCarouselIndex(index, behavior = "smooth") {
   if (!ui.carouselViewport || !ui.slides) return;
-  const slide = ui.slides.children[index];
+  const slide = ui.slides.querySelector(`[data-index=\"${index}\"]`);
   if (!slide) return;
   slide.scrollIntoView({ behavior, inline: "center", block: "nearest" });
 }
@@ -2400,30 +2503,35 @@ function getCarouselMetrics() {
   const styles = window.getComputedStyle(ui.slides);
   const gap =
     Number.parseFloat(styles.columnGap || styles.gap || styles.rowGap || "0") || 0;
-  return { slideWidth, gap };
+  const renderStart = Number(ui.slides.dataset.renderStart || 0);
+  return { slideWidth, gap, renderStart };
 }
 
 function getNearestCarouselIndex() {
   const metrics = getCarouselMetrics();
   if (!metrics || !ui.carouselViewport) return 0;
-  const { slideWidth, gap } = metrics;
+  const { slideWidth, gap, renderStart } = metrics;
   const center = ui.carouselViewport.scrollLeft + ui.carouselViewport.clientWidth / 2;
   const step = slideWidth + gap;
-  const rawIndex = Math.round((center - slideWidth / 2) / step);
+  const rawIndex = Math.round((center - slideWidth / 2) / step) + renderStart;
   return Math.max(0, Math.min(rawIndex, carouselTokenIds.length - 1));
 }
 
 function handleCarouselScrollEnd() {
   const index = getNearestCarouselIndex();
   setActiveCarouselIndex(index);
+  renderCarouselRange(index);
 }
 
 function handleCarouselScroll() {
+  if (!carouselScrollTimer) {
+    handleCarouselScrollEnd();
+  }
   if (carouselScrollTimer) clearTimeout(carouselScrollTimer);
   carouselScrollTimer = setTimeout(() => {
     carouselScrollTimer = null;
     handleCarouselScrollEnd();
-  }, 120);
+  }, 150);
 }
 
 function setCarouselTokenIds(tokenIds) {
@@ -2444,11 +2552,12 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
   ui.slides.innerHTML = "";
   activeCarouselIndex = null;
 
-  const fragment = document.createDocumentFragment();
   if (carouselTokenIds.length === 0) {
     const li = document.createElement("li");
     li.className = "tokenSlide";
     li.dataset.index = "0";
+    ui.slides.dataset.renderStart = "0";
+    ui.slides.dataset.renderEnd = "0";
 
     const card = document.createElement("button");
     card.type = "button";
@@ -2456,60 +2565,8 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
     card.textContent = "No tokens";
     card.disabled = true;
     li.appendChild(card);
-    fragment.appendChild(li);
-  } else {
-    for (let i = 0; i < carouselTokenIds.length; i++) {
-      const id = carouselTokenIds[i];
-      const li = document.createElement("li");
-      li.className = "tokenSlide";
-      li.dataset.index = String(i);
-      li.dataset.tokenId = String(id);
-
-      const card = document.createElement("button");
-      card.type = "button";
-      card.className = "tokenCard";
-      card.setAttribute("aria-label", `Load token ${id}`);
-
-      const imageWrap = document.createElement("div");
-      imageWrap.className = "tokenImageWrap is-loading";
-
-      const image = document.createElement("img");
-      image.className = "tokenImage";
-      image.alt = `Friendsies #${id} preview`;
-      image.loading = "lazy";
-      image.dataset.src = getPreviewUrl(id);
-      image.src = FALLBACK_IMAGE;
-
-      image.addEventListener("load", () => {
-        if (image.dataset.src) return;
-        imageWrap.classList.add("is-loaded");
-        imageWrap.classList.remove("is-loading");
-      });
-
-      image.addEventListener("error", () => {
-        imageWrap.classList.add("is-error", "is-loaded");
-        imageWrap.classList.remove("is-loading");
-        image.src = FALLBACK_IMAGE;
-      });
-
-      const fallback = document.createElement("span");
-      fallback.className = "tokenImageFallback";
-      fallback.textContent = "Preview";
-
-      imageWrap.appendChild(image);
-      imageWrap.appendChild(fallback);
-
-      const label = document.createElement("span");
-      label.className = "tokenLabel";
-      label.textContent = `#${id}`;
-
-      card.appendChild(imageWrap);
-      card.appendChild(label);
-      li.appendChild(card);
-      fragment.appendChild(li);
-    }
+    ui.slides.appendChild(li);
   }
-  ui.slides.appendChild(fragment);
 
   let startIndex = 0;
   if (carouselTokenIds.length) {
@@ -2523,23 +2580,11 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
         : Math.min(Math.max(DEFAULT_TOKEN_ID - 1, 0), carouselTokenIds.length - 1);
   }
 
-  ui.slides.querySelectorAll(".tokenImage").forEach((img) => observeTokenImage(img));
-
-  if (!carouselListenersBound) {
-    ui.slides.addEventListener("click", (event) => {
-      const slide = event.target.closest(".tokenSlide");
-      if (!slide || !ui.slides.contains(slide)) return;
-      const index = Number(slide.dataset.index || 0);
-      if (Number.isNaN(index)) return;
-      scrollToCarouselIndex(index);
-      setActiveCarouselIndex(index);
-    });
-
-    ui.carouselViewport.addEventListener("scroll", handleCarouselScroll, {
-      passive: true
-    });
-    carouselListenersBound = true;
+  if (carouselTokenIds.length) {
+    renderCarouselRange(startIndex);
   }
+
+  bindCarouselListeners();
 
   requestAnimationFrame(() => {
     scrollToCarouselIndex(startIndex, "auto");
