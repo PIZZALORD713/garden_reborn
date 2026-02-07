@@ -416,8 +416,8 @@ function applyLookPreset(name) {
 const uiRoot = document.getElementById("ui");
 const ui = {
   carousel: document.getElementById("tokenCarousel"),
-  glideRoot: document.getElementById("tokenGlide"),
   slides: document.getElementById("tokenSlides"),
+  carouselViewport: document.getElementById("carouselViewport"),
   hamburger: document.getElementById("hamburger"),
   menuStack: document.getElementById("menuStack"),
   menu: document.getElementById("menu"),
@@ -2164,10 +2164,20 @@ let orbitReleaseTimer = null;
 
 let carouselTokenIds = [...DEFAULT_TOKEN_IDS];
 let carouselTokenIdSet = new Set(carouselTokenIds);
-let glide = null;
+let activeCarouselIndex = null;
 let pendingTokenId = null;
 let lastLoadedTokenId = null;
 let loadDebounceTimer = null;
+let carouselScrollTimer = null;
+let imageObserver = null;
+let carouselListenersBound = false;
+
+const PREVIEW_BASE_URL =
+  "https://storage.googleapis.com/friendsies-rendered-97557c";
+const FALLBACK_IMAGE =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><rect width='100%25' height='100%25' fill='%23f2f1fb'/></svg>";
+const VISIBLE_CARDS = 7;
+const BUFFER_CARDS = 3;
 
 function showHamburger() {
   if (!ui.hamburger) return;
@@ -2277,8 +2287,10 @@ async function handleSearch(query) {
   const asNum = Number(String(query).replace(/^#/, ""));
   if (Number.isInteger(asNum) && asNum >= 1 && asNum <= 10000) {
     const index = carouselTokenIds.indexOf(asNum);
-    if (index >= 0 && glide) {
-      glide.go(`=${index}`);
+    if (index >= 0) {
+      renderCarouselRange(index);
+      scrollToCarouselIndex(index);
+      setActiveCarouselIndex(index);
     } else {
       lastLoadedTokenId = asNum;
       loadToken(asNum);
@@ -2326,6 +2338,202 @@ function requestTokenLoad(tokenId) {
   debounceTokenLoad(id);
 }
 
+function getPreviewUrl(tokenId) {
+  return `${PREVIEW_BASE_URL}/${tokenId}/friendsie.jpg`;
+}
+
+function ensureImageObserver() {
+  if (imageObserver || !("IntersectionObserver" in window)) return;
+  imageObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const img = entry.target;
+        const src = img.dataset.src;
+        if (src && !img.dataset.loaded) {
+          img.src = src;
+          img.dataset.loaded = "true";
+          img.removeAttribute("data-src");
+        }
+        imageObserver?.unobserve(img);
+      });
+    },
+    {
+      root: ui.carouselViewport || null,
+      rootMargin: "60px"
+    }
+  );
+}
+
+function observeTokenImage(img) {
+  if (!img) return;
+  ensureImageObserver();
+  if (!imageObserver) {
+    const src = img.dataset.src;
+    if (src) img.src = src;
+    return;
+  }
+  imageObserver.observe(img);
+}
+
+function createTokenSlide(id, index) {
+  const li = document.createElement("li");
+  li.className = "tokenSlide";
+  li.dataset.index = String(index);
+  li.dataset.tokenId = String(id);
+
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "tokenCard";
+  card.setAttribute("aria-label", `Load token ${id}`);
+
+  const imageWrap = document.createElement("div");
+  imageWrap.className = "tokenImageWrap is-loading";
+
+  const image = document.createElement("img");
+  image.className = "tokenImage";
+  image.alt = `Friendsies #${id} preview`;
+  image.loading = "lazy";
+  image.dataset.src = getPreviewUrl(id);
+  image.src = FALLBACK_IMAGE;
+
+  image.addEventListener("load", () => {
+    if (image.dataset.src) return;
+    imageWrap.classList.add("is-loaded");
+    imageWrap.classList.remove("is-loading");
+  });
+
+  image.addEventListener("error", () => {
+    imageWrap.classList.add("is-error", "is-loaded");
+    imageWrap.classList.remove("is-loading");
+    image.src = FALLBACK_IMAGE;
+  });
+
+  const fallback = document.createElement("span");
+  fallback.className = "tokenImageFallback";
+  fallback.textContent = "Preview";
+
+  imageWrap.appendChild(image);
+  imageWrap.appendChild(fallback);
+
+  const label = document.createElement("span");
+  label.className = "tokenLabel";
+  label.textContent = `#${id}`;
+
+  card.appendChild(imageWrap);
+  card.appendChild(label);
+  li.appendChild(card);
+
+  return li;
+}
+
+function renderCarouselRange(centerIndex) {
+  if (!ui.slides) return;
+  if (!carouselTokenIds.length) return;
+
+  const renderStart = Math.max(0, centerIndex - BUFFER_CARDS);
+  const renderEnd = Math.min(
+    carouselTokenIds.length,
+    centerIndex + VISIBLE_CARDS + BUFFER_CARDS
+  );
+
+  const currentStart = Number(ui.slides.dataset.renderStart || 0);
+  const currentEnd = Number(ui.slides.dataset.renderEnd || 0);
+
+  if (renderStart === currentStart && renderEnd === currentEnd) return;
+
+  ui.slides.dataset.renderStart = String(renderStart);
+  ui.slides.dataset.renderEnd = String(renderEnd);
+  ui.slides.innerHTML = "";
+
+  const fragment = document.createDocumentFragment();
+  for (let i = renderStart; i < renderEnd; i++) {
+    const id = carouselTokenIds[i];
+    fragment.appendChild(createTokenSlide(id, i));
+  }
+
+  ui.slides.appendChild(fragment);
+  ui.slides.querySelectorAll(".tokenImage").forEach((img) => observeTokenImage(img));
+  setActiveCarouselIndex(centerIndex, { loadToken: false });
+  scrollToCarouselIndex(centerIndex, "auto");
+}
+
+function bindCarouselListeners() {
+  if (carouselListenersBound) return;
+  ui.slides.addEventListener("click", (event) => {
+    const slide = event.target.closest(".tokenSlide");
+    if (!slide || !ui.slides.contains(slide)) return;
+    const index = Number(slide.dataset.index || 0);
+    if (Number.isNaN(index)) return;
+    scrollToCarouselIndex(index);
+    setActiveCarouselIndex(index);
+  });
+
+  ui.carouselViewport.addEventListener("scroll", handleCarouselScroll, {
+    passive: true
+  });
+  carouselListenersBound = true;
+}
+
+function setActiveCarouselIndex(index, { loadToken: shouldLoad = true } = {}) {
+  if (!Number.isFinite(index) || !ui.slides) return;
+  if (activeCarouselIndex === index) return;
+  const prev = ui.slides.querySelector(`[data-index=\"${activeCarouselIndex}\"]`);
+  if (prev) prev.classList.remove("is-active");
+  const next = ui.slides.querySelector(`[data-index=\"${index}\"]`);
+  if (next) next.classList.add("is-active");
+  activeCarouselIndex = index;
+  const tokenId = carouselTokenIds[index];
+  if (shouldLoad && tokenId) {
+    requestTokenLoad(tokenId);
+  }
+}
+
+function scrollToCarouselIndex(index, behavior = "smooth") {
+  if (!ui.carouselViewport || !ui.slides) return;
+  const slide = ui.slides.querySelector(`[data-index=\"${index}\"]`);
+  if (!slide) return;
+  slide.scrollIntoView({ behavior, inline: "center", block: "nearest" });
+}
+
+function getCarouselMetrics() {
+  if (!ui.slides || !ui.carouselViewport || !ui.slides.children.length) return null;
+  const firstSlide = ui.slides.children[0];
+  const slideWidth = firstSlide.getBoundingClientRect().width;
+  const styles = window.getComputedStyle(ui.slides);
+  const gap =
+    Number.parseFloat(styles.columnGap || styles.gap || styles.rowGap || "0") || 0;
+  const renderStart = Number(ui.slides.dataset.renderStart || 0);
+  return { slideWidth, gap, renderStart };
+}
+
+function getNearestCarouselIndex() {
+  const metrics = getCarouselMetrics();
+  if (!metrics || !ui.carouselViewport) return 0;
+  const { slideWidth, gap, renderStart } = metrics;
+  const center = ui.carouselViewport.scrollLeft + ui.carouselViewport.clientWidth / 2;
+  const step = slideWidth + gap;
+  const rawIndex = Math.round((center - slideWidth / 2) / step) + renderStart;
+  return Math.max(0, Math.min(rawIndex, carouselTokenIds.length - 1));
+}
+
+function handleCarouselScrollEnd() {
+  const index = getNearestCarouselIndex();
+  setActiveCarouselIndex(index);
+  renderCarouselRange(index);
+}
+
+function handleCarouselScroll() {
+  if (!carouselScrollTimer) {
+    handleCarouselScrollEnd();
+  }
+  if (carouselScrollTimer) clearTimeout(carouselScrollTimer);
+  carouselScrollTimer = setTimeout(() => {
+    carouselScrollTimer = null;
+    handleCarouselScrollEnd();
+  }, 150);
+}
+
 function setCarouselTokenIds(tokenIds) {
   const cleaned = Array.isArray(tokenIds)
     ? tokenIds
@@ -2340,19 +2548,16 @@ function setCarouselTokenIds(tokenIds) {
 }
 
 function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
-  if (!ui.glideRoot || !ui.slides) return;
-
-  if (glide) {
-    glide.destroy();
-    glide = null;
-  }
+  if (!ui.slides || !ui.carouselViewport) return;
   ui.slides.innerHTML = "";
+  activeCarouselIndex = null;
 
-  const fragment = document.createDocumentFragment();
   if (carouselTokenIds.length === 0) {
     const li = document.createElement("li");
-    li.className = "glide__slide";
+    li.className = "tokenSlide";
     li.dataset.index = "0";
+    ui.slides.dataset.renderStart = "0";
+    ui.slides.dataset.renderEnd = "0";
 
     const card = document.createElement("button");
     card.type = "button";
@@ -2360,24 +2565,8 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
     card.textContent = "No tokens";
     card.disabled = true;
     li.appendChild(card);
-    fragment.appendChild(li);
-  } else {
-    for (let i = 0; i < carouselTokenIds.length; i++) {
-      const id = carouselTokenIds[i];
-      const li = document.createElement("li");
-      li.className = "glide__slide";
-      li.dataset.index = String(i);
-      li.dataset.tokenId = String(id);
-
-      const card = document.createElement("button");
-      card.type = "button";
-      card.className = "tokenCard";
-      card.textContent = `#${id}`;
-      li.appendChild(card);
-      fragment.appendChild(li);
-    }
+    ui.slides.appendChild(li);
   }
-  ui.slides.appendChild(fragment);
 
   let startIndex = 0;
   if (carouselTokenIds.length) {
@@ -2391,40 +2580,16 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
         : Math.min(Math.max(DEFAULT_TOKEN_ID - 1, 0), carouselTokenIds.length - 1);
   }
 
-  glide = new Glide(ui.glideRoot, {
-    type: "slider",
-    startAt: startIndex,
-    perView: 5,
-    focusAt: "center",
-    gap: 10,
-    breakpoints: {
-      720: { perView: 3, gap: 8 },
-      480: { perView: 3, gap: 6 }
-    },
-    rewind: false,
-    bound: true
-  });
-
-  glide.on("run.after", () => {
-    const activeIndex = glide.index;
-    const tokenId = carouselTokenIds[activeIndex];
-    if (!tokenId) return;
-    debounceTokenLoad(tokenId);
-  });
-
-  glide.mount();
-
-  ui.slides.addEventListener("click", (event) => {
-    const slide = event.target.closest(".glide__slide");
-    if (!slide || !ui.slides.contains(slide)) return;
-    const index = Number(slide.dataset.index || 0);
-    if (!glide || Number.isNaN(index)) return;
-    glide.go(`=${index}`);
-  });
-
-  if (carouselTokenIds[startIndex]) {
-    requestTokenLoad(carouselTokenIds[startIndex]);
+  if (carouselTokenIds.length) {
+    renderCarouselRange(startIndex);
   }
+
+  bindCarouselListeners();
+
+  requestAnimationFrame(() => {
+    scrollToCarouselIndex(startIndex, "auto");
+    setActiveCarouselIndex(startIndex, { loadToken: true });
+  });
   showCarousel();
 }
 
