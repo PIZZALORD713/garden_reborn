@@ -2152,8 +2152,10 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
 // Minimal UI: idle hamburger + menu + carousel
 // ----------------------------
 const HAMBURGER_HIDE_MS = 4000;
+const CAROUSEL_HIDE_MS = 5000;
 const IDLE_TIMEOUT_MS = 10000;
 let hamburgerTimer = null;
+let carouselHideTimer = null;
 let idleTimer = null;
 let idleActive = false;
 let activePanel = null;
@@ -2177,6 +2179,15 @@ function showHamburger() {
   }, HAMBURGER_HIDE_MS);
 }
 
+function showCarousel() {
+  if (!ui.carousel) return;
+  ui.carousel.classList.remove("is-hidden");
+  if (carouselHideTimer) clearTimeout(carouselHideTimer);
+  carouselHideTimer = setTimeout(() => {
+    ui.carousel?.classList.add("is-hidden");
+  }, CAROUSEL_HIDE_MS);
+}
+
 function scheduleIdleTimer() {
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
@@ -2189,11 +2200,15 @@ function handleUserActivity() {
     idleActive = false;
     showHamburger();
   }
+  showCarousel();
   scheduleIdleTimer();
 }
 
 function setMenuOpen(open) {
   menuOpen = !!open;
+  if (ui.hamburger) {
+    ui.hamburger.classList.toggle("is-open", menuOpen);
+  }
   if (ui.menu) {
     ui.menu.classList.toggle("is-open", menuOpen);
     ui.menu.setAttribute("aria-hidden", menuOpen ? "false" : "true");
@@ -2204,13 +2219,6 @@ function setMenuOpen(open) {
 
 function setActivePanel(name) {
   activePanel = name;
-  if (ui.menuStack) {
-    if (activePanel) {
-      ui.menuStack.setAttribute("data-active-panel", activePanel);
-    } else {
-      ui.menuStack.removeAttribute("data-active-panel");
-    }
-  }
   Object.entries(ui.panels).forEach(([key, el]) => {
     if (!el) return;
     const isOpen = key === activePanel;
@@ -2388,11 +2396,10 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
     startAt: startIndex,
     perView: 5,
     focusAt: "center",
-    gap: 12,
+    gap: 10,
     breakpoints: {
-      480: {
-        perView: 3
-      }
+      720: { perView: 3, gap: 8 },
+      480: { perView: 3, gap: 6 }
     },
     rewind: false,
     bound: true
@@ -2418,6 +2425,7 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
   if (carouselTokenIds[startIndex]) {
     requestTokenLoad(carouselTokenIds[startIndex]);
   }
+  showCarousel();
 }
 
 ui.hamburger?.addEventListener("click", () => {
