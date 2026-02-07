@@ -2457,8 +2457,10 @@ function renderCarouselRange(centerIndex) {
 
   ui.slides.appendChild(fragment);
   ui.slides.querySelectorAll(".tokenImage").forEach((img) => observeTokenImage(img));
+
+  // IMPORTANT: don't auto-scroll here.
+  // This function is called from scroll-end logic; scrolling again can cause selection “jumps”.
   setActiveCarouselIndex(centerIndex, { loadToken: false });
-  scrollToCarouselIndex(centerIndex, "auto");
 }
 
 function bindCarouselListeners() {
@@ -2511,13 +2513,29 @@ function getCarouselMetrics() {
 }
 
 function getNearestCarouselIndex() {
-  const metrics = getCarouselMetrics();
-  if (!metrics || !ui.carouselViewport) return 0;
-  const { slideWidth, gap, renderStart } = metrics;
-  const center = ui.carouselViewport.scrollLeft + ui.carouselViewport.clientWidth / 2;
-  const step = slideWidth + gap;
-  const rawIndex = Math.round((center - slideWidth / 2) / step) + renderStart;
-  return Math.max(0, Math.min(rawIndex, carouselTokenIds.length - 1));
+  // Robust selection: derive nearest from actual rendered slides instead of math based on
+  // scrollLeft + renderStart. Virtualized rendering makes the math drift and causes “jumps”.
+  if (!ui.carouselViewport || !ui.slides || !ui.slides.children.length) return 0;
+
+  const viewportRect = ui.carouselViewport.getBoundingClientRect();
+  const viewportCenter = viewportRect.left + viewportRect.width / 2;
+
+  let bestIndex = 0;
+  let bestDist = Infinity;
+
+  for (const child of Array.from(ui.slides.children)) {
+    const idx = Number(child.dataset.index || 0);
+    if (!Number.isFinite(idx)) continue;
+    const rect = child.getBoundingClientRect();
+    const c = rect.left + rect.width / 2;
+    const d = Math.abs(c - viewportCenter);
+    if (d < bestDist) {
+      bestDist = d;
+      bestIndex = idx;
+    }
+  }
+
+  return Math.max(0, Math.min(bestIndex, carouselTokenIds.length - 1));
 }
 
 function handleCarouselScrollEnd() {
