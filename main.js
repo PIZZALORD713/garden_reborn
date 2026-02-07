@@ -419,6 +419,7 @@ const ui = {
   glideRoot: document.getElementById("tokenGlide"),
   slides: document.getElementById("tokenSlides"),
   hamburger: document.getElementById("hamburger"),
+  menuStack: document.getElementById("menuStack"),
   menu: document.getElementById("menu"),
   panels: {
     find: document.getElementById("panel-find"),
@@ -426,6 +427,12 @@ const ui = {
     vibe: document.getElementById("panel-vibe")
   }
 };
+
+const searchInput = document.getElementById("searchInput");
+const searchResults = document.getElementById("searchResults");
+const resetCollectionBtn = document.getElementById("resetCollectionBtn");
+const copyLinkBtn = document.getElementById("copyLinkBtn");
+const downloadGlbBtn = document.getElementById("downloadGlbBtn");
 
 const debugUi = {
   log: null
@@ -2144,7 +2151,7 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
 // ----------------------------
 // Minimal UI: idle hamburger + menu + carousel
 // ----------------------------
-const HAMBURGER_HIDE_MS = 3000;
+const HAMBURGER_HIDE_MS = 4000;
 const IDLE_TIMEOUT_MS = 10000;
 let hamburgerTimer = null;
 let idleTimer = null;
@@ -2197,12 +2204,95 @@ function setMenuOpen(open) {
 
 function setActivePanel(name) {
   activePanel = name;
+  if (ui.menuStack) {
+    if (activePanel) {
+      ui.menuStack.setAttribute("data-active-panel", activePanel);
+    } else {
+      ui.menuStack.removeAttribute("data-active-panel");
+    }
+  }
   Object.entries(ui.panels).forEach(([key, el]) => {
     if (!el) return;
     const isOpen = key === activePanel;
     el.classList.toggle("is-open", isOpen);
     el.setAttribute("aria-hidden", isOpen ? "false" : "true");
   });
+
+  if (name === "find") {
+    setTimeout(() => searchInput?.focus(), 100);
+  }
+}
+
+function updateResetCollectionVisibility() {
+  if (!resetCollectionBtn) return;
+  const isFiltered = carouselTokenIds.length < DEFAULT_TOKEN_IDS.length;
+  resetCollectionBtn.classList.toggle("is-visible", isFiltered);
+  resetCollectionBtn.setAttribute("aria-hidden", isFiltered ? "false" : "true");
+}
+
+function resetToFullCollection() {
+  setCarouselTokenIds(DEFAULT_TOKEN_IDS);
+  initCarousel(DEFAULT_TOKEN_ID);
+  window.history.pushState({}, "", "/");
+  logLine("🔄 Reset to full collection");
+  updateResetCollectionVisibility();
+}
+
+async function navigateToWallet(owner) {
+  if (searchResults) searchResults.textContent = "Loading…";
+  try {
+    const walletData = await fetchWalletTokenIds(owner);
+    if (!walletData.tokenIds.length) {
+      if (searchResults) {
+        searchResults.textContent = "No fRiENDSiES found for this wallet";
+      }
+      return;
+    }
+    setCarouselTokenIds(walletData.tokenIds);
+    initCarousel(walletData.tokenIds[0]);
+    const slug = walletData.ownerInput || owner;
+    window.history.pushState({}, "", `/${encodeURIComponent(slug)}`);
+    setMenuOpen(false);
+    logLine(`🔍 Search: loaded ${walletData.tokenIds.length} tokens for ${slug}`);
+  } catch (err) {
+    if (searchResults) {
+      searchResults.textContent = `Error: ${err?.message || "lookup failed"}`;
+    }
+  } finally {
+    updateResetCollectionVisibility();
+  }
+}
+
+async function handleSearch(query) {
+  if (searchResults) searchResults.innerHTML = "";
+
+  const asNum = Number(String(query).replace(/^#/, ""));
+  if (Number.isInteger(asNum) && asNum >= 1 && asNum <= 10000) {
+    const index = carouselTokenIds.indexOf(asNum);
+    if (index >= 0 && glide) {
+      glide.go(`=${index}`);
+    } else {
+      lastLoadedTokenId = asNum;
+      loadToken(asNum);
+    }
+    setMenuOpen(false);
+    return;
+  }
+
+  if (isEnsName(query)) {
+    await navigateToWallet(query);
+    return;
+  }
+
+  if (isHexAddress(query)) {
+    await navigateToWallet(query);
+    return;
+  }
+
+  if (searchResults) {
+    searchResults.textContent =
+      "Enter a token # (1–10000), ENS name, or 0x address";
+  }
 }
 
 function debounceTokenLoad(tokenId) {
@@ -2238,6 +2328,7 @@ function setCarouselTokenIds(tokenIds) {
   unique.sort((a, b) => a - b);
   carouselTokenIds = unique;
   carouselTokenIdSet = new Set(unique);
+  updateResetCollectionVisibility();
 }
 
 function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
@@ -2347,10 +2438,51 @@ ui.menu?.addEventListener("click", (event) => {
   }
 });
 
+searchInput?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  const raw = searchInput.value.trim();
+  if (!raw) return;
+  handleSearch(raw);
+});
+
+resetCollectionBtn?.addEventListener("click", () => {
+  resetToFullCollection();
+  setMenuOpen(false);
+});
+
+copyLinkBtn?.addEventListener("click", () => {
+  const url = window.location.href;
+  navigator.clipboard.writeText(url).then(() => {
+    if (!copyLinkBtn) return;
+    copyLinkBtn.textContent = "Copied!";
+    setTimeout(() => {
+      if (copyLinkBtn) copyLinkBtn.textContent = "Copy link";
+    }, 1500);
+  });
+});
+
+downloadGlbBtn?.addEventListener("click", () => {
+  downloadRigGlb();
+  setMenuOpen(false);
+});
+
+document.querySelectorAll("[data-preset]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const name = btn.dataset.preset;
+    if (!name) return;
+    applyLookPreset(name);
+    document.querySelectorAll("[data-preset]").forEach((b) => {
+      b.classList.remove("is-active");
+    });
+    btn.classList.add("is-active");
+  });
+});
+
 window.addEventListener("pointerdown", (event) => {
   if (!menuOpen) return;
   const target = event.target;
   if (ui.menu?.contains(target) || ui.hamburger?.contains(target)) return;
+  if (Object.values(ui.panels).some((panel) => panel?.contains(target))) return;
   setMenuOpen(false);
 });
 
