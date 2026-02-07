@@ -2477,14 +2477,13 @@ function bindCarouselListeners() {
 
 function setActiveCarouselIndex(index, { loadToken: shouldLoad = true } = {}) {
   if (!Number.isFinite(index) || !ui.slides) return;
-  if (activeCarouselIndex === index) return;
+  const tokenId = carouselTokenIds[index];
   const prev = ui.slides.querySelector(`[data-index=\"${activeCarouselIndex}\"]`);
-  if (prev) prev.classList.remove("is-active");
   const next = ui.slides.querySelector(`[data-index=\"${index}\"]`);
+  if (prev && prev !== next) prev.classList.remove("is-active");
   if (next) next.classList.add("is-active");
   activeCarouselIndex = index;
-  const tokenId = carouselTokenIds[index];
-  if (shouldLoad && tokenId) {
+  if (shouldLoad && tokenId && tokenId !== lastLoadedTokenId) {
     requestTokenLoad(tokenId);
   }
 }
