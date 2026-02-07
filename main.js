@@ -1936,8 +1936,8 @@ function getSelectedAnimUrl() {
 function getEntryById(id) {
   if (!allFriendsies) return null;
   return (
-    allFriendsies[id] ||
     allFriendsies[id - 1] ||
+    allFriendsies[id] ||
     allFriendsies.find?.((x) => Number(x?.token_id) === id) ||
     allFriendsies.find?.((x) => Number(x?.id) === id) ||
     null
@@ -2723,6 +2723,16 @@ window.addEventListener("pointerdown", (event) => {
     .then((r) => r.json())
     .then((data) => {
       allFriendsies = data;
+      const sanityEntry = getEntryById(5);
+      const sanityTokenId = Number(sanityEntry?.token_id ?? sanityEntry?.id);
+      if (sanityEntry && sanityTokenId === 5) {
+        logLine("✅ Sanity check: token #5 resolves to token_id 5", "dim");
+      } else {
+        logLine(
+          `⚠️ Sanity check: token #5 resolved to ${Number.isFinite(sanityTokenId) ? sanityTokenId : "unknown"}`,
+          "warn"
+        );
+      }
       setStatus("ready ✅");
       if (pendingTokenId) {
         debounceTokenLoad(pendingTokenId);
