@@ -2315,7 +2315,7 @@ async function handleSearch(query) {
   }
 }
 
-function debounceTokenLoad(tokenId) {
+function debounceTokenLoad(tokenId, { force = false } = {}) {
   pendingTokenId = tokenId;
   if (loadDebounceTimer) clearTimeout(loadDebounceTimer);
   loadDebounceTimer = setTimeout(() => {
@@ -2324,18 +2324,21 @@ function debounceTokenLoad(tokenId) {
     const id = pendingTokenId;
     pendingTokenId = null;
     if (!Number.isFinite(id) || !carouselTokenIdSet.has(id)) return;
-    if (id === lastLoadedTokenId) return;
+
+    // Avoid redundant loads while scrolling, but allow explicit re-loads.
+    if (!force && id === lastLoadedTokenId) return;
+
     lastLoadedTokenId = id;
     loadToken(id);
   }, 150);
 }
 
-function requestTokenLoad(tokenId) {
+function requestTokenLoad(tokenId, { force = false } = {}) {
   const id = Number(tokenId);
   if (!Number.isFinite(id) || !carouselTokenIdSet.has(id)) return;
   pendingTokenId = id;
   if (!allFriendsies) return;
-  debounceTokenLoad(id);
+  debounceTokenLoad(id, { force });
 }
 
 function getPreviewUrl(tokenId) {
