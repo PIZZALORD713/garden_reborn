@@ -1936,8 +1936,8 @@ function getSelectedAnimUrl() {
 function getEntryById(id) {
   if (!allFriendsies) return null;
   return (
-    allFriendsies[id] ||
     allFriendsies[id - 1] ||
+    allFriendsies[id] ||
     allFriendsies.find?.((x) => Number(x?.token_id) === id) ||
     allFriendsies.find?.((x) => Number(x?.id) === id) ||
     null
@@ -1961,6 +1961,13 @@ async function loadFriendsies(id) {
   if (!entry) {
     restoreAvatarVisibility();
     return setStatus(`not found: #${id}`);
+  }
+  if (id === 5) {
+    const tokenId = Number(entry?.token_id ?? entry?.id);
+    console.assert(
+      tokenId === 5,
+      `Sanity check failed: expected token #5, got #${tokenId}`
+    );
   }
 
   const traits = entry.attributes || [];
