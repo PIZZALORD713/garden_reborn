@@ -50,6 +50,46 @@ const FRIENDSIES_CHAIN = "eth";
 // Token defaults
 // ----------------------------
 const DEFAULT_TOKEN_ID = 5;
+const DEFAULT_TOKEN_IDS = Array.from({ length: 10000 }, (_, i) => i + 1);
+
+function isHexAddress(value) {
+  return typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value.trim());
+}
+
+function isEnsName(value) {
+  return typeof value === "string" && value.trim().toLowerCase().endsWith(".eth");
+}
+
+function getWalletOwnerFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const queryOwner = params.get("owner");
+  const rawPath = decodeURIComponent(window.location.pathname || "/");
+  const pathOwner = rawPath.replace(/^\/+/, "").split("/").filter(Boolean)[0] || "";
+  const candidate = (queryOwner || pathOwner || "").trim();
+  if (!candidate) return null;
+  if (isHexAddress(candidate) || isEnsName(candidate)) return candidate;
+  return null;
+}
+
+async function fetchWalletTokenIds(owner) {
+  const params = new URLSearchParams({
+    owner,
+    chain: FRIENDSIES_CHAIN,
+    contract: FRIENDSIES_CONTRACT
+  });
+  const url = `/api/friendsiesTokens?${params.toString()}`;
+  const r = await fetch(url);
+  if (!r.ok) {
+    const text = await r.text().catch(() => "");
+    throw new Error(`wallet fetch failed (${r.status}): ${text}`);
+  }
+  const data = await r.json();
+  return {
+    ownerInput: data?.ownerInput || owner,
+    ownerResolved: data?.ownerResolved || null,
+    tokenIds: Array.isArray(data?.tokenIds) ? data.tokenIds : []
+  };
+}
 
 // ----------------------------
 // Scene bootstrap
@@ -2112,7 +2152,8 @@ let idleActive = false;
 let activePanel = null;
 let menuOpen = false;
 
-const carouselTokenIds = Array.from({ length: 10000 }, (_, i) => i + 1);
+let carouselTokenIds = [...DEFAULT_TOKEN_IDS];
+let carouselTokenIdSet = new Set(carouselTokenIds);
 let glide = null;
 let pendingTokenId = null;
 let lastLoadedTokenId = null;
@@ -2169,7 +2210,7 @@ function debounceTokenLoad(tokenId) {
     if (!allFriendsies) return;
     const id = pendingTokenId;
     pendingTokenId = null;
-    if (!Number.isFinite(id) || id < 1 || id > 10000) return;
+    if (!Number.isFinite(id) || !carouselTokenIdSet.has(id)) return;
     if (id === lastLoadedTokenId) return;
     lastLoadedTokenId = id;
     loadToken(id);
@@ -2178,36 +2219,75 @@ function debounceTokenLoad(tokenId) {
 
 function requestTokenLoad(tokenId) {
   const id = Number(tokenId);
-  if (!Number.isFinite(id) || id < 1 || id > 10000) return;
+  if (!Number.isFinite(id) || !carouselTokenIdSet.has(id)) return;
   pendingTokenId = id;
   if (!allFriendsies) return;
   debounceTokenLoad(id);
 }
 
-function initCarousel() {
+function setCarouselTokenIds(tokenIds) {
+  const cleaned = Array.isArray(tokenIds)
+    ? tokenIds
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id))
+    : [];
+  const unique = Array.from(new Set(cleaned));
+  unique.sort((a, b) => a - b);
+  carouselTokenIds = unique;
+  carouselTokenIdSet = new Set(unique);
+}
+
+function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
   if (!ui.glideRoot || !ui.slides) return;
 
+  if (glide) {
+    glide.destroy();
+    glide = null;
+  }
+  ui.slides.innerHTML = "";
+
   const fragment = document.createDocumentFragment();
-  for (let i = 0; i < carouselTokenIds.length; i++) {
-    const id = carouselTokenIds[i];
+  if (carouselTokenIds.length === 0) {
     const li = document.createElement("li");
     li.className = "glide__slide";
-    li.dataset.index = String(i);
-    li.dataset.tokenId = String(id);
+    li.dataset.index = "0";
 
     const card = document.createElement("button");
     card.type = "button";
     card.className = "tokenCard";
-    card.textContent = `#${id}`;
+    card.textContent = "No tokens";
+    card.disabled = true;
     li.appendChild(card);
     fragment.appendChild(li);
+  } else {
+    for (let i = 0; i < carouselTokenIds.length; i++) {
+      const id = carouselTokenIds[i];
+      const li = document.createElement("li");
+      li.className = "glide__slide";
+      li.dataset.index = String(i);
+      li.dataset.tokenId = String(id);
+
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "tokenCard";
+      card.textContent = `#${id}`;
+      li.appendChild(card);
+      fragment.appendChild(li);
+    }
   }
   ui.slides.appendChild(fragment);
 
-  const startIndex = Math.min(
-    Math.max(DEFAULT_TOKEN_ID - 1, 0),
-    carouselTokenIds.length - 1
-  );
+  let startIndex = 0;
+  if (carouselTokenIds.length) {
+    const preferredId = Number(startTokenId);
+    const preferredIndex = Number.isFinite(preferredId)
+      ? carouselTokenIds.indexOf(preferredId)
+      : -1;
+    startIndex =
+      preferredIndex >= 0
+        ? preferredIndex
+        : Math.min(Math.max(DEFAULT_TOKEN_ID - 1, 0), carouselTokenIds.length - 1);
+  }
 
   glide = new Glide(ui.glideRoot, {
     type: "slider",
@@ -2222,6 +2302,7 @@ function initCarousel() {
   glide.on("run.after", () => {
     const activeIndex = glide.index;
     const tokenId = carouselTokenIds[activeIndex];
+    if (!tokenId) return;
     debounceTokenLoad(tokenId);
   });
 
@@ -2235,7 +2316,9 @@ function initCarousel() {
     glide.go(`=${index}`);
   });
 
-  requestTokenLoad(carouselTokenIds[startIndex]);
+  if (carouselTokenIds[startIndex]) {
+    requestTokenLoad(carouselTokenIds[startIndex]);
+  }
 }
 
 ui.hamburger?.addEventListener("click", () => {
@@ -2263,7 +2346,34 @@ ui.menu?.addEventListener("click", (event) => {
 // Boot sequence
 // ----------------------------
 (async function boot() {
-  initCarousel();
+  const ownerFromUrl = getWalletOwnerFromUrl();
+  let carouselStartTokenId = DEFAULT_TOKEN_ID;
+
+  if (ownerFromUrl) {
+    setStatus("fetching wallet tokens…");
+    try {
+      const walletData = await fetchWalletTokenIds(ownerFromUrl);
+      if (walletData.tokenIds.length) {
+        setCarouselTokenIds(walletData.tokenIds);
+        carouselStartTokenId = walletData.tokenIds[0];
+        logLine(
+          `🧾 Wallet filter: ${walletData.ownerInput} (${walletData.ownerResolved || "unresolved"})`,
+          "dim"
+        );
+        logLine(`🎟 Tokens found: ${walletData.tokenIds.length}`, "dim");
+      } else {
+        setCarouselTokenIds([]);
+        logLine(`⚠️ No tokens found for ${walletData.ownerInput}`, "warn");
+      }
+    } catch (err) {
+      setCarouselTokenIds(DEFAULT_TOKEN_IDS);
+      logLine(`⚠️ Wallet lookup failed: ${err?.message || err}`, "warn");
+    }
+  } else {
+    setCarouselTokenIds(DEFAULT_TOKEN_IDS);
+  }
+
+  initCarousel(carouselStartTokenId);
   showHamburger();
   scheduleIdleTimer();
 
