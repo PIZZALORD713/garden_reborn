@@ -2151,6 +2151,7 @@ let idleTimer = null;
 let idleActive = false;
 let activePanel = null;
 let menuOpen = false;
+let orbitReleaseTimer = null;
 
 let carouselTokenIds = [...DEFAULT_TOKEN_IDS];
 let carouselTokenIdSet = new Set(carouselTokenIds);
@@ -2325,6 +2326,13 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
 
 ui.hamburger?.addEventListener("click", () => {
   setMenuOpen(!menuOpen);
+});
+
+controls?.addEventListener("end", () => {
+  if (orbitReleaseTimer) clearTimeout(orbitReleaseTimer);
+  orbitReleaseTimer = setTimeout(() => {
+    showHamburger();
+  }, 250);
 });
 
 ui.menu?.addEventListener("click", (event) => {
