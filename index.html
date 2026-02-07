@@ -5,19 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>fRiENDSiES Toy Box</title>
     <link rel="stylesheet" href="/style.css?v=2026-02-03c" />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@glidejs/glide@3.6.0/dist/css/glide.core.min.css"
-    />
+    
   </head>
 
   <body>
     <div id="ui" class="ui">
       <div id="tokenCarousel" class="glassCarousel" aria-label="Token picker">
-        <div class="glide" id="tokenGlide">
-          <div class="glide__track" data-glide-el="track">
-            <ul class="glide__slides" id="tokenSlides"></ul>
-          </div>
+        <div id="carouselViewport" class="carouselViewport" role="listbox">
+          <ul class="tokenTrack" id="tokenSlides"></ul>
         </div>
       </div>
 
@@ -164,8 +159,6 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@glidejs/glide@3.6.0/dist/glide.min.js"></script>
-
     <script src="/main.js?v=2026-02-03c"></script>
   </body>
 </html>
