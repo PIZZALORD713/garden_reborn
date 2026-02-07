@@ -2389,6 +2389,11 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
     perView: 5,
     focusAt: "center",
     gap: 12,
+    breakpoints: {
+      480: {
+        perView: 3
+      }
+    },
     rewind: false,
     bound: true
   });
