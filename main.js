@@ -47,61 +47,9 @@ const FRIENDSIES_CONTRACT = "0xe5af63234f93afd72a8b9114803e33f6d9766956";
 const FRIENDSIES_CHAIN = "eth";
 
 // ----------------------------
-// UI state keys
+// Token defaults
 // ----------------------------
-const LS_UI_HIDDEN = "toybox_ui_hidden_v1";
-const LS_LOG_COLLAPSED = "toybox_log_collapsed_v1";
-const LS_AUTORANDOM = "toybox_auto_random_v1";
-
-// ----------------------------
-// Auto-random (idle-based)
-// ----------------------------
-const AUTO_RANDOM_IDLE_MS = 4000;
-let autoRandomEnabled = false;
-let autoRandomTimer = null; // setTimeout handle
-let lastUserActivityMs = Date.now();
-
-function noteUserActivity() {
-  lastUserActivityMs = Date.now();
-  // If auto-random is on, any activity resets the idle timer.
-  if (autoRandomEnabled) scheduleAutoRandomFromIdle();
-}
-
-function clearAutoRandomTimer() {
-  if (autoRandomTimer) {
-    clearTimeout(autoRandomTimer);
-    autoRandomTimer = null;
-  }
-}
-
-function scheduleAutoRandomFromIdle() {
-  clearAutoRandomTimer();
-  if (!autoRandomEnabled) return;
-
-  autoRandomTimer = setTimeout(() => {
-    if (!autoRandomEnabled) return;
-
-    // If the user interacted recently, don’t switch yet.
-    const idleFor = Date.now() - lastUserActivityMs;
-    if (idleFor < AUTO_RANDOM_IDLE_MS) {
-      scheduleAutoRandomFromIdle();
-      return;
-    }
-
-    const walletIds = getWalletTokenIds();
-    const id = walletIds
-      ? getRandomFromArray(walletIds)
-      : 1 + Math.floor(Math.random() * 10000);
-
-    if (id) {
-      if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(id);
-      loadFriendsies(id);
-    }
-
-    // Continue cycling while idle.
-    scheduleAutoRandomFromIdle();
-  }, AUTO_RANDOM_IDLE_MS);
-}
+const DEFAULT_TOKEN_ID = 5;
 
 // ----------------------------
 // Scene bootstrap
@@ -135,13 +83,6 @@ function initScene() {
   controls.minDistance = 2;
   controls.maxDistance = 14;
   controls.target.set(0, 0.92, 0);
-
-  // Any camera/orbit interaction counts as "activity" for idle-based auto-random.
-  controls.addEventListener("start", noteUserActivity);
-  controls.addEventListener("change", noteUserActivity);
-  controls.addEventListener("end", noteUserActivity);
-  renderer.domElement.addEventListener("pointerdown", noteUserActivity);
-  renderer.domElement.addEventListener("pointermove", noteUserActivity);
 
   return { scene, camera, renderer, controls };
 }
@@ -432,56 +373,28 @@ function applyLookPreset(name) {
   logLine(msg);
 }
 
-// Count ALL UI interactions as activity too (buttons, sliders, typing, etc.)
 const uiRoot = document.getElementById("ui");
-uiRoot?.addEventListener("pointerdown", noteUserActivity, true);
-uiRoot?.addEventListener("input", noteUserActivity, true);
-uiRoot?.addEventListener("change", noteUserActivity, true);
-uiRoot?.addEventListener("keydown", noteUserActivity, true);
-
-// ----------------------------
-// UI adapters (scoped per feature)
-// ----------------------------
-const sceneUi = {
-  status: document.getElementById("status"),
-  friendsiesId: document.getElementById("friendsiesId"),
-  loadBtn: document.getElementById("loadBtn"),
-  randomBtn: document.getElementById("randomBtn"),
-  randomBtnText: document.getElementById("randomBtnText"),
-  autoRandomOn: document.getElementById("autoRandomOn"),
-  autoRandomLabelText: document.getElementById("autoRandomLabelText"),
-  animSelect: document.getElementById("animSelect"),
-  playBtn: document.getElementById("playBtn"),
-  stopBtn: document.getElementById("stopBtn"),
-  orbitOn: document.getElementById("orbitOn"),
-  autoRotateOn: document.getElementById("autoRotateOn")
-};
-
-const walletUi = {
-  walletInput: document.getElementById("walletInput"),
-  walletLookupBtn: document.getElementById("walletLookupBtn"),
-  walletDownloadJsonBtn: document.getElementById("walletDownloadJsonBtn"),
-  walletHint: document.getElementById("walletHint")
+const ui = {
+  carousel: document.getElementById("tokenCarousel"),
+  glideRoot: document.getElementById("tokenGlide"),
+  slides: document.getElementById("tokenSlides"),
+  hamburger: document.getElementById("hamburger"),
+  menu: document.getElementById("menu"),
+  panels: {
+    find: document.getElementById("panel-find"),
+    share: document.getElementById("panel-share"),
+    vibe: document.getElementById("panel-vibe")
+  }
 };
 
 const debugUi = {
-  log: document.getElementById("log")
+  log: null
 };
 
-function initUiAdapter() {
-  return {
-    tokenCarousel: document.getElementById("tokenCarousel") || document.getElementById("carousel"),
-    tokenTrack: document.getElementById("tokenTrack") || document.getElementById("carouselTrack"),
-    menuButton: document.getElementById("uiToggleBtn") || document.getElementById("menuBtn"),
-    tokenPeekBtn: document.getElementById("carouselPeekBtn")
-  };
-}
-
-const sceneUiAdapter = initUiAdapter();
-
+let statusText = "booting…";
 function setStatus(s) {
-  if (sceneUi.status) sceneUi.status.textContent = s;
-  logLine(`• ${s}`, "dim");
+  statusText = String(s || "");
+  logLine(`• ${statusText}`, "dim");
 }
 
 // Transcript helpers
@@ -550,23 +463,7 @@ function copyCurrentLook() {
   console.log("Current Look JSON", json);
 }
 
-let toastTimer = null;
-function showToast(text, ms = 1000) {
-  const elToast = document.getElementById("toast");
-  if (!elToast) return;
-
-  elToast.textContent = String(text || "");
-  elToast.classList.add("show");
-
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    elToast.classList.remove("show");
-  }, Math.max(250, ms | 0));
-}
-
-sceneUiAdapter.menuButton?.addEventListener("click", () => {
-  uiRoot?.classList.toggle("uiHidden");
-});
+// (legacy toast/menu removed)
 
 // On mobile, orbiting often swings metals/gems into very dark angles because the key/rim
 // are fixed in world-space. Make them loosely follow the camera to keep a consistent fill.
@@ -1800,7 +1697,7 @@ function downloadRigGlb() {
 
   // Build a clean export root (avoid nested Scene roots + dead armatures from parts)
   const exportRoot = new THREE.Group();
-  const id = Number(sceneUi.friendsiesId?.value || 0) || 0;
+  const id = Number(lastLoadedTokenId || 0);
   const idStr = String(id || 0).padStart(4, "0");
   exportRoot.name = `fRiENDSiES_${idStr}`;
 
@@ -1982,22 +1879,8 @@ const ANIM_PRESETS = [
   ["Jump", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Jump.glb"]
 ];
 
-// Populate dropdown
-(function initAnimSelect() {
-  if (!sceneUi.animSelect) return;
-  sceneUi.animSelect.innerHTML = "";
-  for (const [label, url] of ANIM_PRESETS) {
-    const opt = document.createElement("option");
-    opt.value = url;
-    opt.textContent = label;
-    sceneUi.animSelect.appendChild(opt);
-  }
-  // default: WalkStart
-  sceneUi.animSelect.value = ANIM_PRESETS[0][1];
-})();
-
 function getSelectedAnimUrl() {
-  return sceneUi.animSelect?.value || ANIM_PRESETS[0][1];
+  return ANIM_PRESETS[0][1];
 }
 
 // ----------------------------
@@ -2027,9 +1910,6 @@ async function loadFriendsies(id) {
   // IMPORTANT: don't clear the existing avatar until the new one is confirmed loadable.
   // Otherwise a transient load failure leaves the viewer empty (background only).
   setStatus(`loading #${id}…`);
-  // Minimal feedback (mobile-friendly): toast the token number briefly.
-  showToast(`#${id}`, 1000);
-
   const entry = getEntryById(id);
   if (!entry) {
     restoreAvatarVisibility();
@@ -2187,6 +2067,10 @@ async function loadFriendsies(id) {
   await playAnimUrl(getSelectedAnimUrl(), loadId);
 }
 
+function loadToken(tokenId) {
+  loadFriendsies(tokenId);
+}
+
 // ----------------------------
 // External animation
 // ----------------------------
@@ -2217,529 +2101,161 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
   logLine(`▶ Playing: ${clip.name || "unnamed"} (${url})`);
 }
 
-function getBoolLS(key, fallback = false) {
-  try {
-    const v = localStorage.getItem(key);
-    if (v === null) return fallback;
-    return v === "1";
-  } catch (_) {
-    return fallback;
-  }
-}
-
-function setBoolLS(key, val) {
-  try {
-    localStorage.setItem(key, val ? "1" : "0");
-  } catch (_) {
-    // ignore
-  }
-}
-
 // ----------------------------
-// Auto-random (switch after X ms of inactivity)
+// Minimal UI: idle hamburger + menu + carousel
 // ----------------------------
-function setAutoRandom(on) {
-  autoRandomEnabled = !!on;
-  clearAutoRandomTimer();
+const HAMBURGER_HIDE_MS = 3000;
+const IDLE_TIMEOUT_MS = 10000;
+let hamburgerTimer = null;
+let idleTimer = null;
+let idleActive = false;
+let activePanel = null;
+let menuOpen = false;
 
-  if (autoRandomEnabled) {
-    // Treat turning it on as the start of an idle period.
-    lastUserActivityMs = Date.now();
-    scheduleAutoRandomFromIdle();
-    logLine(`✅ Auto-random ON (after ${Math.round(AUTO_RANDOM_IDLE_MS / 1000)}s idle)`);
-  } else {
-    logLine("Auto-random OFF");
+const carouselTokenIds = Array.from({ length: 10000 }, (_, i) => i + 1);
+let glide = null;
+let pendingTokenId = null;
+let lastLoadedTokenId = null;
+let loadDebounceTimer = null;
+
+function showHamburger() {
+  if (!ui.hamburger) return;
+  ui.hamburger.classList.remove("is-hidden");
+  if (hamburgerTimer) clearTimeout(hamburgerTimer);
+  hamburgerTimer = setTimeout(() => {
+    ui.hamburger?.classList.add("is-hidden");
+  }, HAMBURGER_HIDE_MS);
+}
+
+function scheduleIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    idleActive = true;
+  }, IDLE_TIMEOUT_MS);
+}
+
+function handleUserActivity() {
+  if (idleActive) {
+    idleActive = false;
+    showHamburger();
   }
-
-  setBoolLS(LS_AUTORANDOM, autoRandomEnabled);
-  if (sceneUi.autoRandomOn) sceneUi.autoRandomOn.checked = autoRandomEnabled;
+  scheduleIdleTimer();
 }
 
-// restore auto-random preference
-setAutoRandom(getBoolLS(LS_AUTORANDOM, false));
-syncOwnedModeLabels();
-
-// ----------------------------
-// Wallet lookup (Moralis via /api proxy)
-// ----------------------------
-var lastWalletLookup = null;
-
-// ----------------------------
-// Modes
-// ----------------------------
-// "Showcase mode" is enabled ONLY when the wallet is provided via URL path
-// (e.g. /pizzalord.eth or /0x...).
-var IS_SHOWCASE_MODE = false;
-var SHOWCASE_PENDING_TOKEN_ID = null;
-
-function getWalletTokenIds() {
-  const ids = lastWalletLookup?.tokenIds;
-  if (!Array.isArray(ids) || !ids.length) return null;
-  return ids
-    .map((x) => Number(x))
-    .filter((n) => Number.isFinite(n) && n >= 1 && n <= 10000)
-    .sort((a, b) => a - b);
-}
-
-function getRandomFromArray(arr) {
-  if (!arr || !arr.length) return null;
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function syncOwnedModeLabels() {
-  const owned = !!getWalletTokenIds();
-  if (sceneUi.randomBtnText) sceneUi.randomBtnText.textContent = owned ? "🎲 Random (Owned)" : "🎲 Random";
-  if (sceneUi.autoRandomLabelText)
-    sceneUi.autoRandomLabelText.textContent = owned ? "✅ Auto (Owned)" : "✅ Auto";
-}
-
-function isLikelyEns(name) {
-  return typeof name === "string" && name.trim().toLowerCase().endsWith(".eth");
-}
-
-function isLikelyEvmAddress(addr) {
-  return typeof addr === "string" && /^0x[0-9a-fA-F]{40}$/.test(addr.trim());
-}
-
-function setWalletUiState({ busy = false, tokenIds = null, hint = null } = {}) {
-  if (walletUi.walletLookupBtn) walletUi.walletLookupBtn.disabled = busy;
-  if (walletUi.walletInput) walletUi.walletInput.disabled = busy;
-  if (walletUi.walletDownloadJsonBtn) {
-    walletUi.walletDownloadJsonBtn.disabled = busy || !lastWalletLookup;
+function setMenuOpen(open) {
+  menuOpen = !!open;
+  if (ui.menu) {
+    ui.menu.classList.toggle("is-open", menuOpen);
+    ui.menu.setAttribute("aria-hidden", menuOpen ? "false" : "true");
   }
-
-  if (walletUi.walletHint && hint) walletUi.walletHint.textContent = hint;
+  if (!menuOpen) setActivePanel(null);
 }
 
-const DEFAULT_CAROUSEL_TOKEN_IDS = Array.from({ length: 10000 }, (_, i) => i + 1);
-const CAROUSEL_MODES = Object.freeze({
-  defaultRange: "defaultRange",
-  walletOwned: "walletOwned"
-});
-
-var carouselMode = CAROUSEL_MODES.defaultRange;
-var walletOwnedTokenIds = [];
-var carouselAllTokenIds = [...DEFAULT_CAROUSEL_TOKEN_IDS];
-var carouselSnapDebounceTimer = null;
-var carouselScrollDebounceMs = 120;
-
-function wrapIndex(i, n) {
-  if (n <= 0) return 0;
-  return ((i % n) + n) % n;
+function setActivePanel(name) {
+  activePanel = name;
+  Object.entries(ui.panels).forEach(([key, el]) => {
+    if (!el) return;
+    const isOpen = key === activePanel;
+    el.classList.toggle("is-open", isOpen);
+    el.setAttribute("aria-hidden", isOpen ? "false" : "true");
+  });
 }
 
-function orderTokenIds(tokenIdsRaw) {
-  // Stable, deterministic ordering: numeric ascending.
-  return (tokenIdsRaw || [])
-    .map((x) => Number(x))
-    .filter((x) => Number.isFinite(x) && x > 0)
-    .sort((a, b) => a - b);
+function debounceTokenLoad(tokenId) {
+  pendingTokenId = tokenId;
+  if (loadDebounceTimer) clearTimeout(loadDebounceTimer);
+  loadDebounceTimer = setTimeout(() => {
+    loadDebounceTimer = null;
+    if (!allFriendsies) return;
+    const id = pendingTokenId;
+    pendingTokenId = null;
+    if (!Number.isFinite(id) || id < 1 || id > 10000) return;
+    if (id === lastLoadedTokenId) return;
+    lastLoadedTokenId = id;
+    loadToken(id);
+  }, 150);
 }
 
-function findCurrentIndex(orderedIds, currentId) {
-  if (!Number.isFinite(currentId) || currentId <= 0) return -1;
-  return orderedIds.indexOf(currentId);
+function requestTokenLoad(tokenId) {
+  const id = Number(tokenId);
+  if (!Number.isFinite(id) || id < 1 || id > 10000) return;
+  pendingTokenId = id;
+  if (!allFriendsies) return;
+  debounceTokenLoad(id);
 }
 
-function selectNextId(orderedIds, currentId) {
-  const N = orderedIds.length;
-  if (N === 0) return null;
-  if (N === 1) return orderedIds[0];
+function initCarousel() {
+  if (!ui.glideRoot || !ui.slides) return;
 
-  let idx = findCurrentIndex(orderedIds, currentId);
-  if (idx < 0) idx = 0;
+  const fragment = document.createDocumentFragment();
+  for (let i = 0; i < carouselTokenIds.length; i++) {
+    const id = carouselTokenIds[i];
+    const li = document.createElement("li");
+    li.className = "glide__slide";
+    li.dataset.index = String(i);
+    li.dataset.tokenId = String(id);
 
-  return orderedIds[wrapIndex(idx + 1, N)];
-}
-
-function selectPrevId(orderedIds, currentId) {
-  const N = orderedIds.length;
-  if (N === 0) return null;
-  if (N === 1) return orderedIds[0];
-
-  let idx = findCurrentIndex(orderedIds, currentId);
-  if (idx < 0) idx = 0;
-
-  return orderedIds[wrapIndex(idx - 1, N)];
-}
-
-function setCarouselVisible(visible) {
-  // Kept for compatibility; carousel stays visible in default range mode.
-  const shouldShow = visible || carouselMode === CAROUSEL_MODES.defaultRange;
-  if (sceneUiAdapter.tokenCarousel) {
-    sceneUiAdapter.tokenCarousel.style.display = shouldShow ? "block" : "none";
-    sceneUiAdapter.tokenCarousel.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "tokenCard";
+    card.textContent = `#${id}`;
+    li.appendChild(card);
+    fragment.appendChild(li);
   }
-  if (sceneUiAdapter.tokenPeekBtn) {
-    sceneUiAdapter.tokenPeekBtn.style.display = shouldShow ? "block" : "none";
-  }
-}
+  ui.slides.appendChild(fragment);
 
-function getCarouselTokenIdsForMode() {
-  if (carouselMode === CAROUSEL_MODES.walletOwned && walletOwnedTokenIds.length) {
-    return walletOwnedTokenIds;
-  }
-  return DEFAULT_CAROUSEL_TOKEN_IDS;
-}
+  const startIndex = Math.min(
+    Math.max(DEFAULT_TOKEN_ID - 1, 0),
+    carouselTokenIds.length - 1
+  );
 
-function setCarouselMode(mode) {
-  if (!Object.values(CAROUSEL_MODES).includes(mode)) return;
-  carouselMode = mode;
-  renderCarousel(getCarouselTokenIdsForMode());
-}
-
-var peekTimer = null;
-var carouselIsOpen = false;
-
-function setCarouselOpen(open) {
-  carouselIsOpen = !!open;
-  if (sceneUiAdapter.tokenCarousel) {
-    sceneUiAdapter.tokenCarousel.classList.toggle("open", carouselIsOpen);
-    // Hover reveal only in showcase mode (otherwise it can get in the way)
-    sceneUiAdapter.tokenCarousel.classList.toggle("hoverReveal", !!IS_SHOWCASE_MODE);
-  }
-  if (sceneUiAdapter.tokenPeekBtn) {
-    sceneUiAdapter.tokenPeekBtn.classList.toggle("open", carouselIsOpen);
-    // default icon state; updateCarouselActive can temporarily show token id
-    sceneUiAdapter.tokenPeekBtn.textContent = carouselIsOpen ? "▾" : "▴";
-  }
-}
-
-function getCarouselCenteredIndex() {
-  const track = sceneUiAdapter.tokenTrack;
-  if (!track) return -1;
-  const trackRect = track.getBoundingClientRect();
-  const trackCenterX = trackRect.left + trackRect.width / 2;
-  const nodes = Array.from(track.querySelectorAll(".carouselItem"));
-  if (!nodes.length) return -1;
-
-  var minDistance = Number.POSITIVE_INFINITY;
-  var closestIndex = -1;
-  for (let i = 0; i < nodes.length; i++) {
-    const rect = nodes[i].getBoundingClientRect();
-    const center = rect.left + rect.width / 2;
-    const distance = Math.abs(center - trackCenterX);
-    if (distance < minDistance) {
-      minDistance = distance;
-      closestIndex = i;
-    }
-  }
-  return closestIndex;
-}
-
-function onCarouselSnap({ fromKeyboard = false } = {}) {
-  const track = sceneUiAdapter.tokenTrack;
-  if (!track) return;
-  const centeredIndex = getCarouselCenteredIndex();
-  if (centeredIndex < 0) return;
-
-  const centeredButton = track.children[centeredIndex];
-  if (!centeredButton) return;
-
-  const centeredTokenId = Number(centeredButton.dataset.tokenId || 0);
-  if (!Number.isFinite(centeredTokenId) || centeredTokenId <= 0) return;
-
-  const currentId = Number(sceneUi.friendsiesId?.value || 0);
-  updateCarouselActive(centeredTokenId);
-
-  if (currentId === centeredTokenId) return;
-
-  if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(centeredTokenId);
-  loadFriendsies(centeredTokenId);
-
-  if (!fromKeyboard) setCarouselOpen(true);
-}
-
-function queueCarouselSnapResolution() {
-  if (carouselSnapDebounceTimer) clearTimeout(carouselSnapDebounceTimer);
-  carouselSnapDebounceTimer = setTimeout(() => {
-    carouselSnapDebounceTimer = null;
-    onCarouselSnap();
-  }, carouselScrollDebounceMs);
-}
-
-function scrollCarouselToTokenId(id, behavior = "smooth") {
-  const track = sceneUiAdapter.tokenTrack;
-  if (!track) return;
-  const btn = track.querySelector(`.carouselItem[data-token-id=\"${id}\"]`);
-  if (!btn) return;
-  btn.scrollIntoView({ behavior, inline: "center", block: "nearest" });
-}
-
-function renderCarousel(tokenIds) {
-  if (!sceneUiAdapter.tokenTrack) return;
-  sceneUiAdapter.tokenTrack.innerHTML = "";
-
-  if (!tokenIds || !tokenIds.length) {
-    carouselAllTokenIds = [...DEFAULT_CAROUSEL_TOKEN_IDS];
-    setCarouselVisible(true);
-  } else {
-    // Canonical ordering (stable per wallet)
-    carouselAllTokenIds = orderTokenIds(tokenIds);
-  }
-  const currentId = Number(sceneUi.friendsiesId?.value || 0);
-
-  setCarouselVisible(true);
-
-  // Don't stomp the user's open/closed state on every re-render.
-  // Only set a default the first time we ever show the carousel.
-  if (typeof carouselIsOpen !== "boolean") carouselIsOpen = false;
-  if (!sceneUiAdapter.tokenCarousel?.dataset?.carouselInit) {
-    setCarouselOpen(!IS_SHOWCASE_MODE);
-    if (sceneUiAdapter.tokenCarousel) sceneUiAdapter.tokenCarousel.dataset.carouselInit = "1";
-  } else {
-    setCarouselOpen(carouselIsOpen);
-  }
-
-  for (let i = 0; i < carouselAllTokenIds.length; i++) {
-    const id = carouselAllTokenIds[i];
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "carouselItem" + (id === currentId ? " active" : "");
-    btn.textContent = `#${id}`;
-    btn.dataset.tokenId = String(id);
-    btn.setAttribute("role", "option");
-    btn.setAttribute("aria-selected", id === currentId ? "true" : "false");
-    btn.addEventListener("click", () => {
-      btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-      queueCarouselSnapResolution();
-    });
-    sceneUiAdapter.tokenTrack.appendChild(btn);
-  }
-
-  sceneUiAdapter.tokenTrack.removeEventListener("scroll", queueCarouselSnapResolution);
-  sceneUiAdapter.tokenTrack.addEventListener("scroll", queueCarouselSnapResolution, {
-    passive: true
+  glide = new Glide(ui.glideRoot, {
+    type: "slider",
+    startAt: startIndex,
+    perView: 5,
+    focusAt: "center",
+    gap: 12,
+    rewind: false,
+    bound: true
   });
 
-  const fallbackId = Number.isFinite(currentId) && currentId > 0 ? currentId : carouselAllTokenIds[0];
-  if (fallbackId) {
-    scrollCarouselToTokenId(fallbackId, "auto");
-    onCarouselSnap();
-  }
-}
-
-function updateCarouselActive(activeTokenId = Number(sceneUi.friendsiesId?.value || 0)) {
-  if (!sceneUiAdapter.tokenTrack) return;
-  const currentId = Number(activeTokenId || 0);
-  sceneUiAdapter.tokenTrack.querySelectorAll(".carouselItem").forEach((item) => {
-    const id = Number(item.dataset.tokenId || 0);
-    const active = id === currentId;
-    item.classList.toggle("active", active);
-    item.setAttribute("aria-selected", active ? "true" : "false");
+  glide.on("run.after", () => {
+    const activeIndex = glide.index;
+    const tokenId = carouselTokenIds[activeIndex];
+    debounceTokenLoad(tokenId);
   });
 
-  // Peek button shows current token briefly when closed (showcase mode)
-  if (sceneUiAdapter.tokenPeekBtn && IS_SHOWCASE_MODE) {
-    const isOpen = !!sceneUiAdapter.tokenCarousel?.classList.contains("open");
-    if (!isOpen && Number.isFinite(currentId) && currentId > 0) {
-      if (peekTimer) clearTimeout(peekTimer);
-      sceneUiAdapter.tokenPeekBtn.textContent = `#${currentId}`;
-      peekTimer = setTimeout(() => {
-        sceneUiAdapter.tokenPeekBtn.textContent = "▴";
-      }, 1400);
-    }
-  }
-}
+  glide.mount();
 
-async function lookupWalletTokens(ownerInput) {
-  const raw = String(ownerInput || "").trim();
-  if (!raw) throw new Error("Enter a wallet or ENS name");
-  if (!isLikelyEns(raw) && !isLikelyEvmAddress(raw)) {
-    throw new Error("Expected an ETH address (0x…) or ENS name (.eth)");
-  }
-
-  const url = `/api/friendsiesTokens?owner=${encodeURIComponent(raw)}&chain=${encodeURIComponent(
-    FRIENDSIES_CHAIN
-  )}&contract=${encodeURIComponent(FRIENDSIES_CONTRACT)}`;
-
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Lookup failed (${res.status}) ${text || ""}`.trim());
-  }
-
-  const data = await res.json();
-  const tokenIds = Array.isArray(data.tokenIds) ? data.tokenIds : [];
-  return { ...data, tokenIds };
-}
-
-function downloadJsonObject(obj, filename) {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], {
-    type: "application/json"
+  ui.slides.addEventListener("click", (event) => {
+    const slide = event.target.closest(".glide__slide");
+    if (!slide || !ui.slides.contains(slide)) return;
+    const index = Number(slide.dataset.index || 0);
+    if (!glide || Number.isNaN(index)) return;
+    glide.go(`=${index}`);
   });
-  const url = URL.createObjectURL(blob);
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  requestTokenLoad(carouselTokenIds[startIndex]);
 }
 
-// ----------------------------
-// UI events
-// ----------------------------
-function loadByInput() {
-  const id = Number(sceneUi.friendsiesId?.value);
-  if (!Number.isFinite(id) || id < 1 || id > 10000) {
-    return setStatus("enter a valid ID (1–10000)");
+ui.hamburger?.addEventListener("click", () => {
+  setMenuOpen(!menuOpen);
+});
+
+ui.menu?.addEventListener("click", (event) => {
+  const btn = event.target.closest(".menuIcon");
+  if (!btn || !ui.menu.contains(btn)) return;
+  const panel = btn.dataset.panel;
+  if (!panel) return;
+  if (activePanel === panel) {
+    setActivePanel(null);
+  } else {
+    setActivePanel(panel);
   }
-  loadFriendsies(id);
-  updateCarouselActive();
-}
-
-sceneUi.loadBtn?.addEventListener("click", loadByInput);
-
-async function doWalletLookup() {
-  const input = String(walletUi.walletInput?.value || "").trim();
-  try {
-    setWalletUiState({ busy: true, hint: "Looking up wallet…" });
-    setStatus("looking up wallet…");
-
-    const data = await lookupWalletTokens(input);
-    lastWalletLookup = data;
-    syncOwnedModeLabels();
-
-    // normalize + sort numeric
-    const tokenIds = (data.tokenIds || [])
-      .map((x) => Number(x))
-      .filter((n) => Number.isFinite(n))
-      .sort((a, b) => a - b);
-
-    walletOwnedTokenIds = tokenIds;
-
-    // reset carousel init for new wallet results
-    if (sceneUiAdapter.tokenCarousel) delete sceneUiAdapter.tokenCarousel.dataset.carouselInit;
-
-    renderCarousel(getCarouselTokenIdsForMode());
-
-    const who = data.ownerResolved || data.ownerInput || input;
-    const display =
-      data.ownerInput && data.ownerResolved && data.ownerInput !== data.ownerResolved
-        ? `${data.ownerInput} → ${data.ownerResolved}`
-        : who;
-
-    logLine(`🔎 Wallet lookup: ${display}`);
-    logLine(
-      `🧺 Friendsies owned: ${tokenIds.length} (contract ${FRIENDSIES_CONTRACT})`
-    );
-
-    setStatus("ready ✅");
-
-    // Showcase mode: if the wallet was provided via deep-link URL,
-    // auto-pick an owned token, enable auto-random (owned), and hide UI+transcript.
-    if (IS_SHOWCASE_MODE && tokenIds.length) {
-      const pick = getRandomFromArray(tokenIds);
-      if (Number.isFinite(pick)) {
-        if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(pick);
-        // Turn on auto-random (owned)
-        setAutoRandom(true);
-        // Hide UI + transcript
-        uiRoot?.classList.add("uiHidden");
-        uiRoot?.classList.add("logCollapsed");
-
-        // If metadata is ready, load immediately; otherwise queue it.
-        if (allFriendsies) {
-          loadFriendsies(pick);
-        } else {
-          SHOWCASE_PENDING_TOKEN_ID = pick;
-        }
-      }
-    }
-
-    setWalletUiState({
-      busy: false,
-      tokenIds,
-      hint: tokenIds.length
-        ? `Found ${tokenIds.length} wallet-owned tokens.`
-        : "No Friendsies found for that wallet."
-    });
-  } catch (err) {
-    console.error(err);
-    lastWalletLookup = null;
-    walletOwnedTokenIds = [];
-    syncOwnedModeLabels();
-    renderCarousel(getCarouselTokenIdsForMode());
-    setWalletUiState({ busy: false, tokenIds: [], hint: "Lookup failed." });
-    setStatus("wallet lookup failed ❌");
-    logLine(`wallet lookup failed ❌ ${err?.message || err}`, "err");
-  }
-}
-
-walletUi.walletLookupBtn?.addEventListener("click", doWalletLookup);
-
-// Carousel controls
-sceneUiAdapter.tokenPeekBtn?.addEventListener("click", () => {
-  setCarouselOpen(!carouselIsOpen);
 });
 
-window.addEventListener("resize", () => {
-  queueCarouselSnapResolution();
-});
-
-window.addEventListener("keydown", (e) => {
-  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-  const t = e.target;
-  const tag = String(t?.tagName || "").toLowerCase();
-  if (tag === "input" || tag === "textarea" || tag === "select" || t?.isContentEditable) return;
-
-  const ordered = carouselAllTokenIds || [];
-  const currentId = Number(sceneUi.friendsiesId?.value || 0);
-  const nextId = e.key === "ArrowRight"
-    ? selectNextId(ordered, currentId)
-    : selectPrevId(ordered, currentId);
-  if (!nextId) return;
-  e.preventDefault();
-  scrollCarouselToTokenId(nextId, "smooth");
-  if (carouselSnapDebounceTimer) clearTimeout(carouselSnapDebounceTimer);
-  carouselSnapDebounceTimer = setTimeout(() => {
-    carouselSnapDebounceTimer = null;
-    onCarouselSnap({ fromKeyboard: true });
-  }, 0);
-});
-
-walletUi.walletInput?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") doWalletLookup();
-});
-
-walletUi.walletDownloadJsonBtn?.addEventListener("click", () => {
-  if (!lastWalletLookup) return;
-  const safeOwner = String(lastWalletLookup.ownerResolved || lastWalletLookup.ownerInput || "wallet")
-    .replace(/[^a-zA-Z0-9_.-]/g, "_")
-    .slice(0, 60);
-  const filename = `friendsies_wallet_${safeOwner}.json`;
-  downloadJsonObject(lastWalletLookup, filename);
-  logLine(`⬇ Downloaded wallet JSON: ${filename}`);
-});
-
-sceneUi.randomBtn?.addEventListener("click", () => {
-  const walletIds = getWalletTokenIds();
-  const id = walletIds ? getRandomFromArray(walletIds) : 1 + Math.floor(Math.random() * 10000);
-  if (!id) return;
-  if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(id);
-  loadFriendsies(id);
-  updateCarouselActive();
-});
-
-sceneUi.friendsiesId?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") loadByInput();
-});
-
-sceneUi.autoRandomOn?.addEventListener("change", (e) => {
-  setAutoRandom(!!e.target.checked);
-});
-
-sceneUi.playBtn?.addEventListener("click", () => playAnimUrl(getSelectedAnimUrl()));
-
-sceneUi.stopBtn?.addEventListener("click", () => {
-  if (mixer) mixer.stopAllAction();
-  currentAction = null;
-  setStatus("anim stopped");
-  logLine("■ Animation stopped");
+["pointerdown", "touchstart", "keydown", "wheel"].forEach((evt) => {
+  window.addEventListener(evt, handleUserActivity, { passive: true });
 });
 
 
@@ -2747,30 +2263,9 @@ sceneUi.stopBtn?.addEventListener("click", () => {
 // Boot sequence
 // ----------------------------
 (async function boot() {
-  // Deep link support:
-  // - /pizzalord.eth
-  // - /0xabc...
-  // - ?owner=pizzalord.eth
-  // We rewrite to index.html (via vercel.json) and parse the path/query here.
-  // IMPORTANT: do this BEFORE loading pano/env so the wallet field fills immediately.
-  const path = String(location.pathname || "/")
-    .replace(/^\/+/, "")
-    .replace(/\/+$/, "");
-  const ownerFromQuery = new URLSearchParams(location.search).get("owner");
-  const ownerFromPath = path && path !== "index.html" ? decodeURIComponent(path) : "";
-  const owner = (ownerFromQuery || ownerFromPath || "").trim();
-
-  // Showcase mode ONLY when wallet is provided via URL path (not query, not manual).
-  IS_SHOWCASE_MODE = !!ownerFromPath;
-
-  // Always start in default full-range carousel mode (1..10000), independent of wallet lookup.
-  setCarouselMode(CAROUSEL_MODES.defaultRange);
-
-  if (owner && walletUi.walletInput) {
-    walletUi.walletInput.value = owner;
-    // Don't block boot if wallet lookup fails.
-    doWalletLookup();
-  }
+  initCarousel();
+  showHamburger();
+  scheduleIdleTimer();
 
   validateLookConfig(LOOK_CONTROLS, "LOOK_CONTROLS");
   validateLookConfig(
@@ -2792,17 +2287,11 @@ sceneUi.stopBtn?.addEventListener("click", () => {
     .then((data) => {
       allFriendsies = data;
       setStatus("ready ✅");
-
-      // If showcase mode queued a token before metadata was ready, load it now.
-      if (IS_SHOWCASE_MODE && Number.isFinite(SHOWCASE_PENDING_TOKEN_ID)) {
-        const id = Number(SHOWCASE_PENDING_TOKEN_ID);
-        SHOWCASE_PENDING_TOKEN_ID = null;
-        if (sceneUi.friendsiesId) sceneUi.friendsiesId.value = String(id);
-        loadFriendsies(id);
-        return;
+      if (pendingTokenId) {
+        debounceTokenLoad(pendingTokenId);
+      } else {
+        requestTokenLoad(DEFAULT_TOKEN_ID);
       }
-
-      loadByInput();
     })
     .catch((e) => {
       console.error(e);
@@ -2824,11 +2313,8 @@ function animate() {
   if (FREEZE_POS && bodySkeleton) restoreRestPositionsExceptHips();
 
   // Camera controls
-  const orbitEnabled = sceneUi.orbitOn?.checked ?? true;
-  const autoRot = sceneUi.autoRotateOn?.checked ?? false;
-
-  controls.enabled = orbitEnabled;
-  controls.autoRotate = orbitEnabled && autoRot;
+  controls.enabled = true;
+  controls.autoRotate = false;
   if (controls.enabled) controls.update();
 
   if (MOBILE_CAMERA_FOLLOW_LIGHTS) {
