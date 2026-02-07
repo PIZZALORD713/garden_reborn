@@ -2151,6 +2151,7 @@ let idleTimer = null;
 let idleActive = false;
 let activePanel = null;
 let menuOpen = false;
+let orbitReleaseTimer = null;
 
 let carouselTokenIds = [...DEFAULT_TOKEN_IDS];
 let carouselTokenIdSet = new Set(carouselTokenIds);
@@ -2163,6 +2164,7 @@ function showHamburger() {
   if (!ui.hamburger) return;
   ui.hamburger.classList.remove("is-hidden");
   if (hamburgerTimer) clearTimeout(hamburgerTimer);
+  if (menuOpen) return;
   hamburgerTimer = setTimeout(() => {
     ui.hamburger?.classList.add("is-hidden");
   }, HAMBURGER_HIDE_MS);
@@ -2190,6 +2192,7 @@ function setMenuOpen(open) {
     ui.menu.setAttribute("aria-hidden", menuOpen ? "false" : "true");
   }
   if (!menuOpen) setActivePanel(null);
+  showHamburger();
 }
 
 function setActivePanel(name) {
@@ -2325,6 +2328,13 @@ ui.hamburger?.addEventListener("click", () => {
   setMenuOpen(!menuOpen);
 });
 
+controls?.addEventListener("end", () => {
+  if (orbitReleaseTimer) clearTimeout(orbitReleaseTimer);
+  orbitReleaseTimer = setTimeout(() => {
+    showHamburger();
+  }, 250);
+});
+
 ui.menu?.addEventListener("click", (event) => {
   const btn = event.target.closest(".menuIcon");
   if (!btn || !ui.menu.contains(btn)) return;
@@ -2335,6 +2345,13 @@ ui.menu?.addEventListener("click", (event) => {
   } else {
     setActivePanel(panel);
   }
+});
+
+window.addEventListener("pointerdown", (event) => {
+  if (!menuOpen) return;
+  const target = event.target;
+  if (ui.menu?.contains(target) || ui.hamburger?.contains(target)) return;
+  setMenuOpen(false);
 });
 
 ["pointerdown", "touchstart", "keydown", "wheel"].forEach((evt) => {
