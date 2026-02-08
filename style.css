@@ -58,7 +58,7 @@ canvas {
   --text-secondary: rgba(22, 26, 40, 0.55);
   --text-muted: rgba(22, 26, 40, 0.35);
   --card-width: 120px;
-  --card-gap: 14px;
+  --card-gap: 18px;
 }
 
 /* Carousel */
@@ -68,7 +68,7 @@ canvas {
   left: 50%;
   bottom: 28px;
   transform: translateX(-50%);
-  width: min(720px, calc(100vw - 32px));
+  width: min(560px, calc(100vw - 48px));
   padding: 12px 18px 16px;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.45);
@@ -102,6 +102,7 @@ canvas {
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   padding-bottom: 6px;
+  padding-inline: 8px;
   scrollbar-width: none;
   transform: translateZ(0);
   -webkit-overflow-scrolling: touch;
@@ -115,9 +116,11 @@ canvas {
   list-style: none;
   display: flex;
   align-items: stretch;
+  justify-content: center;
   gap: var(--card-gap);
-  padding: 4px 2px 8px;
-  margin: 0;
+  padding: 4px 10px 8px;
+  margin: 0 auto;
+  min-width: 100%;
 }
 
 .tokenSlide {
@@ -500,7 +503,7 @@ canvas {
 
 @media (max-width: 720px) {
   .glassCarousel {
-    width: calc(100vw - 24px);
+    width: min(520px, calc(100vw - 32px));
     bottom: 24px;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
@@ -508,7 +511,7 @@ canvas {
 
   :root {
     --card-width: 104px;
-    --card-gap: 10px;
+    --card-gap: 12px;
   }
 
   .sheet {
