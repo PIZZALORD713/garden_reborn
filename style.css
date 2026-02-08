@@ -87,6 +87,15 @@ canvas {
   pointer-events: none;
 }
 
+/* Glide core CSS defines `.glide { position: relative; }`.
+   Our selector must be fixed at the bottom; override with higher specificity. */
+#tokenCarousel.glassCarousel {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+}
+
 .carouselViewport {
   overflow-x: auto;
   overflow-y: hidden;
