@@ -2172,6 +2172,8 @@ let carouselScrollTimer = null;
 let imageObserver = null;
 let carouselListenersBound = false;
 let carouselLockUntilMs = 0; // suppress scroll-end selection during programmatic scroll
+let carouselGlide = null;
+let carouselGlideRemounting = false;
 
 const PREVIEW_BASE_URL =
   "https://storage.googleapis.com/friendsies-rendered-97557c";
@@ -2382,7 +2384,7 @@ function observeTokenImage(img) {
 
 function createTokenSlide(id, index) {
   const li = document.createElement("li");
-  li.className = "tokenSlide";
+  li.className = "glide__slide tokenSlide";
   li.dataset.index = String(index);
   li.dataset.tokenId = String(id);
 
@@ -2459,29 +2461,23 @@ function renderCarouselRange(centerIndex) {
   ui.slides.appendChild(fragment);
   ui.slides.querySelectorAll(".tokenImage").forEach((img) => observeTokenImage(img));
 
-  // IMPORTANT: don't auto-scroll here.
-  // This function is called from scroll-end logic; scrolling again can cause selection “jumps”.
   setActiveCarouselIndex(centerIndex, { loadToken: false });
 }
 
 function bindCarouselListeners() {
   if (carouselListenersBound) return;
+
+  // Click-to-load still supported.
   ui.slides.addEventListener("click", (event) => {
     const slide = event.target.closest(".tokenSlide");
     if (!slide || !ui.slides.contains(slide)) return;
     const index = Number(slide.dataset.index || 0);
     if (Number.isNaN(index)) return;
 
-    // Click = explicit selection.
-    // Center it and re-window the virtualized range so more tokens are revealed left/right.
+    // If Glide is active, let it handle centering; we just request the token load.
     setActiveCarouselIndex(index);
-    renderCarouselRange(index);
-    scrollToCarouselIndex(index);
   });
 
-  ui.carouselViewport.addEventListener("scroll", handleCarouselScroll, {
-    passive: true
-  });
   carouselListenersBound = true;
 }
 
@@ -2500,12 +2496,7 @@ function setActiveCarouselIndex(index, { loadToken: shouldLoad = true } = {}) {
 }
 
 function scrollToCarouselIndex(index, behavior = "smooth") {
-  if (!ui.carouselViewport || !ui.slides) return;
-  const slide = ui.slides.querySelector(`[data-index=\"${index}\"]`);
-  if (!slide) return;
-  // Prevent scroll-end logic from overriding explicit selections.
-  carouselLockUntilMs = Date.now() + 300;
-  slide.scrollIntoView({ behavior, inline: "center", block: "nearest" });
+  // Glide handles centering; keep function for legacy callers.
 }
 
 function getCarouselMetrics() {
@@ -2520,46 +2511,16 @@ function getCarouselMetrics() {
 }
 
 function getNearestCarouselIndex() {
-  // Robust selection: derive nearest from actual rendered slides instead of math based on
-  // scrollLeft + renderStart. Virtualized rendering makes the math drift and causes “jumps”.
-  if (!ui.carouselViewport || !ui.slides || !ui.slides.children.length) return 0;
-
-  const viewportRect = ui.carouselViewport.getBoundingClientRect();
-  const viewportCenter = viewportRect.left + viewportRect.width / 2;
-
-  let bestIndex = 0;
-  let bestDist = Infinity;
-
-  for (const child of Array.from(ui.slides.children)) {
-    const idx = Number(child.dataset.index || 0);
-    if (!Number.isFinite(idx)) continue;
-    const rect = child.getBoundingClientRect();
-    const c = rect.left + rect.width / 2;
-    const d = Math.abs(c - viewportCenter);
-    if (d < bestDist) {
-      bestDist = d;
-      bestIndex = idx;
-    }
-  }
-
-  return Math.max(0, Math.min(bestIndex, carouselTokenIds.length - 1));
+  // legacy
+  return 0;
 }
 
 function handleCarouselScrollEnd() {
-  if (Date.now() < carouselLockUntilMs) return;
-  const index = getNearestCarouselIndex();
-  setActiveCarouselIndex(index);
-  renderCarouselRange(index);
-  // Snap the chosen token to center after scroll settles.
-  scrollToCarouselIndex(index, "smooth");
+  // legacy: Glide handles run/snap
 }
 
 function handleCarouselScroll() {
-  if (carouselScrollTimer) clearTimeout(carouselScrollTimer);
-  carouselScrollTimer = setTimeout(() => {
-    carouselScrollTimer = null;
-    handleCarouselScrollEnd();
-  }, 150);
+  // legacy: Glide handles run/snap
 }
 
 function setCarouselTokenIds(tokenIds) {
@@ -2573,6 +2534,53 @@ function setCarouselTokenIds(tokenIds) {
   carouselTokenIds = unique;
   carouselTokenIdSet = new Set(unique);
   updateResetCollectionVisibility();
+}
+
+function mountCarouselGlide(globalIndex) {
+  if (!ui.carousel) return;
+  if (typeof Glide === "undefined") return;
+  if (carouselGlideRemounting) return;
+
+  const renderStart = Number(ui.slides?.dataset?.renderStart || 0);
+  const localIndex = Math.max(0, globalIndex - renderStart);
+
+  // Destroy previous
+  try {
+    carouselGlide?.destroy();
+  } catch (_) {
+    // ignore
+  }
+
+  carouselGlide = new Glide("#tokenCarousel", {
+    type: "carousel",
+    focusAt: "center",
+    startAt: localIndex,
+    perView: 5,
+    gap: 12,
+    animationDuration: 280,
+    breakpoints: {
+      520: { perView: 3, gap: 10 }
+    }
+  });
+
+  carouselGlide.on("run.after", () => {
+    if (!ui.slides) return;
+
+    const active = ui.slides.querySelector(".glide__slide--active") || ui.slides.children[carouselGlide.index];
+    const idx = Number(active?.dataset?.index || NaN);
+    if (!Number.isFinite(idx)) return;
+
+    // Re-window around selected index so we can keep “infinite” feel while rendering a small slice.
+    carouselGlideRemounting = true;
+    renderCarouselRange(idx);
+    requestAnimationFrame(() => {
+      carouselGlideRemounting = false;
+      mountCarouselGlide(idx);
+      setActiveCarouselIndex(idx);
+    });
+  });
+
+  carouselGlide.mount();
 }
 
 function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
@@ -2615,7 +2623,8 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
   bindCarouselListeners();
 
   requestAnimationFrame(() => {
-    scrollToCarouselIndex(startIndex, "auto");
+    renderCarouselRange(startIndex);
+    mountCarouselGlide(startIndex);
     setActiveCarouselIndex(startIndex, { loadToken: true });
   });
   showCarousel();
