@@ -418,6 +418,8 @@ const ui = {
   carousel: document.getElementById("tokenCarousel"),
   slides: document.getElementById("tokenSlides"),
   carouselViewport: document.getElementById("carouselViewport"),
+  spacerLeft: document.getElementById("spacerLeft"),
+  spacerRight: document.getElementById("spacerRight"),
   hamburger: document.getElementById("hamburger"),
   menuStack: document.getElementById("menuStack"),
   menu: document.getElementById("menu"),
@@ -2168,19 +2170,117 @@ let activeCarouselIndex = null;
 let pendingTokenId = null;
 let lastLoadedTokenId = null;
 let loadDebounceTimer = null;
-let carouselScrollTimer = null;
 let imageObserver = null;
 let carouselListenersBound = false;
-let carouselLockUntilMs = 0; // suppress scroll-end selection during programmatic scroll
-let carouselGlide = null;
-let carouselGlideRemounting = false;
+let scrollRafPending = false;
+let suppressScrollHandler = false;
+
+/* ── Pointer-drag momentum state ── */
+let isDragging = false;
+let wasDragging = false;  // persists through the click event after drag ends
+let dragStartX = 0;
+let dragStartScroll = 0;
+let dragVelocity = 0;
+let dragLastX = 0;
+let dragLastTime = 0;
+let momentumRaf = null;
+const DRAG_THRESHOLD = 6;       // px — below this, treat as click
+const MOMENTUM_FRICTION = 0.94; // per-frame multiplier (lower = more friction)
+const MOMENTUM_MIN_VEL = 0.5;   // px/frame — stop momentum below this
 
 const PREVIEW_BASE_URL =
   "https://storage.googleapis.com/friendsies-rendered-97557c";
 const FALLBACK_IMAGE =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><rect width='100%25' height='100%25' fill='%23f2f1fb'/></svg>";
-const VISIBLE_CARDS = 7;
-const BUFFER_CARDS = 3;
+const RENDER_BUFFER = 10;
+const SNAP_BUFFER = 5;
+
+// ---------------------
+// Carousel geometry helpers
+// ---------------------
+
+function getCardMetrics() {
+  const style = getComputedStyle(document.documentElement);
+  const cardWidth = parseFloat(style.getPropertyValue("--card-width")) || 120;
+  const cardGap = parseFloat(style.getPropertyValue("--card-gap")) || 14;
+  return { cardWidth, cardGap, step: cardWidth + cardGap };
+}
+
+function getViewportMetrics() {
+  const vp = ui.carouselViewport;
+  if (!vp) return { vpWidth: 0, visibleCount: 5 };
+  const vpWidth = vp.clientWidth;
+  const { step } = getCardMetrics();
+  const visibleCount = Math.max(1, Math.floor(vpWidth / step));
+  return { vpWidth, visibleCount };
+}
+
+function indexToScrollLeft(index) {
+  const { step, cardWidth } = getCardMetrics();
+  const { vpWidth } = getViewportMetrics();
+  // edgePad is the left spacer's minimum width (centering padding for the first card).
+  // Token i's center in the scroll content is at: edgePad + i * step + cardWidth / 2.
+  // To center that in the viewport: scrollLeft = tokenCenter - vpWidth / 2.
+  const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
+  return edgePad + index * step + cardWidth / 2 - vpWidth / 2;
+}
+
+function scrollLeftToIndex(scrollLeft) {
+  const { step, cardWidth } = getCardMetrics();
+  const { vpWidth } = getViewportMetrics();
+  const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
+  // Inverse of indexToScrollLeft: solve for index
+  const centerPixel = scrollLeft + vpWidth / 2;
+  const index = Math.round((centerPixel - edgePad - cardWidth / 2) / step);
+  return Math.max(0, Math.min(carouselTokenIds.length - 1, index));
+}
+
+function updateSpacerWidths(renderStart, renderEnd) {
+  const { step, cardWidth } = getCardMetrics();
+  const { vpWidth } = getViewportMetrics();
+  const n = carouselTokenIds.length;
+
+  // Edge padding so first/last card can center in the viewport
+  const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
+
+  const leftWidth = edgePad + renderStart * step;
+  const rightTokens = n - renderEnd;
+  const rightWidth = rightTokens * step + edgePad;
+
+  if (ui.spacerLeft) ui.spacerLeft.style.width = Math.max(0, leftWidth) + "px";
+  if (ui.spacerRight) ui.spacerRight.style.width = Math.max(0, rightWidth) + "px";
+}
+
+function onCarouselScroll() {
+  if (suppressScrollHandler) return;
+  if (scrollRafPending) return;
+  scrollRafPending = true;
+
+  requestAnimationFrame(() => {
+    scrollRafPending = false;
+    if (!ui.carouselViewport || !ui.slides) return;
+
+    const scrollLeft = ui.carouselViewport.scrollLeft;
+    const centerIndex = scrollLeftToIndex(scrollLeft);
+
+    const renderStart = Number(ui.slides.dataset.renderStart || 0);
+    const renderEnd = Number(ui.slides.dataset.renderEnd || 0);
+
+    // Re-window if approaching edge of rendered range
+    const nearLeft = centerIndex - renderStart < SNAP_BUFFER;
+    const nearRight = renderEnd - 1 - centerIndex < SNAP_BUFFER;
+    const canExpandLeft = renderStart > 0;
+    const canExpandRight = renderEnd < carouselTokenIds.length;
+
+    if ((nearLeft && canExpandLeft) || (nearRight && canExpandRight)) {
+      renderCarouselRange(centerIndex);
+    }
+
+    // Update active card highlight only — don't trigger 3D model load during scrolling.
+    // The actual load happens on scrollend (or fallback timer).
+    setActiveCarouselIndex(centerIndex, { loadToken: false });
+  });
+}
 
 function showHamburger() {
   if (!ui.hamburger) return;
@@ -2291,12 +2391,24 @@ async function handleSearch(query) {
   if (Number.isInteger(asNum) && asNum >= 1 && asNum <= 10000) {
     const index = carouselTokenIds.indexOf(asNum);
     if (index >= 0) {
-      renderCarouselRange(index);
       scrollToCarouselIndex(index);
       setActiveCarouselIndex(index);
     } else {
-      lastLoadedTokenId = asNum;
-      loadToken(asNum);
+      // Token not in current carousel set (e.g. wallet filter active)
+      const isFiltered = carouselTokenIds.length < DEFAULT_TOKEN_IDS.length;
+      if (isFiltered && searchResults) {
+        searchResults.textContent =
+          `Token #${asNum} is not in this wallet — showing from full collection`;
+      }
+      resetToFullCollection();
+      const fullIndex = carouselTokenIds.indexOf(asNum);
+      if (fullIndex >= 0) {
+        scrollToCarouselIndex(fullIndex);
+        setActiveCarouselIndex(fullIndex);
+      } else {
+        lastLoadedTokenId = asNum;
+        loadToken(asNum);
+      }
     }
     setMenuOpen(false);
     return;
@@ -2384,7 +2496,7 @@ function observeTokenImage(img) {
 
 function createTokenSlide(id, index) {
   const li = document.createElement("li");
-  li.className = "glide__slide tokenSlide";
+  li.className = "tokenSlide";
   li.dataset.index = String(index);
   li.dataset.tokenId = String(id);
 
@@ -2400,6 +2512,7 @@ function createTokenSlide(id, index) {
   image.className = "tokenImage";
   image.alt = `Friendsies #${id} preview`;
   image.loading = "lazy";
+  image.draggable = false; // prevent native image drag interfering with carousel fling
   image.dataset.src = getPreviewUrl(id);
   image.src = FALLBACK_IMAGE;
 
@@ -2437,90 +2550,314 @@ function renderCarouselRange(centerIndex) {
   if (!ui.slides) return;
   if (!carouselTokenIds.length) return;
 
-  const renderStart = Math.max(0, centerIndex - BUFFER_CARDS);
+  centerIndex = Math.max(0, Math.min(carouselTokenIds.length - 1, centerIndex));
+
+  const renderStart = Math.max(0, centerIndex - RENDER_BUFFER);
   const renderEnd = Math.min(
     carouselTokenIds.length,
-    centerIndex + VISIBLE_CARDS + BUFFER_CARDS
+    centerIndex + RENDER_BUFFER + 1
   );
 
-  const currentStart = Number(ui.slides.dataset.renderStart || 0);
-  const currentEnd = Number(ui.slides.dataset.renderEnd || 0);
+  const currentStart = Number(ui.slides.dataset.renderStart || -1);
+  const currentEnd = Number(ui.slides.dataset.renderEnd || -1);
 
   if (renderStart === currentStart && renderEnd === currentEnd) return;
 
-  ui.slides.dataset.renderStart = String(renderStart);
-  ui.slides.dataset.renderEnd = String(renderEnd);
-  ui.slides.innerHTML = "";
+  // Check if ranges overlap — if so, do an incremental update to preserve
+  // already-loaded images and avoid flicker.
+  const hasOverlap =
+    currentEnd > 0 &&
+    renderStart < currentEnd &&
+    renderEnd > currentStart;
 
-  const fragment = document.createDocumentFragment();
-  for (let i = renderStart; i < renderEnd; i++) {
-    const id = carouselTokenIds[i];
-    fragment.appendChild(createTokenSlide(id, i));
+  if (hasOverlap) {
+    // Remove slides that fell off the front (indices < renderStart)
+    while (ui.slides.firstChild) {
+      const idx = Number(ui.slides.firstChild.dataset?.index);
+      if (!Number.isFinite(idx) || idx >= renderStart) break;
+      ui.slides.removeChild(ui.slides.firstChild);
+    }
+
+    // Remove slides that fell off the back (indices >= renderEnd)
+    while (ui.slides.lastChild) {
+      const idx = Number(ui.slides.lastChild.dataset?.index);
+      if (!Number.isFinite(idx) || idx < renderEnd) break;
+      ui.slides.removeChild(ui.slides.lastChild);
+    }
+
+    // Prepend new slides at the front
+    const firstRendered = ui.slides.firstChild
+      ? Number(ui.slides.firstChild.dataset?.index)
+      : renderEnd;
+    for (let i = firstRendered - 1; i >= renderStart; i--) {
+      const slide = createTokenSlide(carouselTokenIds[i], i);
+      ui.slides.insertBefore(slide, ui.slides.firstChild);
+      const img = slide.querySelector(".tokenImage");
+      if (img) observeTokenImage(img);
+    }
+
+    // Append new slides at the back
+    const lastRendered = ui.slides.lastChild
+      ? Number(ui.slides.lastChild.dataset?.index) + 1
+      : renderStart;
+    for (let i = lastRendered; i < renderEnd; i++) {
+      const slide = createTokenSlide(carouselTokenIds[i], i);
+      ui.slides.appendChild(slide);
+      const img = slide.querySelector(".tokenImage");
+      if (img) observeTokenImage(img);
+    }
+  } else {
+    // No overlap — full rebuild (initial load, search jump, etc.)
+    ui.slides.innerHTML = "";
+
+    const fragment = document.createDocumentFragment();
+    for (let i = renderStart; i < renderEnd; i++) {
+      fragment.appendChild(createTokenSlide(carouselTokenIds[i], i));
+    }
+
+    ui.slides.appendChild(fragment);
+    ui.slides.querySelectorAll(".tokenImage").forEach((img) => observeTokenImage(img));
   }
 
-  ui.slides.appendChild(fragment);
-  ui.slides.querySelectorAll(".tokenImage").forEach((img) => observeTokenImage(img));
+  ui.slides.dataset.renderStart = String(renderStart);
+  ui.slides.dataset.renderEnd = String(renderEnd);
+
+  // Update spacer widths to maintain correct total scroll width
+  updateSpacerWidths(renderStart, renderEnd);
 
   setActiveCarouselIndex(centerIndex, { loadToken: false });
+}
+
+/* ── Pointer-drag with momentum (desktop fling) ── */
+function stopMomentum() {
+  if (momentumRaf) { cancelAnimationFrame(momentumRaf); momentumRaf = null; }
+}
+
+function applyMomentum() {
+  const vp = ui.carouselViewport;
+  if (!vp || Math.abs(dragVelocity) < MOMENTUM_MIN_VEL) {
+    stopMomentum();
+    // Re-enable snap so browser settles to nearest card
+    vp.style.scrollSnapType = "";
+    return;
+  }
+  vp.scrollLeft -= dragVelocity;
+  dragVelocity *= MOMENTUM_FRICTION;
+  momentumRaf = requestAnimationFrame(applyMomentum);
+}
+
+function onDragStart(e) {
+  // Skip touch — mobile already has native momentum scrolling
+  if (e.pointerType === "touch") return;
+  // Only primary button (left click)
+  if (e.button && e.button !== 0) return;
+  const vp = ui.carouselViewport;
+  if (!vp) return;
+
+  stopMomentum();
+  isDragging = false; // hasn't moved past threshold yet
+  dragStartX = e.clientX;
+  dragStartScroll = vp.scrollLeft;
+  dragLastX = e.clientX;
+  dragLastTime = performance.now();
+  dragVelocity = 0;
+
+  // Disable snap during drag so it doesn't fight the user
+  vp.style.scrollSnapType = "none";
+  vp.style.cursor = "grabbing";
+  vp.setPointerCapture(e.pointerId);
+}
+
+function onDragMove(e) {
+  const vp = ui.carouselViewport;
+  if (!vp || !vp.hasPointerCapture(e.pointerId)) return;
+
+  const dx = e.clientX - dragStartX;
+
+  // Once past threshold, commit to dragging (prevents accidental drags on click)
+  if (!isDragging && Math.abs(dx) > DRAG_THRESHOLD) {
+    isDragging = true;
+  }
+
+  if (!isDragging) return;
+
+  // Track velocity from recent movement
+  const now = performance.now();
+  const dt = now - dragLastTime;
+  if (dt > 0) {
+    // Exponential smoothing of velocity for stable fling
+    const instantVel = (e.clientX - dragLastX) / dt * 16; // px per ~frame
+    dragVelocity = 0.7 * instantVel + 0.3 * dragVelocity;
+  }
+  dragLastX = e.clientX;
+  dragLastTime = now;
+
+  // Move scroll position opposite to drag direction
+  vp.scrollLeft = dragStartScroll - dx;
+}
+
+function onDragEnd(e) {
+  const vp = ui.carouselViewport;
+  if (!vp) return;
+  vp.style.cursor = "";
+
+  if (!vp.hasPointerCapture(e.pointerId)) return;
+  vp.releasePointerCapture(e.pointerId);
+
+  wasDragging = isDragging;
+
+  if (isDragging) {
+    // Fling: apply momentum if velocity is high enough
+    if (Math.abs(dragVelocity) > MOMENTUM_MIN_VEL) {
+      momentumRaf = requestAnimationFrame(applyMomentum);
+    } else {
+      // Low velocity — just re-enable snap to settle
+      vp.style.scrollSnapType = "";
+    }
+  } else {
+    // Was a click, not a drag — re-enable snap and select the clicked card.
+    // Pointer capture prevents the normal click event from reaching the slides,
+    // so we handle click-to-select here instead.
+    vp.style.scrollSnapType = "";
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    const slide = target?.closest?.(".tokenSlide");
+    if (slide && ui.slides.contains(slide)) {
+      const index = Number(slide.dataset.index || 0);
+      if (!Number.isNaN(index)) {
+        scrollToCarouselIndex(index);
+      }
+    }
+  }
+
+  isDragging = false;
+
+  // Clear wasDragging after the click event has had a chance to check it
+  requestAnimationFrame(() => { wasDragging = false; });
 }
 
 function bindCarouselListeners() {
   if (carouselListenersBound) return;
 
-  // Click-to-load still supported.
+  // Click-to-select: smooth-scroll to center the clicked card (only if not dragging)
   ui.slides.addEventListener("click", (event) => {
+    // If this click was the end of a drag gesture, ignore it
+    if (wasDragging || isDragging) return;
     const slide = event.target.closest(".tokenSlide");
     if (!slide || !ui.slides.contains(slide)) return;
     const index = Number(slide.dataset.index || 0);
     if (Number.isNaN(index)) return;
-
-    // If Glide is active, let it handle centering; we just request the token load.
-    setActiveCarouselIndex(index);
+    scrollToCarouselIndex(index);
   });
+
+  // Pointer-drag with momentum (desktop fling scrolling)
+  ui.carouselViewport.addEventListener("pointerdown", (e) => {
+    showCarousel();
+    onDragStart(e);
+  });
+  ui.carouselViewport.addEventListener("pointermove", onDragMove);
+  ui.carouselViewport.addEventListener("pointerup", onDragEnd);
+  ui.carouselViewport.addEventListener("pointercancel", onDragEnd);
+
+  // Scroll-driven virtual rendering
+  ui.carouselViewport.addEventListener("scroll", onCarouselScroll, { passive: true });
+
+  // When scrolling settles, ensure we snap to the nearest card and load its 3D model.
+  // We use forceLoad: true because onCarouselScroll may have already set the
+  // activeCarouselIndex (visual highlight) without triggering a model load.
+  const onScrollSettle = () => {
+    if (suppressScrollHandler) return;
+    const scrollLeft = ui.carouselViewport.scrollLeft;
+    const centerIndex = scrollLeftToIndex(scrollLeft);
+    setActiveCarouselIndex(centerIndex, { forceLoad: true });
+  };
+
+  if ("onscrollend" in window) {
+    ui.carouselViewport.addEventListener("scrollend", onScrollSettle, { passive: true });
+  } else {
+    // Fallback for browsers without scrollend: use a timer-based settle detection
+    let scrollSettleTimer = null;
+    ui.carouselViewport.addEventListener("scroll", () => {
+      if (scrollSettleTimer) clearTimeout(scrollSettleTimer);
+      scrollSettleTimer = setTimeout(onScrollSettle, 200);
+    }, { passive: true });
+  }
 
   carouselListenersBound = true;
 }
 
-function setActiveCarouselIndex(index, { loadToken: shouldLoad = true } = {}) {
+function setActiveCarouselIndex(index, { loadToken: shouldLoad = true, forceLoad = false } = {}) {
   if (!Number.isFinite(index) || !ui.slides) return;
-  if (activeCarouselIndex === index) return;
-  const prev = ui.slides.querySelector(`[data-index=\"${activeCarouselIndex}\"]`);
-  if (prev) prev.classList.remove("is-active");
-  const next = ui.slides.querySelector(`[data-index=\"${index}\"]`);
-  if (next) next.classList.add("is-active");
-  activeCarouselIndex = index;
+
+  const indexChanged = activeCarouselIndex !== index;
+
+  // Update visual highlight if the index changed
+  if (indexChanged) {
+    const prev = ui.slides.querySelector(`[data-index=\"${activeCarouselIndex}\"]`);
+    if (prev) prev.classList.remove("is-active");
+    const next = ui.slides.querySelector(`[data-index=\"${index}\"]`);
+    if (next) next.classList.add("is-active");
+    activeCarouselIndex = index;
+  }
+
+  // Trigger 3D model load:
+  // - Always load if forceLoad (scrollend settle — ensures model loads even
+  //   when the visual index was already set by the last scroll frame)
+  // - Load if the index changed AND shouldLoad is true (normal navigation)
+  // - Skip if shouldLoad is false (rapid scroll frames — visual only)
   const tokenId = carouselTokenIds[index];
-  if (shouldLoad && tokenId) {
-    requestTokenLoad(tokenId);
+  if (tokenId && (forceLoad || (indexChanged && shouldLoad))) {
+    requestTokenLoad(tokenId, { force: forceLoad });
   }
 }
 
-function scrollToCarouselIndex(index, behavior = "smooth") {
-  // Glide handles centering; keep function for legacy callers.
-}
+function scrollToCarouselIndex(index) {
+  if (!ui.carouselViewport) return;
+  const n = carouselTokenIds.length;
+  if (!n) return;
+  index = Math.max(0, Math.min(n - 1, index));
+  stopMomentum();
 
-function getCarouselMetrics() {
-  if (!ui.slides || !ui.carouselViewport || !ui.slides.children.length) return null;
-  const firstSlide = ui.slides.children[0];
-  const slideWidth = firstSlide.getBoundingClientRect().width;
-  const styles = window.getComputedStyle(ui.slides);
-  const gap =
-    Number.parseFloat(styles.columnGap || styles.gap || styles.rowGap || "0") || 0;
-  const renderStart = Number(ui.slides.dataset.renderStart || 0);
-  return { slideWidth, gap, renderStart };
-}
+  // Ensure target slides are rendered
+  suppressScrollHandler = true;
+  renderCarouselRange(index);
 
-function getNearestCarouselIndex() {
-  // legacy
-  return 0;
-}
+  const targetLeft = indexToScrollLeft(index);
+  const currentLeft = ui.carouselViewport.scrollLeft;
+  const { step } = getCardMetrics();
+  const distance = Math.abs(targetLeft - currentLeft);
 
-function handleCarouselScrollEnd() {
-  // legacy: Glide handles run/snap
-}
+  // Temporarily disable snap so the programmatic scroll isn't fought by the browser
+  ui.carouselViewport.style.scrollSnapType = "none";
 
-function handleCarouselScroll() {
-  // legacy: Glide handles run/snap
+  const restoreSnap = () => {
+    ui.carouselViewport.style.scrollSnapType = "";
+    suppressScrollHandler = false;
+  };
+
+  if (distance > 20 * step) {
+    // Large jump: instant
+    ui.carouselViewport.scrollLeft = targetLeft;
+    restoreSnap();
+  } else if (distance < 1) {
+    // Already there
+    restoreSnap();
+  } else {
+    // Small jump: smooth scroll, restore snap when done
+    ui.carouselViewport.scrollTo({ left: targetLeft, behavior: "smooth" });
+
+    // Use scrollend if supported, else fall back to timeout
+    if ("onscrollend" in window) {
+      ui.carouselViewport.addEventListener("scrollend", function onEnd() {
+        ui.carouselViewport.removeEventListener("scrollend", onEnd);
+        restoreSnap();
+      }, { once: true });
+    } else {
+      setTimeout(restoreSnap, 400);
+    }
+  }
+
+  // Force-load the model: this is an intentional navigation (click, search, etc.)
+  setActiveCarouselIndex(index, { forceLoad: true });
 }
 
 function setCarouselTokenIds(tokenIds) {
@@ -2536,56 +2873,11 @@ function setCarouselTokenIds(tokenIds) {
   updateResetCollectionVisibility();
 }
 
-function mountCarouselGlide(globalIndex) {
-  if (!ui.carousel) return;
-  if (typeof Glide === "undefined") return;
-  if (carouselGlideRemounting) return;
-
-  const renderStart = Number(ui.slides?.dataset?.renderStart || 0);
-  const localIndex = Math.max(0, globalIndex - renderStart);
-
-  // Destroy previous
-  try {
-    carouselGlide?.destroy();
-  } catch (_) {
-    // ignore
-  }
-
-  carouselGlide = new Glide("#tokenCarousel", {
-    type: "carousel",
-    focusAt: "center",
-    startAt: localIndex,
-    perView: 5,
-    gap: 12,
-    animationDuration: 280,
-    breakpoints: {
-      520: { perView: 3, gap: 10 }
-    }
-  });
-
-  carouselGlide.on("run.after", () => {
-    if (!ui.slides) return;
-
-    const active = ui.slides.querySelector(".glide__slide--active") || ui.slides.children[carouselGlide.index];
-    const idx = Number(active?.dataset?.index || NaN);
-    if (!Number.isFinite(idx)) return;
-
-    // Re-window around selected index so we can keep “infinite” feel while rendering a small slice.
-    carouselGlideRemounting = true;
-    renderCarouselRange(idx);
-    requestAnimationFrame(() => {
-      carouselGlideRemounting = false;
-      mountCarouselGlide(idx);
-      setActiveCarouselIndex(idx);
-    });
-  });
-
-  carouselGlide.mount();
-}
-
 function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
   if (!ui.slides || !ui.carouselViewport) return;
   ui.slides.innerHTML = "";
+  ui.slides.dataset.renderStart = "-1";
+  ui.slides.dataset.renderEnd = "-1";
   activeCarouselIndex = null;
 
   if (carouselTokenIds.length === 0) {
@@ -2602,6 +2894,7 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
     card.disabled = true;
     li.appendChild(card);
     ui.slides.appendChild(li);
+    updateSpacerWidths(0, 0);
   }
 
   let startIndex = 0;
@@ -2616,17 +2909,21 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
         : Math.min(Math.max(DEFAULT_TOKEN_ID - 1, 0), carouselTokenIds.length - 1);
   }
 
-  if (carouselTokenIds.length) {
-    renderCarouselRange(startIndex);
-  }
-
   bindCarouselListeners();
 
-  requestAnimationFrame(() => {
+  if (carouselTokenIds.length) {
+    // Suppress scroll handler during initial positioning
+    suppressScrollHandler = true;
     renderCarouselRange(startIndex);
-    mountCarouselGlide(startIndex);
-    setActiveCarouselIndex(startIndex, { loadToken: true });
-  });
+
+    requestAnimationFrame(() => {
+      // Set initial scroll position (instant, no smooth)
+      ui.carouselViewport.scrollLeft = indexToScrollLeft(startIndex);
+      suppressScrollHandler = false;
+      setActiveCarouselIndex(startIndex, { loadToken: true });
+    });
+  }
+
   showCarousel();
 }
 
@@ -2818,4 +3115,14 @@ window.addEventListener("resize", () => {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+
+  // Recalculate carousel spacers and re-center on active card
+  if (activeCarouselIndex != null && carouselTokenIds.length && ui.slides) {
+    const renderStart = Number(ui.slides.dataset.renderStart || 0);
+    const renderEnd = Number(ui.slides.dataset.renderEnd || 0);
+    updateSpacerWidths(renderStart, renderEnd);
+    suppressScrollHandler = true;
+    ui.carouselViewport.scrollLeft = indexToScrollLeft(activeCarouselIndex);
+    suppressScrollHandler = false;
+  }
 });

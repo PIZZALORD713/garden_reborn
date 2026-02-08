@@ -6,23 +6,15 @@
     <title>fRiENDSiES Toy Box</title>
     <link rel="stylesheet" href="/style.css?v=2026-02-03c" />
 
-    <!-- Glide.js (carousel engine) -->
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/css/glide.core.min.css"
-    />
   </head>
 
   <body>
     <div id="ui" class="ui">
-      <div id="tokenCarousel" class="glide glassCarousel" aria-label="Token picker">
-        <div
-          id="carouselViewport"
-          class="glide__track carouselViewport"
-          data-glide-el="track"
-          role="listbox"
-        >
-          <ul class="glide__slides tokenTrack" id="tokenSlides"></ul>
+      <div id="tokenCarousel" class="glassCarousel" aria-label="Token picker">
+        <div id="carouselViewport" class="carouselViewport" role="listbox">
+          <div id="spacerLeft" class="carouselSpacer"></div>
+          <ul class="tokenTrack" id="tokenSlides"></ul>
+          <div id="spacerRight" class="carouselSpacer"></div>
         </div>
       </div>
 
@@ -169,7 +161,6 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@glidejs/glide/dist/glide.min.js"></script>
     <script src="/main.js?v=2026-02-03c"></script>
   </body>
 </html>
