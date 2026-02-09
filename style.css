@@ -42,6 +42,54 @@ canvas {
   z-index: 0;
 }
 
+/* Carousel toggle */
+.carouselToggle {
+  pointer-events: auto;
+  position: fixed;
+  top: max(24px, calc(env(safe-area-inset-top) + 16px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-elevated);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  box-shadow: var(--glass-shadow);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 250ms ease, background 250ms ease, opacity 200ms ease;
+  z-index: 6;
+}
+
+.carouselToggle:hover {
+  transform: translateX(-50%) translateY(-1px);
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: var(--glass-shadow-elevated);
+}
+
+.carouselToggle:focus-visible {
+  outline: 2px solid rgba(120, 150, 255, 0.6);
+  outline-offset: 3px;
+}
+
+.carouselToggleIcon {
+  width: 16px;
+  height: 16px;
+  transition: transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: rgba(28, 32, 48, 0.7);
+}
+
+.carouselToggle.is-active .carouselToggleIcon {
+  transform: rotate(180deg);
+}
+
 /* Glassmorphism helpers */
 :root {
   --glass-bg: rgba(255, 255, 255, 0.38);
