@@ -14,32 +14,33 @@
   <body>
     <div id="ui" class="ui">
       <div id="tokenCarousel" class="glassCarousel" aria-label="Token picker">
-        <div id="carouselViewport" class="carouselViewport" role="listbox">
-          <div id="spacerLeft" class="carouselSpacer"></div>
-          <ul class="tokenTrack" id="tokenSlides"></ul>
-          <div id="spacerRight" class="carouselSpacer"></div>
+        <button
+          id="carouselToggle"
+          class="carouselToggle"
+          type="button"
+          aria-pressed="false"
+          aria-label="Toggle carousel"
+        >
+          <span>Carousel</span>
+          <svg class="carouselToggleIcon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M6 9l6 6 6-6"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+        <div id="carouselSurface" class="glassCarouselSurface">
+          <div id="carouselViewport" class="carouselViewport" role="listbox">
+            <div id="spacerLeft" class="carouselSpacer"></div>
+            <ul class="tokenTrack" id="tokenSlides"></ul>
+            <div id="spacerRight" class="carouselSpacer"></div>
+          </div>
         </div>
       </div>
-
-      <button
-        id="carouselToggle"
-        class="carouselToggle"
-        type="button"
-        aria-pressed="false"
-        aria-label="Toggle carousel"
-      >
-        <span>Carousel</span>
-        <svg class="carouselToggleIcon" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M6 9l6 6 6-6"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-      </button>
 
       <div id="menuStack" class="menuStack">
         <button id="hamburger" class="fab" type="button" aria-label="Menu">

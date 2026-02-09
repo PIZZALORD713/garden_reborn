@@ -417,6 +417,7 @@ const uiRoot = document.getElementById("ui");
 const ui = {
   carousel: document.getElementById("tokenCarousel"),
   carouselToggle: document.getElementById("carouselToggle"),
+  carouselSurface: document.getElementById("carouselSurface"),
   slides: document.getElementById("tokenSlides"),
   carouselViewport: document.getElementById("carouselViewport"),
   spacerLeft: document.getElementById("spacerLeft"),
@@ -2168,6 +2169,7 @@ let carouselHovered = false;
 let carouselScrolling = false;
 let hamburgerHovered = false;
 let carouselPinned = false;
+let carouselForcedClosed = false;
 
 let carouselTokenIds = [...DEFAULT_TOKEN_IDS];
 let carouselTokenIdSet = new Set(carouselTokenIds);
@@ -2299,27 +2301,29 @@ function showHamburger() {
 }
 
 function showCarousel() {
-  if (!ui.carousel) return;
-  ui.carousel.classList.remove("is-hidden");
-  if (carouselPinned) return;
+  if (!ui.carouselSurface) return;
+  if (carouselForcedClosed) return;
+  ui.carouselSurface.classList.remove("is-hidden");
   if (carouselHideTimer) clearTimeout(carouselHideTimer);
+  if (carouselPinned) return;
   if (carouselHovered || isDragging || carouselScrolling) return;
   carouselHideTimer = setTimeout(() => {
-    ui.carousel?.classList.add("is-hidden");
+    ui.carouselSurface?.classList.add("is-hidden");
   }, CAROUSEL_HIDE_MS);
 }
 
 function setCarouselPinned(shouldPin) {
   carouselPinned = !!shouldPin;
+  carouselForcedClosed = !carouselPinned;
   if (ui.carouselToggle) {
     ui.carouselToggle.classList.toggle("is-active", carouselPinned);
     ui.carouselToggle.setAttribute("aria-pressed", carouselPinned ? "true" : "false");
   }
   if (carouselHideTimer) clearTimeout(carouselHideTimer);
   if (carouselPinned) {
-    ui.carousel?.classList.remove("is-hidden");
+    ui.carouselSurface?.classList.remove("is-hidden");
   } else {
-    ui.carousel?.classList.add("is-hidden");
+    ui.carouselSurface?.classList.add("is-hidden");
   }
 }
 
