@@ -2296,11 +2296,11 @@ function showHamburger() {
   }, HAMBURGER_HIDE_MS);
 }
 
-function showCarousel() {
+function showCarousel({ force = false } = {}) {
   if (!ui.carousel) return;
   ui.carousel.classList.remove("is-hidden");
   if (carouselHideTimer) clearTimeout(carouselHideTimer);
-  if (carouselHovered || isDragging || carouselScrolling) return;
+  if (!force && (carouselHovered || isDragging || carouselScrolling)) return;
   carouselHideTimer = setTimeout(() => {
     ui.carousel?.classList.add("is-hidden");
   }, CAROUSEL_HIDE_MS);
@@ -2777,7 +2777,7 @@ function bindCarouselListeners() {
     const scrollLeft = ui.carouselViewport.scrollLeft;
     const centerIndex = scrollLeftToIndex(scrollLeft);
     setActiveCarouselIndex(centerIndex, { forceLoad: true });
-    showCarousel();
+    showCarousel({ force: true });
   };
 
   if ("onscrollend" in window) {
