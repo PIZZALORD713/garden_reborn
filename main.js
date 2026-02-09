@@ -2153,8 +2153,8 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
 // ----------------------------
 // Minimal UI: idle hamburger + menu + carousel
 // ----------------------------
-const HAMBURGER_HIDE_MS = 4000;
-const CAROUSEL_HIDE_MS = 5000;
+const HAMBURGER_HIDE_MS = 1000;
+const CAROUSEL_HIDE_MS = 1000;
 const IDLE_TIMEOUT_MS = 10000;
 let hamburgerTimer = null;
 let carouselHideTimer = null;
