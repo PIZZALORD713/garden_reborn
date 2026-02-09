@@ -2163,6 +2163,9 @@ let idleActive = false;
 let activePanel = null;
 let menuOpen = false;
 let orbitReleaseTimer = null;
+let carouselHovered = false;
+let carouselScrolling = false;
+let hamburgerHovered = false;
 
 let carouselTokenIds = [...DEFAULT_TOKEN_IDS];
 let carouselTokenIdSet = new Set(carouselTokenIds);
@@ -2253,6 +2256,7 @@ function updateSpacerWidths(renderStart, renderEnd) {
 
 function onCarouselScroll() {
   if (suppressScrollHandler) return;
+  carouselScrolling = true;
   if (scrollRafPending) return;
   scrollRafPending = true;
 
@@ -2286,7 +2290,7 @@ function showHamburger() {
   if (!ui.hamburger) return;
   ui.hamburger.classList.remove("is-hidden");
   if (hamburgerTimer) clearTimeout(hamburgerTimer);
-  if (menuOpen) return;
+  if (menuOpen || hamburgerHovered) return;
   hamburgerTimer = setTimeout(() => {
     ui.hamburger?.classList.add("is-hidden");
   }, HAMBURGER_HIDE_MS);
@@ -2296,6 +2300,7 @@ function showCarousel() {
   if (!ui.carousel) return;
   ui.carousel.classList.remove("is-hidden");
   if (carouselHideTimer) clearTimeout(carouselHideTimer);
+  if (carouselHovered || isDragging || carouselScrolling) return;
   carouselHideTimer = setTimeout(() => {
     ui.carousel?.classList.add("is-hidden");
   }, CAROUSEL_HIDE_MS);
@@ -2639,6 +2644,7 @@ function applyMomentum() {
     stopMomentum();
     // Re-enable snap so browser settles to nearest card
     vp.style.scrollSnapType = "";
+    showCarousel();
     return;
   }
   vp.scrollLeft -= dragVelocity;
@@ -2730,6 +2736,7 @@ function onDragEnd(e) {
   }
 
   isDragging = false;
+  showCarousel();
 
   // Clear wasDragging after the click event has had a chance to check it
   requestAnimationFrame(() => { wasDragging = false; });
@@ -2766,9 +2773,11 @@ function bindCarouselListeners() {
   // activeCarouselIndex (visual highlight) without triggering a model load.
   const onScrollSettle = () => {
     if (suppressScrollHandler) return;
+    carouselScrolling = false;
     const scrollLeft = ui.carouselViewport.scrollLeft;
     const centerIndex = scrollLeftToIndex(scrollLeft);
     setActiveCarouselIndex(centerIndex, { forceLoad: true });
+    showCarousel();
   };
 
   if ("onscrollend" in window) {
@@ -2929,6 +2938,24 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
 
 ui.hamburger?.addEventListener("click", () => {
   setMenuOpen(!menuOpen);
+});
+
+ui.hamburger?.addEventListener("pointerenter", () => {
+  hamburgerHovered = true;
+  showHamburger();
+});
+ui.hamburger?.addEventListener("pointerleave", () => {
+  hamburgerHovered = false;
+  showHamburger();
+});
+
+ui.carousel?.addEventListener("pointerenter", () => {
+  carouselHovered = true;
+  showCarousel();
+});
+ui.carousel?.addEventListener("pointerleave", () => {
+  carouselHovered = false;
+  showCarousel();
 });
 
 controls?.addEventListener("end", () => {
