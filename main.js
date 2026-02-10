@@ -415,6 +415,8 @@ function applyLookPreset(name) {
 
 const uiRoot = document.getElementById("ui");
 const ui = {
+  carouselRegion: document.getElementById("carouselRegion"),
+  carouselToggle: document.getElementById("carouselToggle"),
   carousel: document.getElementById("tokenCarousel"),
   slides: document.getElementById("tokenSlides"),
   carouselViewport: document.getElementById("carouselViewport"),
@@ -2165,6 +2167,8 @@ let orbitReleaseTimer = null;
 let carouselHovered = false;
 let carouselScrolling = false;
 let hamburgerHovered = false;
+let carouselPinned = false;
+let toggleHideTimer = null;
 
 let carouselTokenIds = [...DEFAULT_TOKEN_IDS];
 let carouselTokenIdSet = new Set(carouselTokenIds);
@@ -2289,6 +2293,8 @@ function showHamburger() {
   if (!ui.hamburger) return;
   ui.hamburger.classList.remove("is-hidden");
   if (hamburgerTimer) clearTimeout(hamburgerTimer);
+  // Toggle follows hamburger visibility (unless carousel is pinned)
+  showToggle(false);
   if (menuOpen || hamburgerHovered) return;
   hamburgerTimer = setTimeout(() => {
     ui.hamburger?.classList.add("is-hidden");
@@ -2299,10 +2305,51 @@ function showCarousel() {
   if (!ui.carousel) return;
   ui.carousel.classList.remove("is-hidden");
   if (carouselHideTimer) clearTimeout(carouselHideTimer);
+
+  // Pinned — carousel stays open, toggle stays visible alongside it
+  if (carouselPinned) {
+    showToggle(true);
+    return;
+  }
+
   if (carouselHovered || isDragging || carouselScrolling) return;
   carouselHideTimer = setTimeout(() => {
     ui.carousel?.classList.add("is-hidden");
   }, CAROUSEL_HIDE_MS);
+}
+
+function showToggle(persistent) {
+  if (!ui.carouselToggle) return;
+  ui.carouselToggle.classList.remove("is-hidden");
+  if (toggleHideTimer) clearTimeout(toggleHideTimer);
+  // If persistent (pinned) or carousel is hovered, don't auto-hide
+  if (persistent || carouselPinned || carouselHovered) return;
+  // Otherwise follow hamburger timing
+  if (menuOpen || hamburgerHovered) return;
+  toggleHideTimer = setTimeout(() => {
+    ui.carouselToggle?.classList.add("is-hidden");
+  }, HAMBURGER_HIDE_MS);
+}
+
+function setCarouselPinned(pinned) {
+  carouselPinned = !!pinned;
+  if (!ui.carouselToggle) return;
+  ui.carouselToggle.classList.toggle("is-pinned", carouselPinned);
+  ui.carouselToggle.setAttribute("aria-pressed", String(carouselPinned));
+  ui.carouselToggle.setAttribute(
+    "aria-label",
+    carouselPinned ? "Unpin carousel" : "Pin carousel open"
+  );
+
+  if (carouselPinned) {
+    // Pin — show carousel and keep toggle visible
+    showCarousel();
+    showToggle(true);
+  } else {
+    // Unpin — let normal auto-hide resume
+    showCarousel();
+    showToggle(false);
+  }
 }
 
 function scheduleIdleTimer() {
@@ -2948,13 +2995,19 @@ ui.hamburger?.addEventListener("pointerleave", () => {
   showHamburger();
 });
 
+ui.carouselToggle?.addEventListener("click", () => {
+  setCarouselPinned(!carouselPinned);
+});
+
 ui.carousel?.addEventListener("pointerenter", () => {
   carouselHovered = true;
   showCarousel();
+  showToggle(false);
 });
 ui.carousel?.addEventListener("pointerleave", () => {
   carouselHovered = false;
   showCarousel();
+  showToggle(false);
 });
 
 controls?.addEventListener("end", () => {
