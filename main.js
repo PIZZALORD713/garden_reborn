@@ -1,5 +1,5 @@
 // ------------------------------------------------------------
-// fRiENDSiES Toy Box — Viewer + Animation Test
+// fRiENEMiES Studio - Viewer + Animation Test
 // - BODY is the master rig (skeleton source)
 // - HEAD + trait parts: bind SkinnedMeshes to BODY skeleton
 // - FIX: also retarget rigid (non-skinned) meshes parented under part bones
@@ -211,7 +211,7 @@ const LOOK_PRESETS = {
     envIntensityMultiplier: 0.1,
     emissiveIntensityMultiplier: 0.75
   },
-  "Punchy Toybox": {
+  "Punchy Studio": {
     toneMapping: "ACES",
     toneMappingExposure: 1.2,
     // Lift the floor so mobile doesn't crush metals/transparency into near-black.
@@ -235,7 +235,7 @@ const LOOK_PRESETS = {
 };
 
 const DEFAULT_LOOK_PRESET = "Cinematic";
-const DEFAULT_LOOK_PRESET_MOBILE = "Punchy Toybox";
+const DEFAULT_LOOK_PRESET_MOBILE = "Punchy Studio";
 
 function isMobileLike() {
   // Coarse pointer + no hover catches most phones/tablets; width fallback helps small screens.
@@ -709,7 +709,7 @@ function collectRigInfo() {
   } else {
     avatarGroup.add(faceAnchor);
     logLine(
-      "⚠️ No BODY head/neck bone found — FACE_ANCHOR attached to avatarGroup",
+      "⚠️ No BODY head/neck bone found - FACE_ANCHOR attached to avatarGroup",
       "warn"
     );
   }
@@ -1178,7 +1178,7 @@ function stripJunkNodesButKeepMeshes(root) {
   root.traverse((o) => {
     if (o === root) return;
 
-    // Never remove bones here — we still need the skeleton for export.
+    // Never remove bones here - we still need the skeleton for export.
     // (We strip extra armature wrappers elsewhere.)
 
     if (!o.isMesh && !o.isSkinnedMesh && !o.isBone) {
@@ -1723,7 +1723,7 @@ function optimizeGlbForWindows(rawGlb) {
 
 function downloadRigGlb() {
   if (!loadedParts?.length || !bodyRoot) {
-    logLine("Nothing loaded yet — load a fRiENDSiES first.", "warn");
+    logLine("Nothing loaded yet - load a fRiENDSiES first.", "warn");
     return;
   }
   if (!THREE?.GLTFExporter) {
@@ -2191,9 +2191,9 @@ let dragVelocity = 0;
 let dragLastX = 0;
 let dragLastTime = 0;
 let momentumRaf = null;
-const DRAG_THRESHOLD = 6;       // px — below this, treat as click
+const DRAG_THRESHOLD = 6;       // px - below this, treat as click
 const MOMENTUM_FRICTION = 0.94; // per-frame multiplier (lower = more friction)
-const MOMENTUM_MIN_VEL = 0.5;   // px/frame — stop momentum below this
+const MOMENTUM_MIN_VEL = 0.5;   // px/frame - stop momentum below this
 
 const PREVIEW_BASE_URL =
   "https://storage.googleapis.com/friendsies-rendered-97557c";
@@ -2284,7 +2284,7 @@ function onCarouselScroll() {
       renderCarouselRange(centerIndex);
     }
 
-    // Update active card highlight only — don't trigger 3D model load during scrolling.
+    // Update active card highlight only - don't trigger 3D model load during scrolling.
     // The actual load happens on scrollend (or fallback timer).
     setActiveCarouselIndex(centerIndex, { loadToken: false });
   });
@@ -2305,13 +2305,13 @@ function showHamburger() {
 function showCarousel() {
   if (!ui.carousel) return;
 
-  // User explicitly dismissed the carousel via toggle — keep it hidden
+  // User explicitly dismissed the carousel via toggle - keep it hidden
   if (carouselDismissed) return;
 
   ui.carousel.classList.remove("is-hidden");
   if (carouselHideTimer) clearTimeout(carouselHideTimer);
 
-  // Pinned — carousel stays open, toggle stays visible alongside it
+  // Pinned - carousel stays open, toggle stays visible alongside it
   if (carouselPinned) {
     showToggle(true);
     return;
@@ -2348,12 +2348,12 @@ function setCarouselPinned(pinned) {
   );
 
   if (carouselPinned) {
-    // Pin — show carousel and keep toggle visible
+    // Pin - show carousel and keep toggle visible
     ui.carouselRegion?.classList.remove("is-dismissed");
     showCarousel();
     showToggle(true);
   } else {
-    // Dismiss — immediately hide carousel, slide toggle to bottom
+    // Dismiss - immediately hide carousel, slide toggle to bottom
     if (carouselHideTimer) clearTimeout(carouselHideTimer);
     ui.carousel?.classList.add("is-hidden");
     ui.carouselRegion?.classList.add("is-dismissed");
@@ -2458,7 +2458,7 @@ async function handleSearch(query) {
       const isFiltered = carouselTokenIds.length < DEFAULT_TOKEN_IDS.length;
       if (isFiltered && searchResults) {
         searchResults.textContent =
-          `Token #${asNum} is not in this wallet — showing from full collection`;
+          `Token #${asNum} is not in this wallet - showing from full collection`;
       }
       resetToFullCollection();
       const fullIndex = carouselTokenIds.indexOf(asNum);
@@ -2486,7 +2486,7 @@ async function handleSearch(query) {
 
   if (searchResults) {
     searchResults.textContent =
-      "Enter a token # (1–10000), ENS name, or 0x address";
+      "Enter a token # (1-10000), ENS name, or 0x address";
   }
 }
 
@@ -2623,7 +2623,7 @@ function renderCarouselRange(centerIndex) {
 
   if (renderStart === currentStart && renderEnd === currentEnd) return;
 
-  // Check if ranges overlap — if so, do an incremental update to preserve
+  // Check if ranges overlap - if so, do an incremental update to preserve
   // already-loaded images and avoid flicker.
   const hasOverlap =
     currentEnd > 0 &&
@@ -2667,7 +2667,7 @@ function renderCarouselRange(centerIndex) {
       if (img) observeTokenImage(img);
     }
   } else {
-    // No overlap — full rebuild (initial load, search jump, etc.)
+    // No overlap - full rebuild (initial load, search jump, etc.)
     ui.slides.innerHTML = "";
 
     const fragment = document.createDocumentFragment();
@@ -2708,7 +2708,7 @@ function applyMomentum() {
 }
 
 function onDragStart(e) {
-  // Skip touch — mobile already has native momentum scrolling
+  // Skip touch - mobile already has native momentum scrolling
   if (e.pointerType === "touch") return;
   // Only primary button (left click)
   if (e.button && e.button !== 0) return;
@@ -2772,11 +2772,11 @@ function onDragEnd(e) {
     if (Math.abs(dragVelocity) > MOMENTUM_MIN_VEL) {
       momentumRaf = requestAnimationFrame(applyMomentum);
     } else {
-      // Low velocity — just re-enable snap to settle
+      // Low velocity - just re-enable snap to settle
       vp.style.scrollSnapType = "";
     }
   } else {
-    // Was a click, not a drag — re-enable snap and select the clicked card.
+    // Was a click, not a drag - re-enable snap and select the clicked card.
     // Pointer capture prevents the normal click event from reaching the slides,
     // so we handle click-to-select here instead.
     vp.style.scrollSnapType = "";
@@ -2864,10 +2864,10 @@ function setActiveCarouselIndex(index, { loadToken: shouldLoad = true, forceLoad
   }
 
   // Trigger 3D model load:
-  // - Always load if forceLoad (scrollend settle — ensures model loads even
+  // - Always load if forceLoad (scrollend settle - ensures model loads even
   //   when the visual index was already set by the last scroll frame)
   // - Load if the index changed AND shouldLoad is true (normal navigation)
-  // - Skip if shouldLoad is false (rapid scroll frames — visual only)
+  // - Skip if shouldLoad is false (rapid scroll frames - visual only)
   const tokenId = carouselTokenIds[index];
   if (tokenId && (forceLoad || (indexChanged && shouldLoad))) {
     requestTokenLoad(tokenId, { force: forceLoad });
@@ -3180,7 +3180,7 @@ function animate() {
 
   if (MOBILE_CAMERA_FOLLOW_LIGHTS) {
     // Keep lights aimed at the orbit target and positioned relative to camera.
-    // This reduces the “bright → pitch black” flip as you rotate on mobile.
+    // This reduces the "bright → pitch black" flip as you rotate on mobile.
     const t = controls.target;
 
     keyLight.target.position.copy(t);
