@@ -2168,6 +2168,7 @@ let carouselHovered = false;
 let carouselScrolling = false;
 let hamburgerHovered = false;
 let carouselPinned = false;
+let carouselDismissed = false;
 let toggleHideTimer = null;
 
 let carouselTokenIds = [...DEFAULT_TOKEN_IDS];
@@ -2303,6 +2304,10 @@ function showHamburger() {
 
 function showCarousel() {
   if (!ui.carousel) return;
+
+  // User explicitly dismissed the carousel via toggle — keep it hidden
+  if (carouselDismissed) return;
+
   ui.carousel.classList.remove("is-hidden");
   if (carouselHideTimer) clearTimeout(carouselHideTimer);
 
@@ -2322,8 +2327,8 @@ function showToggle(persistent) {
   if (!ui.carouselToggle) return;
   ui.carouselToggle.classList.remove("is-hidden");
   if (toggleHideTimer) clearTimeout(toggleHideTimer);
-  // If persistent (pinned) or carousel is hovered, don't auto-hide
-  if (persistent || carouselPinned || carouselHovered) return;
+  // If persistent (pinned), dismissed, or carousel is hovered, don't auto-hide
+  if (persistent || carouselPinned || carouselDismissed || carouselHovered) return;
   // Otherwise follow hamburger timing
   if (menuOpen || hamburgerHovered) return;
   toggleHideTimer = setTimeout(() => {
@@ -2333,6 +2338,7 @@ function showToggle(persistent) {
 
 function setCarouselPinned(pinned) {
   carouselPinned = !!pinned;
+  carouselDismissed = !carouselPinned;
   if (!ui.carouselToggle) return;
   ui.carouselToggle.classList.toggle("is-pinned", carouselPinned);
   ui.carouselToggle.setAttribute("aria-pressed", String(carouselPinned));
@@ -2343,12 +2349,15 @@ function setCarouselPinned(pinned) {
 
   if (carouselPinned) {
     // Pin — show carousel and keep toggle visible
+    ui.carouselRegion?.classList.remove("is-dismissed");
     showCarousel();
     showToggle(true);
   } else {
-    // Unpin — let normal auto-hide resume
-    showCarousel();
-    showToggle(false);
+    // Dismiss — immediately hide carousel, slide toggle to bottom
+    if (carouselHideTimer) clearTimeout(carouselHideTimer);
+    ui.carousel?.classList.add("is-hidden");
+    ui.carouselRegion?.classList.add("is-dismissed");
+    showToggle(true);
   }
 }
 
