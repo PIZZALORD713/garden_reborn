@@ -2327,8 +2327,8 @@ function showToggle(persistent) {
   if (!ui.carouselToggle) return;
   ui.carouselToggle.classList.remove("is-hidden");
   if (toggleHideTimer) clearTimeout(toggleHideTimer);
-  // If persistent (pinned) or carousel is hovered, don't auto-hide
-  if (persistent || carouselPinned || carouselHovered) return;
+  // If persistent (pinned), dismissed, or carousel is hovered, don't auto-hide
+  if (persistent || carouselPinned || carouselDismissed || carouselHovered) return;
   // Otherwise follow hamburger timing
   if (menuOpen || hamburgerHovered) return;
   toggleHideTimer = setTimeout(() => {
@@ -2349,13 +2349,15 @@ function setCarouselPinned(pinned) {
 
   if (carouselPinned) {
     // Pin — show carousel and keep toggle visible
+    ui.carouselRegion?.classList.remove("is-dismissed");
     showCarousel();
     showToggle(true);
   } else {
-    // Dismiss — immediately hide carousel, keep toggle visible
+    // Dismiss — immediately hide carousel, slide toggle to bottom
     if (carouselHideTimer) clearTimeout(carouselHideTimer);
     ui.carousel?.classList.add("is-hidden");
-    showToggle(false);
+    ui.carouselRegion?.classList.add("is-dismissed");
+    showToggle(true);
   }
 }
 
