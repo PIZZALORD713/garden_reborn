@@ -62,21 +62,81 @@ canvas {
   --card-gap: 14px;
 }
 
-/* Carousel */
-.glassCarousel {
-  pointer-events: auto;
+/* Carousel region (wrapper for toggle + carousel) */
+.carouselRegion {
+  --toggle-offset: 12px; /* gap between toggle and carousel top */
+  pointer-events: none;
   position: fixed;
   left: 50%;
   bottom: 28px;
   transform: translateX(-50%);
   width: min(720px, calc(100vw - 32px));
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Toggle button */
+.carouselToggle {
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-circle);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: 0 4px 18px rgba(14, 20, 42, 0.10);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  margin-bottom: var(--toggle-offset);
+  opacity: 1;
+  transition: opacity 350ms ease,
+    transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 200ms ease,
+    box-shadow 200ms ease;
+  will-change: transform, opacity;
+  flex-shrink: 0;
+}
+
+.carouselToggle:hover {
+  background: rgba(255, 255, 255, 0.65);
+  transform: scale(1.10);
+  box-shadow: 0 6px 22px rgba(14, 20, 42, 0.14);
+}
+
+.carouselToggle:active {
+  transform: scale(0.95);
+}
+
+.carouselToggle.is-hidden {
+  opacity: 0;
+  transform: scale(0.7) translateY(8px);
+  pointer-events: none;
+}
+
+/* Pinned state — elevated glass, subtle glow */
+.carouselToggle.is-pinned {
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.4),
+    0 6px 24px rgba(14, 20, 42, 0.12);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Carousel */
+.glassCarousel {
+  pointer-events: auto;
+  width: 100%;
   padding: 12px 18px 16px;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.45);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-shadow);
-  z-index: 5;
   transition: opacity 400ms ease,
     transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
   will-change: transform, opacity;
@@ -84,7 +144,7 @@ canvas {
 
 .glassCarousel.is-hidden {
   opacity: 0;
-  transform: translateX(-50%) translateY(16px);
+  transform: translateY(16px);
   /* Keep pointer-events: auto so the carousel can receive scroll/drag
      even while visually hidden — interaction will trigger showCarousel(). */
 }
@@ -507,9 +567,12 @@ canvas {
 }
 
 @media (max-width: 720px) {
-  .glassCarousel {
+  .carouselRegion {
     width: calc(100vw - 24px);
     bottom: 24px;
+  }
+
+  .glassCarousel {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
@@ -517,6 +580,12 @@ canvas {
   :root {
     --card-width: 104px;
     --card-gap: 10px;
+  }
+
+  .carouselToggle {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
   }
 
   .sheet {
@@ -540,7 +609,8 @@ canvas {
 @media (prefers-reduced-motion: reduce) {
   .tokenSlide,
   .tokenCard,
-  .tokenImage {
+  .tokenImage,
+  .carouselToggle {
     transition: none !important;
     animation: none !important;
   }

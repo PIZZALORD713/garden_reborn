@@ -13,11 +13,20 @@
 
   <body>
     <div id="ui" class="ui">
-      <div id="tokenCarousel" class="glassCarousel" aria-label="Token picker">
-        <div id="carouselViewport" class="carouselViewport" role="listbox">
-          <div id="spacerLeft" class="carouselSpacer"></div>
-          <ul class="tokenTrack" id="tokenSlides"></ul>
-          <div id="spacerRight" class="carouselSpacer"></div>
+      <div id="carouselRegion" class="carouselRegion">
+        <button
+          id="carouselToggle"
+          class="carouselToggle is-hidden"
+          type="button"
+          aria-label="Pin carousel open"
+          aria-pressed="false"
+        >&#9729;</button>
+        <div id="tokenCarousel" class="glassCarousel is-hidden" aria-label="Token picker">
+          <div id="carouselViewport" class="carouselViewport" role="listbox">
+            <div id="spacerLeft" class="carouselSpacer"></div>
+            <ul class="tokenTrack" id="tokenSlides"></ul>
+            <div id="spacerRight" class="carouselSpacer"></div>
+          </div>
         </div>
       </div>
 
