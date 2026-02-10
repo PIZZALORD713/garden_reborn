@@ -1,5 +1,5 @@
 // ------------------------------------------------------------
-// fRiENDSiES Toy Box — Viewer + Animation Test
+// fRiENEMiES Studio — Viewer + Animation Test
 // - BODY is the master rig (skeleton source)
 // - HEAD + trait parts: bind SkinnedMeshes to BODY skeleton
 // - FIX: also retarget rigid (non-skinned) meshes parented under part bones
@@ -211,7 +211,7 @@ const LOOK_PRESETS = {
     envIntensityMultiplier: 0.1,
     emissiveIntensityMultiplier: 0.75
   },
-  "Punchy Toybox": {
+  "Punchy Studio": {
     toneMapping: "ACES",
     toneMappingExposure: 1.2,
     // Lift the floor so mobile doesn't crush metals/transparency into near-black.
@@ -235,7 +235,7 @@ const LOOK_PRESETS = {
 };
 
 const DEFAULT_LOOK_PRESET = "Cinematic";
-const DEFAULT_LOOK_PRESET_MOBILE = "Punchy Toybox";
+const DEFAULT_LOOK_PRESET_MOBILE = "Punchy Studio";
 
 function isMobileLike() {
   // Coarse pointer + no hover catches most phones/tablets; width fallback helps small screens.
