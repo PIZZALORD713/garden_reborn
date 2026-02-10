@@ -2168,6 +2168,7 @@ let carouselHovered = false;
 let carouselScrolling = false;
 let hamburgerHovered = false;
 let carouselPinned = false;
+let carouselDismissed = false;
 let toggleHideTimer = null;
 
 let carouselTokenIds = [...DEFAULT_TOKEN_IDS];
@@ -2303,6 +2304,10 @@ function showHamburger() {
 
 function showCarousel() {
   if (!ui.carousel) return;
+
+  // User explicitly dismissed the carousel via toggle — keep it hidden
+  if (carouselDismissed) return;
+
   ui.carousel.classList.remove("is-hidden");
   if (carouselHideTimer) clearTimeout(carouselHideTimer);
 
@@ -2333,6 +2338,7 @@ function showToggle(persistent) {
 
 function setCarouselPinned(pinned) {
   carouselPinned = !!pinned;
+  carouselDismissed = !carouselPinned;
   if (!ui.carouselToggle) return;
   ui.carouselToggle.classList.toggle("is-pinned", carouselPinned);
   ui.carouselToggle.setAttribute("aria-pressed", String(carouselPinned));
@@ -2346,8 +2352,9 @@ function setCarouselPinned(pinned) {
     showCarousel();
     showToggle(true);
   } else {
-    // Unpin — let normal auto-hide resume
-    showCarousel();
+    // Dismiss — immediately hide carousel, keep toggle visible
+    if (carouselHideTimer) clearTimeout(carouselHideTimer);
+    ui.carousel?.classList.add("is-hidden");
     showToggle(false);
   }
 }
