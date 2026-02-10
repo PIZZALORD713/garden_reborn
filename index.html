@@ -6,13 +6,21 @@
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
-    <title>fRiENDSiES Toy Box</title>
+    <title>fRiENEMiES Studio — View • Animate • Export</title>
+    <meta
+      name="description"
+      content="Load fRiENDSiES by token or wallet/ENS, preview animations, and export rig-ready GLB. No wallet connect required."
+    />
     <link rel="stylesheet" href="/style.css?v=2026-02-03c" />
 
   </head>
 
   <body>
     <div id="ui" class="ui">
+      <section class="studioBadge" aria-label="Studio summary">
+        <h1>fRiENEMiES Studio</h1>
+        <p>Load by token or wallet/ENS, preview animations, export rig-ready GLB.</p>
+      </section>
       <div id="carouselRegion" class="carouselRegion">
         <button
           id="carouselToggle"
@@ -123,14 +131,24 @@
 
         <div id="panel-find" class="sheet" aria-hidden="true">
           <div class="sheetBody">
+            <label class="fieldLabel" for="searchInput">Wallet address or ENS</label>
             <input
               id="searchInput"
               class="searchInput"
               type="text"
-              placeholder="Token #, ENS, or wallet"
+              placeholder="e.g. 0x..., pizzalord.eth, or token #"
               autocomplete="off"
               inputmode="search"
             />
+            <div class="quickstart" aria-label="Quickstart">
+              <div class="quickstartTitle">Quickstart</div>
+              <ol>
+                <li>Token ID → Load</li>
+                <li>Wallet/ENS → Lookup</li>
+                <li>Anim → Play</li>
+                <li>Export → GLB</li>
+              </ol>
+            </div>
             <button
               id="resetCollectionBtn"
               class="sheetAction viewAllChip"
@@ -151,8 +169,8 @@
         <div id="panel-vibe" class="sheet" aria-hidden="true">
           <div class="sheetBody">
             <button class="sheetAction" data-preset="Cinematic" type="button">Cinematic</button>
-            <button class="sheetAction" data-preset="Punchy Toybox" type="button">
-              Punchy Toybox
+            <button class="sheetAction" data-preset="Punchy Studio" type="button">
+              Punchy Studio
             </button>
             <button class="sheetAction" data-preset="Soft Pastel" type="button">Soft Pastel</button>
           </div>
