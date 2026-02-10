@@ -2102,7 +2102,6 @@ async function loadFriendsies(id) {
   avatarGroup.visible = true;
 
   applyLookControls();
-  controls.target.set(0, 0.92, 0);
 
   setStatus(
     `loaded #${id} ✅ parts:${loadedParts.length} bones:${bodySkeleton.bones.length} faceOverlays:${faceOverlayMeshes.length}`
