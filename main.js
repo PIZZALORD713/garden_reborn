@@ -513,11 +513,51 @@ function updateLookControl(key, value) {
   syncLookSliders();
 }
 
-function copyCurrentLook() {
+async function copyTextToClipboard(text) {
+  if (!text) return false;
+
+  if (navigator?.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch {
+    copied = false;
+  }
+
+  document.body.removeChild(textarea);
+  return copied;
+}
+
+async function copyCurrentLook() {
   const json = JSON.stringify(getCanonicalLookSnapshot(), null, 2);
   logSection("Current Look JSON");
   logLine(json);
   console.log("Current Look JSON", json);
+
+  const copied = await copyTextToClipboard(json);
+  if (copied) {
+    setStatus("Look JSON copied to clipboard ✅");
+    logLine("📋 Look JSON copied to clipboard.");
+  } else {
+    setStatus("Clipboard copy failed ⚠️");
+    logLine("Clipboard copy failed. Copy from transcript instead.", "warn");
+  }
 }
 
 // (legacy toast/menu removed)
