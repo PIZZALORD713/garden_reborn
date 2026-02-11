@@ -629,6 +629,95 @@ canvas {
   gap: 4px;
 }
 
+.infoPanelBody .sheetAction {
+  text-decoration: none;
+}
+
+.infoCopy {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.infoFinePrint {
+  margin-bottom: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.infoLinks {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.onboarding {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(9, 12, 18, 0.38);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  pointer-events: auto;
+}
+
+.onboarding.is-open {
+  display: flex;
+}
+
+.onboardingCard {
+  width: min(420px, 100%);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text-primary);
+  box-shadow: var(--glass-shadow-elevated);
+  padding: 16px;
+}
+
+.onboardingCard h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.onboardingLead {
+  margin: 0 0 8px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.onboardingCopy {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.onboardingSteps {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: grid;
+  gap: 4px;
+}
+
+.onboardingFinePrint {
+  margin: 10px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.onboardingActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .searchResults {
   margin-top: 8px;
   font-size: 12px;
