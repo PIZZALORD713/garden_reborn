@@ -428,7 +428,8 @@ const ui = {
   panels: {
     find: document.getElementById("panel-find"),
     share: document.getElementById("panel-share"),
-    vibe: document.getElementById("panel-vibe")
+    vibe: document.getElementById("panel-vibe"),
+    info: document.getElementById("panel-info")
   }
 };
 
@@ -437,6 +438,11 @@ const searchResults = document.getElementById("searchResults");
 const resetCollectionBtn = document.getElementById("resetCollectionBtn");
 const copyLinkBtn = document.getElementById("copyLinkBtn");
 const downloadGlbBtn = document.getElementById("downloadGlbBtn");
+const onboardingEl = document.getElementById("onboarding");
+const onboardingDismissBtn = document.getElementById("onboardingDismiss");
+const onboardingLearnMoreBtn = document.getElementById("onboardingLearnMore");
+const showOnboardingBtn = document.getElementById("showOnboardingBtn");
+const ONBOARDING_SEEN_KEY = "frenemies.onboarding.seen.v1";
 
 const debugUi = {
   log: null
@@ -1723,7 +1729,7 @@ function optimizeGlbForWindows(rawGlb) {
 
 function downloadRigGlb() {
   if (!loadedParts?.length || !bodyRoot) {
-    logLine("Nothing loaded yet - load a fRiENDSiES first.", "warn");
+    logLine("Nothing loaded yet — load a fRiENDSiES asset first.", "warn");
     return;
   }
   if (!THREE?.GLTFExporter) {
@@ -2126,7 +2132,7 @@ function loadToken(tokenId) {
 // ----------------------------
 async function playAnimUrl(url, loadIdGuard = currentLoadId) {
   if (!url) return setStatus("pick an animation");
-  if (!mixer || !bodyRoot) return setStatus("load a friendsies first");
+  if (!mixer || !bodyRoot) return setStatus("load a fRiENDSiES asset first");
 
   setStatus("loading anim…");
 
@@ -2404,6 +2410,21 @@ function setActivePanel(name) {
   }
 }
 
+function showOnboarding(force = false) {
+  if (!onboardingEl) return;
+  const seen = localStorage.getItem(ONBOARDING_SEEN_KEY) === "1";
+  if (!force && seen) return;
+  onboardingEl.classList.add("is-open");
+  onboardingEl.setAttribute("aria-hidden", "false");
+}
+
+function hideOnboarding(markSeen = true) {
+  if (!onboardingEl) return;
+  onboardingEl.classList.remove("is-open");
+  onboardingEl.setAttribute("aria-hidden", "true");
+  if (markSeen) localStorage.setItem(ONBOARDING_SEEN_KEY, "1");
+}
+
 function updateResetCollectionVisibility() {
   if (!resetCollectionBtn) return;
   const isFiltered = carouselTokenIds.length < DEFAULT_TOKEN_IDS.length;
@@ -2420,12 +2441,12 @@ function resetToFullCollection() {
 }
 
 async function navigateToWallet(owner) {
-  if (searchResults) searchResults.textContent = "Loading…";
+  if (searchResults) searchResults.textContent = "Looking up tokens…";
   try {
     const walletData = await fetchWalletTokenIds(owner);
     if (!walletData.tokenIds.length) {
       if (searchResults) {
-        searchResults.textContent = "No fRiENDSiES found for this wallet";
+        searchResults.textContent = "No fRiENDSiES tokens found for this wallet/ENS yet.";
       }
       return;
     }
@@ -2437,7 +2458,7 @@ async function navigateToWallet(owner) {
     logLine(`🔍 Search: loaded ${walletData.tokenIds.length} tokens for ${slug}`);
   } catch (err) {
     if (searchResults) {
-      searchResults.textContent = `Error: ${err?.message || "lookup failed"}`;
+      searchResults.textContent = `Lookup failed: ${err?.message || "please try again"}`;
     }
   } finally {
     updateResetCollectionVisibility();
@@ -2458,7 +2479,7 @@ async function handleSearch(query) {
       const isFiltered = carouselTokenIds.length < DEFAULT_TOKEN_IDS.length;
       if (isFiltered && searchResults) {
         searchResults.textContent =
-          `Token #${asNum} is not in this wallet - showing from full collection`;
+          `Token #${asNum} is not in this wallet. Showing full collection.`;
       }
       resetToFullCollection();
       const fullIndex = carouselTokenIds.indexOf(asNum);
@@ -2486,7 +2507,7 @@ async function handleSearch(query) {
 
   if (searchResults) {
     searchResults.textContent =
-      "Enter a token # (1-10000), ENS name, or 0x address";
+      "Enter a valid token ID, wallet address, or ENS name.";
   }
 }
 
@@ -3054,7 +3075,7 @@ copyLinkBtn?.addEventListener("click", () => {
   const url = window.location.href;
   navigator.clipboard.writeText(url).then(() => {
     if (!copyLinkBtn) return;
-    copyLinkBtn.textContent = "Copied!";
+    copyLinkBtn.textContent = "Share link copied.";
     setTimeout(() => {
       if (copyLinkBtn) copyLinkBtn.textContent = "Copy link";
     }, 1500);
@@ -3063,7 +3084,32 @@ copyLinkBtn?.addEventListener("click", () => {
 
 downloadGlbBtn?.addEventListener("click", () => {
   downloadRigGlb();
+  if (downloadGlbBtn) {
+    downloadGlbBtn.textContent = "Export started — your .glb is downloading.";
+    setTimeout(() => {
+      if (downloadGlbBtn) downloadGlbBtn.textContent = "Download .glb";
+    }, 1800);
+  }
   setMenuOpen(false);
+});
+
+onboardingDismissBtn?.addEventListener("click", () => {
+  hideOnboarding(true);
+});
+
+onboardingLearnMoreBtn?.addEventListener("click", () => {
+  hideOnboarding(true);
+  setMenuOpen(true);
+  setActivePanel("info");
+});
+
+showOnboardingBtn?.addEventListener("click", () => {
+  showOnboarding(true);
+  setMenuOpen(false);
+});
+
+onboardingEl?.addEventListener("click", (event) => {
+  if (event.target === onboardingEl) hideOnboarding(true);
 });
 
 document.querySelectorAll("[data-preset]").forEach((btn) => {
@@ -3125,6 +3171,7 @@ window.addEventListener("pointerdown", (event) => {
   initCarousel(carouselStartTokenId);
   showHamburger();
   scheduleIdleTimer();
+  showOnboarding(false);
 
   validateLookConfig(LOOK_CONTROLS, "LOOK_CONTROLS");
   validateLookConfig(

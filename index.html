@@ -9,18 +9,13 @@
     <title>fRiENEMiES Studio — View • Animate • Export</title>
     <meta
       name="description"
-      content="Load fRiENDSiES by token or wallet/ENS, preview animations, and export rig-ready GLB. No wallet connect required."
+      content="Community-built studio for viewing, previewing animations, and exporting rig-ready .glb assets."
     />
     <link rel="stylesheet" href="/style.css?v=2026-02-03c" />
-
   </head>
 
   <body>
     <div id="ui" class="ui">
-      <section class="studioBadge" aria-label="Studio summary">
-        <h1>fRiENEMiES Studio</h1>
-        <p>Load by token or wallet/ENS, preview animations, export rig-ready GLB.</p>
-      </section>
       <div id="carouselRegion" class="carouselRegion">
         <button
           id="carouselToggle"
@@ -127,28 +122,26 @@
               />
             </svg>
           </button>
+          <button class="menuIcon" type="button" data-panel="info" aria-label="Info">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none" />
+              <line x1="12" y1="11" x2="12" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <circle cx="12" cy="8" r="1" fill="currentColor" />
+            </svg>
+          </button>
         </div>
 
         <div id="panel-find" class="sheet" aria-hidden="true">
           <div class="sheetBody">
-            <label class="fieldLabel" for="searchInput">Wallet address or ENS</label>
+            <label class="fieldLabel" for="searchInput">Token ID or Wallet / ENS</label>
             <input
               id="searchInput"
               class="searchInput"
               type="text"
-              placeholder="e.g. 0x..., pizzalord.eth, or token #"
+              placeholder="e.g. 8448, 0x..., or pizzalord.eth"
               autocomplete="off"
               inputmode="search"
             />
-            <div class="quickstart" aria-label="Quickstart">
-              <div class="quickstartTitle">Quickstart</div>
-              <ol>
-                <li>Token ID → Load</li>
-                <li>Wallet/ENS → Lookup</li>
-                <li>Anim → Play</li>
-                <li>Export → GLB</li>
-              </ol>
-            </div>
             <button
               id="resetCollectionBtn"
               class="sheetAction viewAllChip"
@@ -173,6 +166,41 @@
               Punchy Studio
             </button>
             <button class="sheetAction" data-preset="Soft Pastel" type="button">Soft Pastel</button>
+          </div>
+        </div>
+        <div id="panel-info" class="sheet" aria-hidden="true">
+          <div class="sheetBody infoPanelBody">
+            <div class="quickstartTitle">About fRiENEMiES Studio</div>
+            <p class="infoCopy">fRiENEMiES Studio is a community-built toolkit inspired by fRiENDSiES.</p>
+            <p class="infoCopy">Friends change. Enemies evolve. We ship.</p>
+            <p class="infoCopy infoFinePrint">Independent and community-led. Not affiliated with the original creators.</p>
+            <div class="quickstartTitle">Community & updates</div>
+            <div class="infoLinks">
+              <a id="discordLink" class="sheetAction" href="https://discord.com/invite/clawd" target="_blank" rel="noopener noreferrer">Discord</a>
+              <a id="xLink" class="sheetAction" href="https://x.com" target="_blank" rel="noopener noreferrer">X (Twitter)</a>
+              <a id="githubLink" class="sheetAction" href="https://github.com/PIZZALORD713/garden_reborn" target="_blank" rel="noopener noreferrer">GitHub</a>
+            </div>
+            <div class="quickstartTitle">Tips</div>
+            <button id="showOnboardingBtn" class="sheetAction" type="button">Show onboarding again</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="onboarding" class="onboarding" aria-hidden="true">
+        <div class="onboardingCard" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+          <h2 id="onboardingTitle">Welcome to fRiENEMiES Studio</h2>
+          <p class="onboardingLead">Better Than Friends. Let’s be fRiENEMiES 😈</p>
+          <p class="onboardingCopy">Community-built studio for viewing, previewing animations, and exporting rig-ready .glb assets.</p>
+          <div class="quickstartTitle">Quickstart</div>
+          <ol class="onboardingSteps">
+            <li>Enter a Token ID or Wallet / ENS</li>
+            <li>Browse, rotate, and preview</li>
+            <li>Export clean .glb files</li>
+          </ol>
+          <p class="onboardingFinePrint">No wallet connect required.</p>
+          <div class="onboardingActions">
+            <button id="onboardingLearnMore" class="sheetAction" type="button">Learn more</button>
+            <button id="onboardingDismiss" class="sheetAction" type="button">Got it</button>
           </div>
         </div>
       </div>
