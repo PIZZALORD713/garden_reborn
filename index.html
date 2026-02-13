@@ -187,21 +187,81 @@
       </div>
 
       <div id="onboarding" class="onboarding" aria-hidden="true">
-        <div class="onboardingCard" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
-          <h2 id="onboardingTitle">Welcome to fRiENEMiES Studio</h2>
-          <p class="onboardingLead">Better Than Friends. Let’s be fRiENEMiES 😈</p>
-          <p class="onboardingCopy">Community-built studio for viewing, previewing animations, and exporting rig-ready .glb assets.</p>
-          <div class="quickstartTitle">Quickstart</div>
-          <ol class="onboardingSteps">
-            <li>Enter a Token ID or Wallet / ENS</li>
-            <li>Browse, rotate, and preview</li>
-            <li>Export clean .glb files</li>
-          </ol>
-          <p class="onboardingFinePrint">No wallet connect required.</p>
-          <div class="onboardingActions">
-            <button id="onboardingLearnMore" class="sheetAction" type="button">Learn more</button>
-            <button id="onboardingDismiss" class="sheetAction" type="button">Got it</button>
+        <div class="onboardingCard" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle" aria-describedby="onboardingBody">
+
+          <!-- Branded header band -->
+          <div class="onboardingHeader">
+            <h2 id="onboardingTitle" class="onboardingTitle">Welcome to fRiENEMiES Studio</h2>
+            <p class="onboardingSubtitle">Load &bull; Preview &bull; Export</p>
           </div>
+
+          <!-- Body content -->
+          <div class="onboardingContent">
+            <p id="onboardingBody" class="onboardingBody">A community-built workshop for characters and motion.</p>
+
+            <!-- Wallet/ENS input -->
+            <div class="onboardingInputGroup">
+              <label class="fieldLabel" for="onboardingInput">Paste a wallet/ENS or token ID to begin</label>
+              <input
+                id="onboardingInput"
+                class="searchInput onboardingSearchInput"
+                type="text"
+                placeholder="Try pizzalord.eth or 8448"
+                autocomplete="off"
+                inputmode="search"
+              />
+              <div class="onboardingTrustPill" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                Read-only &bull; No wallet connect
+              </div>
+            </div>
+
+            <!-- Action tiles -->
+            <div class="onboardingTiles" role="list">
+              <div class="onboardingTile" role="listitem">
+                <svg class="tileIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
+                  <path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <div class="tileText">
+                  <strong>Load a character</strong>
+                  <span>Wallet, ENS, or Token ID</span>
+                </div>
+              </div>
+              <div class="onboardingTile" role="listitem">
+                <svg class="tileIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <polygon points="9,6 9,18 19,12" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+                <div class="tileText">
+                  <strong>Preview animations</strong>
+                  <span>Swipe the carousel or select a clip</span>
+                </div>
+              </div>
+              <div class="onboardingTile" role="listitem">
+                <svg class="tileIcon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 3v12M12 15l-4-4M12 15l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <div class="tileText">
+                  <strong>Export rig-ready .glb</strong>
+                  <span>Clean export for games and tools</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Trust line -->
+            <p class="onboardingTrustLine">No wallet connect. We don't move anything. Ever.</p>
+          </div>
+
+          <!-- Actions -->
+          <div class="onboardingActions">
+            <button id="onboardingEnter" class="onboardingBtn onboardingBtn--primary" type="button">Enter Studio</button>
+            <button id="onboardingDemo" class="onboardingBtn onboardingBtn--secondary" type="button">Try a Demo</button>
+            <button id="onboardingSkip" class="onboardingBtn onboardingBtn--tertiary" type="button">Skip for now</button>
+          </div>
+
+          <!-- Pro tip -->
+          <p class="onboardingProTip">Pro tip: Share a collector link: <code>/pizzalord.eth</code></p>
         </div>
       </div>
     </div>
