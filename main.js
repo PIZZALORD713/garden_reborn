@@ -3148,7 +3148,22 @@ downloadGlbBtn?.addEventListener("click", () => {
   setMenuOpen(false);
 });
 
-playAnimBtn?.addEventListener("click", async () => {`r`n  await playAnimUrl(getSelectedAnimUrl());`r`n});`r`n`r`nanimSelect?.addEventListener("change", async () => {`r`n  await playAnimUrl(getSelectedAnimUrl());`r`n});`r`n`r`n// "Enter Studio" - submits input if filled, otherwise just dismisses`r`nonboardingEnterBtn?.addEventListener("click", () => {`r`n  submitOnboardingInput();`r`n});`r`n`r`nonboardingDismissBtn?.addEventListener("click", () => {`r`n  hideOnboarding(true);`r`n});
+playAnimBtn?.addEventListener("click", async () => {
+  await playAnimUrl(getSelectedAnimUrl());
+});
+
+animSelect?.addEventListener("change", async () => {
+  await playAnimUrl(getSelectedAnimUrl());
+});
+
+// "Enter Studio" - submits input if filled, otherwise just dismisses
+onboardingEnterBtn?.addEventListener("click", () => {
+  submitOnboardingInput();
+});
+
+onboardingDismissBtn?.addEventListener("click", () => {
+  hideOnboarding(true);
+});
 
 // "Try a Demo" — loads pizzalord.eth
 onboardingDemoBtn?.addEventListener("click", () => {
