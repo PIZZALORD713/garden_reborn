@@ -438,6 +438,8 @@ const searchResults = document.getElementById("searchResults");
 const resetCollectionBtn = document.getElementById("resetCollectionBtn");
 const copyLinkBtn = document.getElementById("copyLinkBtn");
 const downloadGlbBtn = document.getElementById("downloadGlbBtn");
+const animSelect = document.getElementById("animSelect");
+const playAnimBtn = document.getElementById("playAnimBtn");
 const onboardingEl = document.getElementById("onboarding");
 const onboardingDismissBtn = document.getElementById("onboardingDismiss");
 const onboardingLearnMoreBtn = document.getElementById("onboardingLearnMore");
@@ -1729,7 +1731,7 @@ function optimizeGlbForWindows(rawGlb) {
 
 function downloadRigGlb() {
   if (!loadedParts?.length || !bodyRoot) {
-    logLine("Nothing loaded yet — load a fRiENDSiES asset first.", "warn");
+    logLine("Nothing loaded yet - load a fRiENDSiES asset first.", "warn");
     return;
   }
   if (!THREE?.GLTFExporter) {
@@ -1929,15 +1931,56 @@ function downloadRigGlb() {
 // ----------------------------
 // Anim presets
 // ----------------------------
-const ANIM_PRESETS = [
+let ANIM_PRESETS = [
   ["WalkStart", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/WalkStart.glb"],
   ["Idle", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Idle.glb"],
   ["Wave", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Wave.glb"],
   ["Jump", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Jump.glb"]
 ];
 
+const ANIM_MANIFEST_URL =
+  "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/animations.json";
+
+function setAnimationOptions() {
+  if (!animSelect) return;
+  animSelect.innerHTML = "";
+  ANIM_PRESETS.forEach(([name, url], idx) => {
+    const opt = document.createElement("option");
+    opt.value = url;
+    opt.textContent = name;
+    if (idx === 0) opt.selected = true;
+    animSelect.appendChild(opt);
+  });
+}
+
+async function loadAnimationManifest() {
+  try {
+    const res = await fetch(ANIM_MANIFEST_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`manifest fetch failed (${res.status})`);
+    const data = await res.json();
+    if (!Array.isArray(data) || !data.length) throw new Error("manifest empty or invalid");
+
+    const parsed = data
+      .map((x) => {
+        if (Array.isArray(x) && x.length >= 2) return [String(x[0]), String(x[1])];
+        if (x && typeof x === "object" && x.name && x.url) return [String(x.name), String(x.url)];
+        return null;
+      })
+      .filter(Boolean);
+
+    if (parsed.length) {
+      ANIM_PRESETS = parsed;
+      logLine(`Loaded animation manifest (${parsed.length} items)`);
+    }
+  } catch (err) {
+    logLine(`Animation manifest unavailable, using fallback presets (${err?.message || err})`, "dim");
+  } finally {
+    setAnimationOptions();
+  }
+}
+
 function getSelectedAnimUrl() {
-  return ANIM_PRESETS[0][1];
+  return animSelect?.value || ANIM_PRESETS[0]?.[1] || "";
 }
 
 // ----------------------------
@@ -3085,12 +3128,20 @@ copyLinkBtn?.addEventListener("click", () => {
 downloadGlbBtn?.addEventListener("click", () => {
   downloadRigGlb();
   if (downloadGlbBtn) {
-    downloadGlbBtn.textContent = "Export started — your .glb is downloading.";
+    downloadGlbBtn.textContent = "Export started - your .glb is downloading.";
     setTimeout(() => {
       if (downloadGlbBtn) downloadGlbBtn.textContent = "Download .glb";
     }, 1800);
   }
   setMenuOpen(false);
+});
+
+playAnimBtn?.addEventListener("click", async () => {
+  await playAnimUrl(getSelectedAnimUrl());
+});
+
+animSelect?.addEventListener("change", async () => {
+  await playAnimUrl(getSelectedAnimUrl());
 });
 
 onboardingDismissBtn?.addEventListener("click", () => {
@@ -3168,6 +3219,7 @@ window.addEventListener("pointerdown", (event) => {
     setCarouselTokenIds(DEFAULT_TOKEN_IDS);
   }
 
+  await loadAnimationManifest();
   initCarousel(carouselStartTokenId);
   showHamburger();
   scheduleIdleTimer();
