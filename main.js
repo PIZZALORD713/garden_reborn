@@ -439,10 +439,12 @@ const resetCollectionBtn = document.getElementById("resetCollectionBtn");
 const copyLinkBtn = document.getElementById("copyLinkBtn");
 const downloadGlbBtn = document.getElementById("downloadGlbBtn");
 const onboardingEl = document.getElementById("onboarding");
-const onboardingDismissBtn = document.getElementById("onboardingDismiss");
-const onboardingLearnMoreBtn = document.getElementById("onboardingLearnMore");
+const onboardingInput = document.getElementById("onboardingInput");
+const onboardingEnterBtn = document.getElementById("onboardingEnter");
+const onboardingDemoBtn = document.getElementById("onboardingDemo");
+const onboardingSkipBtn = document.getElementById("onboardingSkip");
 const showOnboardingBtn = document.getElementById("showOnboardingBtn");
-const ONBOARDING_SEEN_KEY = "frenemies.onboarding.seen.v1";
+const ONBOARDING_SEEN_KEY = "frenemies.onboarding.seen.v2";
 
 const debugUi = {
   log: null
@@ -2416,6 +2418,16 @@ function showOnboarding(force = false) {
   if (!force && seen) return;
   onboardingEl.classList.add("is-open");
   onboardingEl.setAttribute("aria-hidden", "false");
+  if (onboardingInput) onboardingInput.value = "";
+  setTimeout(() => { onboardingInput?.focus(); }, 420);
+}
+
+function submitOnboardingInput() {
+  if (!onboardingInput) return false;
+  const raw = onboardingInput.value.trim();
+  if (!raw) return false;
+  handleSearch(raw);
+  return true;
 }
 
 function hideOnboarding(markSeen = true) {
@@ -3093,14 +3105,21 @@ downloadGlbBtn?.addEventListener("click", () => {
   setMenuOpen(false);
 });
 
-onboardingDismissBtn?.addEventListener("click", () => {
+// "Enter Studio" — submits input if filled, otherwise just dismisses
+onboardingEnterBtn?.addEventListener("click", () => {
+  submitOnboardingInput();
   hideOnboarding(true);
 });
 
-onboardingLearnMoreBtn?.addEventListener("click", () => {
+// "Try a Demo" — loads pizzalord.eth
+onboardingDemoBtn?.addEventListener("click", () => {
   hideOnboarding(true);
-  setMenuOpen(true);
-  setActivePanel("info");
+  handleSearch("pizzalord.eth");
+});
+
+// "Skip for now" — simple dismiss
+onboardingSkipBtn?.addEventListener("click", () => {
+  hideOnboarding(true);
 });
 
 showOnboardingBtn?.addEventListener("click", () => {
@@ -3110,6 +3129,37 @@ showOnboardingBtn?.addEventListener("click", () => {
 
 onboardingEl?.addEventListener("click", (event) => {
   if (event.target === onboardingEl) hideOnboarding(true);
+});
+
+// Enter key on onboarding input submits
+onboardingInput?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  const hadInput = submitOnboardingInput();
+  if (hadInput) hideOnboarding(true);
+});
+
+// Focus trap + Escape key for onboarding dialog
+document.addEventListener("keydown", (event) => {
+  if (!onboardingEl?.classList.contains("is-open")) return;
+  if (event.key === "Escape") {
+    hideOnboarding(true);
+    event.preventDefault();
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const focusable = onboardingEl.querySelectorAll(
+    'input, button, [tabindex]:not([tabindex="-1"])'
+  );
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 });
 
 document.querySelectorAll("[data-preset]").forEach((btn) => {
