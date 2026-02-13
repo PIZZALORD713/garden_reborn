@@ -1933,12 +1933,43 @@ function downloadRigGlb() {
 // ----------------------------
 // Anim presets
 // ----------------------------
-const ANIM_PRESETS = [
+let ANIM_PRESETS = [
   ["WalkStart", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/WalkStart.glb"],
   ["Idle", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Idle.glb"],
   ["Wave", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Wave.glb"],
   ["Jump", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Jump.glb"]
 ];
+
+const ANIM_MANIFEST_URL =
+  "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/animations.json";
+
+function normalizeAnimManifestItem(item) {
+  if (Array.isArray(item) && item.length >= 2) {
+    return [String(item[0]), String(item[1])];
+  }
+  if (item && typeof item === "object" && item.url) {
+    const url = String(item.url);
+    const fallbackName = url.split("/").pop()?.replace(/\.glb$/i, "") || "Animation";
+    return [String(item.name || fallbackName), url];
+  }
+  return null;
+}
+
+async function loadAnimationManifest() {
+  try {
+    const res = await fetch(ANIM_MANIFEST_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error(`manifest fetch failed (${res.status})`);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error("manifest must be an array");
+    const parsed = data.map(normalizeAnimManifestItem).filter(Boolean);
+    if (parsed.length) {
+      ANIM_PRESETS = parsed;
+      logLine(`Loaded animation manifest (${parsed.length} items)`, "dim");
+    }
+  } catch (err) {
+    logLine(`Animation manifest unavailable, using fallback presets (${err?.message || err})`, "dim");
+  }
+}
 
 function populateOnboardingAnimSelect() {
   if (!onboardingAnimSelect) return;
@@ -1953,7 +1984,7 @@ function populateOnboardingAnimSelect() {
 }
 
 function getSelectedAnimUrl() {
-  return onboardingAnimSelect?.value || ANIM_PRESETS[0][1];
+  return onboardingAnimSelect?.value || ANIM_PRESETS[0]?.[1] || "";
 }
 
 // ----------------------------
@@ -3237,6 +3268,7 @@ window.addEventListener("pointerdown", (event) => {
     setCarouselTokenIds(DEFAULT_TOKEN_IDS);
   }
 
+  await loadAnimationManifest();
   populateOnboardingAnimSelect();
   initCarousel(carouselStartTokenId);
   showHamburger();
