@@ -477,20 +477,32 @@ function setControlPanelOpen(open) {
 function syncControlAnchor() {
   if (!controlGear || !ui.carouselRegion) return;
   const rect = ui.carouselRegion.getBoundingClientRect();
-  const rightGap = Math.max(10, window.innerWidth - rect.right + 8);
   const bottomGap = Math.max(12, window.innerHeight - rect.bottom + 12);
 
-  controlGear.style.right = `${rightGap}px`;
+  if (window.innerWidth <= 780) {
+    controlGear.style.left = "";
+    controlGear.style.right = "12px";
+    controlGear.style.bottom = `${bottomGap}px`;
+    if (controlPanel) {
+      controlPanel.style.left = "";
+      controlPanel.style.right = "";
+      controlPanel.style.bottom = "";
+    }
+    return;
+  }
+
+  const gearLeft = Math.min(window.innerWidth - 54, rect.right + 10);
+  controlGear.style.left = `${gearLeft}px`;
+  controlGear.style.right = "auto";
   controlGear.style.bottom = `${bottomGap}px`;
 
   if (!controlPanel) return;
-  if (window.innerWidth <= 780) {
-    controlPanel.style.right = "";
-    controlPanel.style.bottom = "";
-    return;
-  }
-  controlPanel.style.right = `${rightGap + 50}px`;
-  controlPanel.style.bottom = `${bottomGap - 8}px`;
+  const panelWidth = Math.min(360, window.innerWidth - 96);
+  const preferredLeft = gearLeft + 50;
+  const maxLeft = window.innerWidth - panelWidth - 12;
+  controlPanel.style.left = `${Math.min(preferredLeft, maxLeft)}px`;
+  controlPanel.style.right = "auto";
+  controlPanel.style.bottom = `${Math.max(20, bottomGap - 6)}px`;
 }
 
 function syncControlVisibility() {

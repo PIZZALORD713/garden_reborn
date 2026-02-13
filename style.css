@@ -1056,32 +1056,37 @@ canvas {
   position: fixed;
   right: 16px;
   bottom: 132px;
-  z-index: 14;
-  width: 42px;
-  height: 42px;
+  z-index: 16;
+  width: 38px;
+  height: 38px;
   border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: var(--glass-surface);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.44);
   color: var(--text-primary);
-  backdrop-filter: blur(var(--blur-sm));
-  -webkit-backdrop-filter: blur(var(--blur-sm));
+  box-shadow: 0 4px 18px rgba(14, 20, 42, 0.12);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 220ms ease, transform 220ms ease;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: opacity 220ms ease, transform 220ms ease, background 180ms ease;
 }
 .controlGear.is-hidden {
   opacity: 0;
   pointer-events: none;
   transform: scale(0.8) translateY(6px);
 }
-.controlGear svg { width: 20px; height: 20px; }
+.controlGear:hover { background: rgba(255, 255, 255, 0.66); }
+.controlGear svg { width: 18px; height: 18px; }
 .controlPanel {
   position: fixed;
   right: 66px;
   bottom: 98px;
   width: min(360px, calc(100vw - 96px));
-  z-index: 14;
+  z-index: 16;
+  pointer-events: auto;
   border-radius: var(--radius-lg);
   border: 1px solid var(--glass-border);
   background: var(--glass-surface-strong);
@@ -1123,11 +1128,11 @@ canvas {
 .consoleViewer { margin: 0; padding: 10px; overflow: auto; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; }
 
 @media (max-width: 780px) {
-  .controlGear { right: 12px; bottom: 118px; }
+  .controlGear { right: 12px; bottom: 118px; left: auto; }
   .controlPanel {
     right: 0;
-    left: 0;
-    bottom: 0;
+    left: 0 !important;
+    bottom: 0 !important;
     width: 100%;
     border-radius: 14px 14px 0 0;
     padding: 12px;
