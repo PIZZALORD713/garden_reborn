@@ -19,7 +19,7 @@
 // ----------------------------
 // Cache busting for static assets (update this when you replace files)
 // ----------------------------
-const ASSET_VERSION = "2026-02-12a";
+const ASSET_VERSION = "2026-02-13a";
 
 // ----------------------------
 // Assets in your repo root
@@ -438,6 +438,16 @@ const searchResults = document.getElementById("searchResults");
 const resetCollectionBtn = document.getElementById("resetCollectionBtn");
 const copyLinkBtn = document.getElementById("copyLinkBtn");
 const downloadGlbBtn = document.getElementById("downloadGlbBtn");
+const controlGear = document.getElementById("controlGear");
+const controlPanel = document.getElementById("controlPanel");
+const controlAnimSelect = document.getElementById("controlAnimSelect");
+const controlPlayAnimBtn = document.getElementById("controlPlayAnimBtn");
+const consoleModal = document.getElementById("consoleModal");
+const consoleViewer = document.getElementById("consoleViewer");
+const openConsoleModalBtn = document.getElementById("openConsoleModal");
+const closeConsoleBtn = document.getElementById("closeConsoleBtn");
+const copyConsoleBtn = document.getElementById("copyConsoleBtn");
+const clearConsoleBtn = document.getElementById("clearConsoleBtn");
 const onboardingEl = document.getElementById("onboarding");
 const onboardingInput = document.getElementById("onboardingInput");
 const onboardingAnimSelect = document.getElementById("onboardingAnimSelect");
@@ -452,6 +462,73 @@ const debugUi = {
   log: null
 };
 
+let controlPanelOpen = false;
+let controlActiveTab = "animations";
+const logBuffer = [];
+const LOG_BUFFER_MAX = 300;
+
+function setControlPanelOpen(open) {
+  controlPanelOpen = !!open;
+  controlPanel?.classList.toggle("is-open", controlPanelOpen);
+  controlPanel?.setAttribute("aria-hidden", controlPanelOpen ? "false" : "true");
+  controlGear?.setAttribute("aria-expanded", controlPanelOpen ? "true" : "false");
+}
+
+function syncControlAnchor() {
+  if (!controlGear || !ui.carouselRegion) return;
+  const rect = ui.carouselRegion.getBoundingClientRect();
+  const bottomGap = Math.max(12, window.innerHeight - rect.bottom + 12);
+
+  if (window.innerWidth <= 780) {
+    controlGear.style.left = "";
+    controlGear.style.right = "12px";
+    controlGear.style.bottom = `${bottomGap}px`;
+    if (controlPanel) {
+      controlPanel.style.left = "";
+      controlPanel.style.right = "";
+      controlPanel.style.bottom = "";
+    }
+    return;
+  }
+
+  const gearLeft = Math.min(window.innerWidth - 54, rect.right + 10);
+  controlGear.style.left = `${gearLeft}px`;
+  controlGear.style.right = "auto";
+  controlGear.style.bottom = `${bottomGap}px`;
+
+  if (!controlPanel) return;
+  const panelWidth = Math.min(360, window.innerWidth - 96);
+  const preferredLeft = gearLeft + 50;
+  const maxLeft = window.innerWidth - panelWidth - 12;
+  controlPanel.style.left = `${Math.min(preferredLeft, maxLeft)}px`;
+  controlPanel.style.right = "auto";
+  controlPanel.style.bottom = `${Math.max(20, bottomGap - 6)}px`;
+}
+
+function syncControlVisibility() {
+  if (!controlGear || !ui.carousel) return;
+  const carouselVisible = !ui.carousel.classList.contains("is-hidden") && !carouselDismissed;
+  controlGear.classList.toggle("is-hidden", !carouselVisible);
+  if (!carouselVisible) setControlPanelOpen(false);
+}
+
+function setControlTab(tab) {
+  controlActiveTab = tab;
+  document.querySelectorAll(".controlTab").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.controlTab === tab);
+  });
+  document.querySelectorAll(".controlSection").forEach((el) => {
+    el.classList.toggle("is-active", el.dataset.controlSection === tab);
+  });
+}
+
+function renderConsoleViewer() {
+  if (!consoleViewer) return;
+  consoleViewer.textContent = logBuffer.join("\n");
+  consoleViewer.scrollTop = consoleViewer.scrollHeight;
+}
+
+
 let statusText = "booting…";
 function setStatus(s) {
   statusText = String(s || "");
@@ -460,6 +537,11 @@ function setStatus(s) {
 
 // Transcript helpers
 function logLine(text, cls = "") {
+  const entry = String(text);
+  logBuffer.push(entry);
+  while (logBuffer.length > LOG_BUFFER_MAX) logBuffer.shift();
+  renderConsoleViewer();
+
   if (!debugUi.log) return;
 
   const nearBottom =
@@ -467,7 +549,7 @@ function logLine(text, cls = "") {
 
   const div = document.createElement("div");
   div.className = `logLine ${cls}`.trim();
-  div.textContent = String(text);
+  div.textContent = entry;
   debugUi.log.appendChild(div);
 
   const MAX_LINES = 220;
@@ -485,6 +567,8 @@ function logSection(title) {
 
 function clearLog() {
   if (debugUi.log) debugUi.log.innerHTML = "";
+  logBuffer.length = 0;
+  renderConsoleViewer();
   logLine("Transcript cleared.");
 }
 
@@ -1971,20 +2055,25 @@ async function loadAnimationManifest() {
   }
 }
 
-function populateOnboardingAnimSelect() {
-  if (!onboardingAnimSelect) return;
-  onboardingAnimSelect.innerHTML = "";
+function populateAnimationSelect(selectEl) {
+  if (!selectEl) return;
+  selectEl.innerHTML = "";
   ANIM_PRESETS.forEach(([name, url], idx) => {
     const opt = document.createElement("option");
     opt.value = url;
     opt.textContent = name;
     if (idx === 0) opt.selected = true;
-    onboardingAnimSelect.appendChild(opt);
+    selectEl.appendChild(opt);
   });
 }
 
+function populateOnboardingAnimSelect() {
+  populateAnimationSelect(onboardingAnimSelect);
+  populateAnimationSelect(controlAnimSelect);
+}
+
 function getSelectedAnimUrl() {
-  return onboardingAnimSelect?.value || ANIM_PRESETS[0]?.[1] || "";
+  return controlAnimSelect?.value || onboardingAnimSelect?.value || ANIM_PRESETS[0]?.[1] || "";
 }
 
 // ----------------------------
@@ -2359,10 +2448,15 @@ function showCarousel() {
   if (!ui.carousel) return;
 
   // User explicitly dismissed the carousel via toggle - keep it hidden
-  if (carouselDismissed) return;
+  if (carouselDismissed) {
+    syncControlVisibility();
+    return;
+  }
 
   ui.carousel.classList.remove("is-hidden");
   if (carouselHideTimer) clearTimeout(carouselHideTimer);
+  syncControlAnchor();
+  syncControlVisibility();
 
   // Pinned - carousel stays open, toggle stays visible alongside it
   if (carouselPinned) {
@@ -2373,12 +2467,15 @@ function showCarousel() {
   if (carouselHovered || isDragging || carouselScrolling) return;
   carouselHideTimer = setTimeout(() => {
     ui.carousel?.classList.add("is-hidden");
+    syncControlVisibility();
   }, CAROUSEL_HIDE_MS);
 }
 
 function showToggle(persistent) {
   if (!ui.carouselToggle) return;
   ui.carouselToggle.classList.remove("is-hidden");
+  syncControlAnchor();
+  syncControlVisibility();
   if (toggleHideTimer) clearTimeout(toggleHideTimer);
   // If persistent (pinned), dismissed, or carousel is hovered, don't auto-hide
   if (persistent || carouselPinned || carouselDismissed || carouselHovered) return;
@@ -2386,12 +2483,14 @@ function showToggle(persistent) {
   if (menuOpen || hamburgerHovered) return;
   toggleHideTimer = setTimeout(() => {
     ui.carouselToggle?.classList.add("is-hidden");
+    syncControlVisibility();
   }, HAMBURGER_HIDE_MS);
 }
 
 function setCarouselPinned(pinned) {
   carouselPinned = !!pinned;
   carouselDismissed = !carouselPinned;
+  syncControlVisibility();
   if (!ui.carouselToggle) return;
   ui.carouselToggle.classList.toggle("is-pinned", carouselPinned);
   ui.carouselToggle.setAttribute("aria-pressed", String(carouselPinned));
@@ -3073,6 +3172,60 @@ ui.hamburger?.addEventListener("click", () => {
   setMenuOpen(!menuOpen);
 });
 
+controlGear?.addEventListener("click", () => {
+  setControlPanelOpen(!controlPanelOpen);
+});
+
+document.querySelectorAll(".controlTab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const tab = btn.dataset.controlTab;
+    if (!tab) return;
+    setControlTab(tab);
+  });
+});
+
+document.querySelectorAll("[data-control-preset]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const name = btn.dataset.controlPreset;
+    if (!name) return;
+    applyLookPreset(name);
+  });
+});
+
+controlPlayAnimBtn?.addEventListener("click", async () => {
+  await playAnimUrl(getSelectedAnimUrl());
+});
+
+controlAnimSelect?.addEventListener("change", async () => {
+  if (onboardingAnimSelect) onboardingAnimSelect.value = controlAnimSelect.value;
+  if (!mixer || !bodyRoot) return;
+  await playAnimUrl(getSelectedAnimUrl());
+});
+
+openConsoleModalBtn?.addEventListener("click", () => {
+  consoleModal?.classList.add("is-open");
+  consoleModal?.setAttribute("aria-hidden", "false");
+  renderConsoleViewer();
+});
+closeConsoleBtn?.addEventListener("click", () => {
+  consoleModal?.classList.remove("is-open");
+  consoleModal?.setAttribute("aria-hidden", "true");
+});
+copyConsoleBtn?.addEventListener("click", async () => {
+  const payload = logBuffer.join("\n");
+  if (!payload) return;
+  await navigator.clipboard.writeText(payload);
+});
+clearConsoleBtn?.addEventListener("click", () => {
+  clearLog();
+});
+consoleModal?.addEventListener("click", (event) => {
+  if (event.target === consoleModal) {
+    consoleModal.classList.remove("is-open");
+    consoleModal.setAttribute("aria-hidden", "true");
+  }
+});
+
 ui.hamburger?.addEventListener("pointerenter", () => {
   hamburgerHovered = true;
   showHamburger();
@@ -3152,6 +3305,7 @@ downloadGlbBtn?.addEventListener("click", () => {
 
 // "Enter Studio" — submits input if filled, otherwise just dismisses
 onboardingAnimSelect?.addEventListener("change", async () => {
+  if (controlAnimSelect) controlAnimSelect.value = onboardingAnimSelect.value;
   if (!mixer || !bodyRoot) return;
   await playAnimUrl(getSelectedAnimUrl());
 });
@@ -3225,15 +3379,31 @@ document.querySelectorAll("[data-preset]").forEach((btn) => {
 });
 
 window.addEventListener("pointerdown", (event) => {
-  if (!menuOpen) return;
   const target = event.target;
-  if (ui.menu?.contains(target) || ui.hamburger?.contains(target)) return;
-  if (Object.values(ui.panels).some((panel) => panel?.contains(target))) return;
-  setMenuOpen(false);
+
+  if (menuOpen) {
+    if (!ui.menu?.contains(target) && !ui.hamburger?.contains(target) && !Object.values(ui.panels).some((panel) => panel?.contains(target))) {
+      setMenuOpen(false);
+    }
+  }
+
+  if (controlPanelOpen) {
+    if (!controlPanel?.contains(target) && !controlGear?.contains(target)) {
+      setControlPanelOpen(false);
+    }
+  }
 });
 
 ["pointerdown", "touchstart", "keydown", "wheel"].forEach((evt) => {
   window.addEventListener(evt, handleUserActivity, { passive: true });
+});
+
+window.addEventListener("error", (event) => {
+  logLine(`ERROR: ${event.message} @ ${event.filename || "unknown"}:${event.lineno || 0}`, "warn");
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  logLine(`PROMISE REJECTION: ${event.reason?.message || event.reason || "unknown"}`, "warn");
 });
 
 
@@ -3270,7 +3440,11 @@ window.addEventListener("pointerdown", (event) => {
 
   await loadAnimationManifest();
   populateOnboardingAnimSelect();
+  setControlTab("animations");
+  setControlPanelOpen(false);
   initCarousel(carouselStartTokenId);
+  syncControlAnchor();
+  syncControlVisibility();
   showHamburger();
   scheduleIdleTimer();
   showOnboarding(false);
@@ -3352,6 +3526,8 @@ window.addEventListener("resize", () => {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+  syncControlAnchor();
+  syncControlVisibility();
 
   // Recalculate carousel spacers and re-center on active card
   if (activeCarouselIndex != null && carouselTokenIds.length && ui.slides) {
@@ -3363,3 +3539,4 @@ window.addEventListener("resize", () => {
     suppressScrollHandler = false;
   }
 });
+
