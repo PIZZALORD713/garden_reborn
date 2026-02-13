@@ -1052,6 +1052,82 @@ canvas {
   }
 }
 
+.controlGear {
+  position: fixed;
+  right: 16px;
+  bottom: 132px;
+  z-index: 14;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-surface);
+  color: var(--text-primary);
+  backdrop-filter: blur(var(--blur-sm));
+  -webkit-backdrop-filter: blur(var(--blur-sm));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.controlGear svg { width: 20px; height: 20px; }
+.controlPanel {
+  position: fixed;
+  right: 66px;
+  bottom: 98px;
+  width: min(360px, calc(100vw - 96px));
+  z-index: 14;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-surface-strong);
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  box-shadow: var(--glass-shadow);
+  padding: 10px;
+  display: none;
+}
+.controlPanel.is-open { display: block; }
+.controlTabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+.controlTab { border: 1px solid var(--glass-border); border-radius: 8px; background: rgba(255,255,255,.6); font-size: 11px; padding: 6px; }
+.controlTab.is-active { background: rgba(255,255,255,.9); font-weight: 600; }
+.controlSection { display: none; gap: 8px; }
+.controlSection.is-active { display: grid; }
+.consoleModal {
+  position: fixed;
+  inset: 0;
+  z-index: 24;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 15, 22, 0.45);
+}
+.consoleModal.is-open { display: flex; }
+.consoleCard {
+  width: min(860px, calc(100vw - 32px));
+  height: min(70vh, 560px);
+  background: rgba(18, 22, 28, 0.95);
+  color: #d7deea;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 12px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  overflow: hidden;
+}
+.consoleHeader { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.consoleActions { display: flex; gap: 6px; }
+.consoleViewer { margin: 0; padding: 10px; overflow: auto; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; }
+
+@media (max-width: 780px) {
+  .controlGear { right: 12px; bottom: 118px; }
+  .controlPanel {
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    border-radius: 14px 14px 0 0;
+    padding: 12px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tokenSlide,
   .tokenCard,

@@ -11,7 +11,7 @@
       name="description"
       content="Community-built studio for viewing, previewing animations, and exporting rig-ready .glb assets."
     />
-    <link rel="stylesheet" href="/style.css?v=2026-02-12a" />
+    <link rel="stylesheet" href="/style.css?v=2026-02-13a" />
   </head>
 
   <body>
@@ -30,6 +30,50 @@
             <ul class="tokenTrack" id="tokenSlides"></ul>
             <div id="spacerRight" class="carouselSpacer"></div>
           </div>
+        </div>
+      </div>
+
+      <button id="controlGear" class="controlGear" type="button" aria-label="Open controls" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none" />
+          <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1 1 0 0 1 0 1.4l-1.3 1.3a1 1 0 0 1-1.4 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a1 1 0 0 1-1 1h-1.8a1 1 0 0 1-1-1v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a1 1 0 0 1-1.4 0L4.9 17.9a1 1 0 0 1 0-1.4l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a1 1 0 0 1-1-1v-1.8a1 1 0 0 1 1-1h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a1 1 0 0 1 0-1.4L6.1 4.9a1 1 0 0 1 1.4 0l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V4a1 1 0 0 1 1-1h1.8a1 1 0 0 1 1 1v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1 1 0 0 1 1.4 0l1.3 1.3a1 1 0 0 1 0 1.4l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H20a1 1 0 0 1 1 1v1.8a1 1 0 0 1-1 1h-.2a1 1 0 0 0-.9.6z" stroke="currentColor" stroke-width="1.5" fill="none" />
+        </svg>
+      </button>
+
+      <aside id="controlPanel" class="controlPanel" aria-hidden="true">
+        <div class="controlTabs">
+          <button class="controlTab is-active" type="button" data-control-tab="animations">Animations</button>
+          <button class="controlTab" type="button" data-control-tab="lighting">Lighting/Scene</button>
+          <button class="controlTab" type="button" data-control-tab="console">Console</button>
+        </div>
+        <div class="controlBody">
+          <section class="controlSection is-active" data-control-section="animations">
+            <label class="fieldLabel" for="controlAnimSelect">Animation</label>
+            <select id="controlAnimSelect" class="searchInput"></select>
+            <button id="controlPlayAnimBtn" class="sheetAction" type="button">Play selected animation</button>
+          </section>
+          <section class="controlSection" data-control-section="lighting">
+            <button class="sheetAction" data-control-preset="Cinematic" type="button">Cinematic</button>
+            <button class="sheetAction" data-control-preset="Punchy Studio" type="button">Punchy Studio</button>
+            <button class="sheetAction" data-control-preset="Soft Pastel" type="button">Soft Pastel</button>
+          </section>
+          <section class="controlSection" data-control-section="console">
+            <button id="openConsoleModal" class="sheetAction" type="button">Open console viewer</button>
+          </section>
+        </div>
+      </aside>
+
+      <div id="consoleModal" class="consoleModal" aria-hidden="true">
+        <div class="consoleCard" role="dialog" aria-modal="true" aria-label="Console viewer">
+          <div class="consoleHeader">
+            <strong>Console Viewer</strong>
+            <div class="consoleActions">
+              <button id="copyConsoleBtn" class="sheetAction" type="button">Copy</button>
+              <button id="clearConsoleBtn" class="sheetAction" type="button">Clear</button>
+              <button id="closeConsoleBtn" class="sheetAction" type="button">Close</button>
+            </div>
+          </div>
+          <pre id="consoleViewer" class="consoleViewer"></pre>
         </div>
       </div>
 
@@ -280,6 +324,6 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
-    <script src="/main.js?v=2026-02-12a"></script>
+    <script src="/main.js?v=2026-02-13a"></script>
   </body>
 </html>
