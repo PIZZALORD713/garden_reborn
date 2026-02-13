@@ -862,6 +862,12 @@ canvas {
   color: var(--text-muted);
 }
 
+.onboardingAnimSelect {
+  margin-top: 6px;
+  min-height: 32px;
+  font-size: 12px;
+}
+
 /* Trust line */
 .onboardingTrustLine {
   margin: 0 0 4px;

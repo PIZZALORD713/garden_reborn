@@ -440,6 +440,7 @@ const copyLinkBtn = document.getElementById("copyLinkBtn");
 const downloadGlbBtn = document.getElementById("downloadGlbBtn");
 const onboardingEl = document.getElementById("onboarding");
 const onboardingInput = document.getElementById("onboardingInput");
+const onboardingAnimSelect = document.getElementById("onboardingAnimSelect");
 const onboardingEnterBtn = document.getElementById("onboardingEnter");
 const onboardingDemoBtn = document.getElementById("onboardingDemo");
 const onboardingSkipBtn = document.getElementById("onboardingSkip");
@@ -1939,8 +1940,20 @@ const ANIM_PRESETS = [
   ["Jump", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Jump.glb"]
 ];
 
+function populateOnboardingAnimSelect() {
+  if (!onboardingAnimSelect) return;
+  onboardingAnimSelect.innerHTML = "";
+  ANIM_PRESETS.forEach(([name, url], idx) => {
+    const opt = document.createElement("option");
+    opt.value = url;
+    opt.textContent = name;
+    if (idx === 0) opt.selected = true;
+    onboardingAnimSelect.appendChild(opt);
+  });
+}
+
 function getSelectedAnimUrl() {
-  return ANIM_PRESETS[0][1];
+  return onboardingAnimSelect?.value || ANIM_PRESETS[0][1];
 }
 
 // ----------------------------
@@ -3107,6 +3120,11 @@ downloadGlbBtn?.addEventListener("click", () => {
 });
 
 // "Enter Studio" — submits input if filled, otherwise just dismisses
+onboardingAnimSelect?.addEventListener("change", async () => {
+  if (!mixer || !bodyRoot) return;
+  await playAnimUrl(getSelectedAnimUrl());
+});
+
 onboardingEnterBtn?.addEventListener("click", () => {
   submitOnboardingInput();
   hideOnboarding(true);
@@ -3219,6 +3237,7 @@ window.addEventListener("pointerdown", (event) => {
     setCarouselTokenIds(DEFAULT_TOKEN_IDS);
   }
 
+  populateOnboardingAnimSelect();
   initCarousel(carouselStartTokenId);
   showHamburger();
   scheduleIdleTimer();
