@@ -1,154 +1,237 @@
 # fRiENEMiES Studio
 
-View • Animate • Export for fRiENDSiES.
+**View. Animate. Export.** A community-built 3D studio for fRiENDSiES characters.
 
-Load by token or wallet/ENS, preview animations, and export rig-ready GLB.
-No wallet connect required.
+Load any token by ID or wallet/ENS, preview animations in real time, and export rig-ready `.glb` files -- all in-browser, no wallet connect required.
 
----
-
-## Current State (as-built)
-
-This repo currently ships a **vanilla static Three.js app** (no bundler, no package.json) with:
-
-- Token browsing + direct token load
-- Wallet/ENS holder lookup via `/api/friendsiesTokens`
-- Route support for holder pages (`/{ens}` or `/0x...`) via `vercel.json`
-- Character assembly from trait metadata
-- BODY-first skeleton binding for cross-part animation consistency
-- Rigid attachment retargeting to BODY bones
-- Face overlay/decal handling
-- Look presets + mobile-friendly lighting behavior
-- Animation support + safer track sanitation
-- GLB export path with compatibility post-processing
-
-Tech/runtime:
-
-- Three.js `r128` + matching examples loaders/exporter
-- Static frontend: `index.html`, `main.js`, `style.css`
-- Serverless API: `api/friendsiesTokens.js` (Moralis-backed holder lookup)
+> Independent and community-led. Not affiliated with the original creators.
 
 ---
 
-## Quickstart (local)
+## Features
+
+- **Character viewer** -- load any of the 10,000 fRiENDSiES tokens by ID, wallet address, or ENS name
+- **Multi-part assembly** -- BODY-first skeleton binding with cross-part animation consistency, rigid attachment retargeting, and face texture overlays
+- **Animation preview** -- external animation library loaded from a manifest, with clip sanitization for safe playback
+- **Lighting presets** -- Cinematic, Punchy Studio, and Soft Pastel looks with mobile-optimized defaults
+- **GLB export** -- one-click download with Windows 3D Viewer compatibility (texture transform baking, sampler/skin dedup, material sanitization)
+- **Holder pages** -- shareable URLs like `/pizzalord.eth` or `/0x28af...d713` that deep-link to a collector's tokens
+- **Carousel browser** -- virtual-rendered token picker with pointer-drag momentum and lazy image loading
+- **Onboarding flow** -- first-visit welcome modal with demo mode and animation picker
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| 3D engine | Three.js r128 (CDN, no bundler) |
+| Frontend | Vanilla HTML / CSS / JS -- `index.html`, `main.js`, `style.css` |
+| API | Vercel serverless function (`api/friendsiesTokens.js`) |
+| NFT data | Moralis API (wallet-to-token lookup) |
+| ENS resolution | ensideas.com public API |
+| Metadata | GitHub Gist (character trait data) |
+| Animations | GitHub CDN via jsDelivr (animation manifest + `.glb` clips) |
+| Hosting | Vercel (static + serverless) |
+
+No build tools, no `package.json`, no node_modules. Clone and serve.
+
+---
+
+## Quickstart
 
 ```bash
 npx serve .
 ```
 
-Open:
+Open `http://localhost:3000/`
 
-- `http://localhost:3000/`
+### Route tests
 
-Optional route tests:
+- `http://localhost:3000/pizzalord.eth` -- holder page via ENS
+- `http://localhost:3000/0x28af3356c6aaf449d20c59d2531941ddfb94d713` -- holder page via address
 
-- `http://localhost:3000/pizzalord.eth`
-- `http://localhost:3000/0x28af3356c6aaf449d20c59d2531941ddfb94d713`
-
----
-
-## Product UX (current)
-
-### Try it in 4 steps
-
-1. Token ID → Load
-2. Wallet/ENS → Lookup
-3. Anim → Play
-4. Export → GLB
-
-### Primary user paths
-
-- **Token mode**: direct token access
-- **Wallet/ENS mode**: load a holder collection view
-- **Share mode**: copy link
-- **Export mode**: download GLB for downstream use
+> **Note:** Wallet/ENS lookup requires the serverless API (`/api/friendsiesTokens`), which needs `MORALIS_API_KEY` in your environment. Without it, you can still load tokens by ID.
 
 ---
 
-## API
+## Project Structure
+
+```
+garden_reborn/
+├── index.html                  # Entry point: HTML structure + CDN script tags
+├── main.js                     # Core application (~3,500 lines)
+│   ├── Configuration           # Metadata URL, contract address, defaults
+│   ├── Scene bootstrap         # Three.js scene, camera, renderer, controls
+│   ├── Lighting system         # Presets, mobile detection, material intensity
+│   ├── Character assembly      # BODY-first skeleton, part binding, face overlay
+│   ├── Animation system        # Clip sanitization, manifest loading, playback
+│   ├── GLB export pipeline     # Parse/build GLB, Windows compat post-processing
+│   ├── Carousel system         # Virtual rendering, momentum scroll, navigation
+│   ├── UI state management     # Menu, panels, onboarding, console viewer
+│   ├── Search + wallet flow    # Token/ENS/address lookup and routing
+│   ├── Boot sequence           # URL parsing, metadata fetch, carousel init
+│   └── Render loop             # Animation mixer, bone stabilization, lights
+├── style.css                   # Glassmorphism UI (~1,165 lines)
+│   ├── CSS custom properties   # Glass effects, radii, shadows, typography
+│   ├── Carousel component      # Token cards, spacers, snap scrolling
+│   ├── Menu system             # Hamburger FAB, icon buttons, sheet panels
+│   ├── Onboarding modal        # Welcome card, input group, action tiles
+│   ├── Control panel           # Gear button, tabs, sections
+│   ├── Console modal           # Log viewer overlay
+│   └── Responsive breakpoints  # 720px + 780px mobile layouts
+├── api/
+│   └── friendsiesTokens.js     # Serverless: ENS resolve + Moralis NFT lookup
+├── vercel.json                 # URL rewrites for holder routes
+├── garden-cotton-clouds.png    # Panorama background (~3.9 MB)
+└── friendsies_cloud_overcast_studio_v1.exr  # HDR environment map (~7.6 MB)
+```
+
+---
+
+## Architecture
+
+### Character Assembly
+
+```
+BODY (master skeleton source)
+  ├── SkinnedMesh (body geometry bound to BODY skeleton)
+  └── Bones[]
+       ├── HEAD
+       │   ├── SkinnedMesh (rebound to BODY skeleton)
+       │   ├── Face overlay mesh (texture decal on FACE_ANCHOR)
+       │   └── Rigid meshes (reparented to matching BODY bones)
+       └── Trait parts
+           ├── SkinnedMesh (rebound to BODY skeleton)
+           └── Rigid meshes (reparented to matching BODY bones)
+```
+
+Bone names are normalized (strips `Armature|`, `MixamoRig:` prefixes) and aliased (`pelvis` -> `hips`) for cross-rig consistency.
+
+### GLB Export Pipeline
+
+```
+Live scene
+  → Clone via SkeletonUtils (preserve skin/skeleton data)
+  → Strip viewer-only helpers (FACE_ANCHOR, overlays)
+  → Rebind all parts to exported BODY skeleton
+  → Add face decal mesh (normal-offset geometry)
+  → GLTFExporter → raw ArrayBuffer
+  → Post-process for Windows compatibility:
+      → Bake KHR_texture_transform (flip-Y only)
+      → Deduplicate samplers
+      → Deduplicate skins
+      → Sanitize materials (clamp PBR factors, strip extras)
+  → Download as .glb
+```
+
+### Loader Pipeline
+
+```
+URL/input → detect wallet/ENS/token ID
+  → Wallet: /api/friendsiesTokens → token IDs
+  → Token: metadata gist lookup → trait list
+  → Parallel load: BODY.glb + HEAD.glb + trait GLBs + face PNG
+  → BODY skeleton binding → part attachment → face overlay
+  → Material boost (emissive, env map intensity)
+  → Apply lighting preset → start animation
+```
+
+---
+
+## API Reference
 
 ### `GET /api/friendsiesTokens`
 
-Query params:
+Resolves a wallet address or ENS name to fRiENDSiES token IDs.
 
-- `owner` (required): `0x...` address or `.eth`
-- `chain` (currently `eth`)
-- `contract` (Friendsies ERC-721 contract)
+**Query parameters:**
 
-Returns:
+| Param | Required | Description |
+|-------|----------|-------------|
+| `owner` | Yes | `0x...` address or `.eth` name |
+| `chain` | No | Blockchain (default: `eth`) |
+| `contract` | Yes | ERC-721 contract address |
 
-- `ownerInput`, `ownerResolved`
-- `tokenIds[]`, `tokenCount`
-- `fetchedAt`
+**Response:**
 
-Environment:
+```json
+{
+  "ownerInput": "pizzalord.eth",
+  "ownerResolved": "0x28af3356c6aaf449d20c59d2531941ddfb94d713",
+  "chain": "eth",
+  "contract": "0xe5af63234f93afd72a8b9114803e33f6d9766956",
+  "tokenIds": [42, 1337, 8448],
+  "tokenCount": 3,
+  "fetchedAt": "2026-02-13T00:00:00.000Z"
+}
+```
 
-- `MORALIS_API_KEY` (required in deployment)
+**Environment variables:**
 
----
-
-## Deploy
-
-Designed for static hosting + serverless API.
-
-- Frontend: static files
-- API: `api/friendsiesTokens.js`
-- Rewrites: `vercel.json` supports owner routes to `index.html`
-
----
-
-## Launch Hygiene Pass (next recommended changes)
-
-Based on current direction, this is the next priority sequence:
-
-1. **Rename/copy sweep**
-   - Remove remaining “Toy Box” language in UI and code comments
-   - Standardize name to **fRiENEMiES Studio**
-   - Add concise one-line product descriptor in UI
-
-2. **Idiot-proof first-run flow**
-   - Clear token input examples
-   - Explicit wallet/ENS labeling
-   - Friendly invalid ENS and loading states
-   - Visible “share this holder page” affordance
-
-3. **Proof-it’s-real repo polish**
-   - Add screenshot/GIF in README
-   - Add live demo URL block
-   - Add concise roadmap
-   - Add CONTRIBUTING + help-wanted issues
-
-4. **Social cards / OG polish**
-   - Proper Open Graph title/description/image
-   - Product favicon cleanup
-
-5. **Credibility anchors**
-   - Add changelog/release notes (`v0.1` style)
-   - Pin high-value help-wanted issues
+- `MORALIS_API_KEY` (required) -- Moralis Web3 API key for NFT lookups
 
 ---
 
-## Suggested Short Roadmap
+## Deployment
 
-- Viewer polish (loading/error states + UX clarity)
-- Wallet/ENS flow hardening
-- Export validation pipeline improvements
-- Animation library + retarget reliability
-- Game-ready skills framework for fRiENEMiES assets
+Designed for **Vercel** (static hosting + serverless API).
+
+1. Push the repo to GitHub
+2. Import into Vercel
+3. Set `MORALIS_API_KEY` in Vercel environment variables
+4. Deploy -- Vercel serves static files and runs `api/friendsiesTokens.js` as a serverless function
+
+**URL rewrites** (`vercel.json`): routes like `/pizzalord.eth` and `/0x28af...d713` are rewritten to `/index.html` for client-side handling.
+
+**For other hosts:** the static frontend works anywhere. The `/api/friendsiesTokens` endpoint needs a Node.js serverless environment with the Moralis API key.
 
 ---
 
-## Contributing (quick)
+## User Paths
 
-PRs welcome. Best first areas:
+| Path | How |
+|------|-----|
+| **Browse by token** | Scroll the carousel or type a token ID in search |
+| **Load a wallet** | Enter an ENS name or `0x...` address in the search or onboarding input |
+| **Preview animation** | Select from the animation dropdown in the control panel or onboarding |
+| **Change lighting** | Open the gear menu > Lighting/Scene tab > pick a preset |
+| **Export GLB** | Hamburger menu > Share panel > Download .glb |
+| **Share a link** | Hamburger menu > Share panel > Copy link (or share the URL directly) |
+| **View console** | Gear menu > Console tab > Open console viewer |
+
+---
+
+## Known Limitations
+
+- **Wallet lookup requires the API** -- local dev without `MORALIS_API_KEY` limits you to token ID browsing
+- **Three.js r128** -- current stable is r169+; missing recent performance and feature improvements
+- **No GPU resource disposal** -- switching tokens many times may accumulate GPU memory
+- **Large assets in repo** -- the EXR environment map (7.6 MB) and panorama PNG (3.9 MB) are committed directly
+- **Single-file JS** -- `main.js` at ~3,500 lines works but is approaching the maintainability threshold
+
+---
+
+## Contributing
+
+PRs welcome. No build tools required -- edit the files and test with `npx serve .`
+
+### Good first areas
 
 - UI copy and interaction polish
 - Wallet/ENS edge case handling
-- Export validation + test fixtures
+- Export validation and test fixtures
 - Animation retargeting quality
+- GPU resource cleanup (geometry/material/texture disposal)
 
-If you’re opening a PR, include:
+### PR guidelines
 
-- What changed
-- Why it matters
-- Before/after screenshots or short clip for UI changes
+- Describe **what** changed and **why** it matters
+- Include before/after screenshots or a short clip for UI changes
+- Keep changes focused -- one concern per PR
+
+---
+
+## License
+
+Community project. See repository for license details.
