@@ -19,7 +19,7 @@
 // ----------------------------
 // Cache busting for static assets (update this when you replace files)
 // ----------------------------
-const ASSET_VERSION = "2026-02-03c";
+const ASSET_VERSION = "2026-02-12a";
 
 // ----------------------------
 // Assets in your repo root
@@ -443,6 +443,7 @@ const onboardingInput = document.getElementById("onboardingInput");
 const onboardingEnterBtn = document.getElementById("onboardingEnter");
 const onboardingDemoBtn = document.getElementById("onboardingDemo");
 const onboardingSkipBtn = document.getElementById("onboardingSkip");
+const onboardingDismissBtn = document.getElementById("onboardingDismiss");
 const showOnboardingBtn = document.getElementById("showOnboardingBtn");
 const ONBOARDING_SEEN_KEY = "frenemies.onboarding.seen.v2";
 
