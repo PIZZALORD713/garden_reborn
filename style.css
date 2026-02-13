@@ -1110,9 +1110,11 @@ canvas {
   align-items: center;
   justify-content: center;
   background: rgba(11, 15, 22, 0.45);
+  pointer-events: auto;
 }
 .consoleModal.is-open { display: flex; }
 .consoleCard {
+  pointer-events: auto;
   width: min(860px, calc(100vw - 32px));
   height: min(70vh, 560px);
   background: rgba(18, 22, 28, 0.95);
