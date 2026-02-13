@@ -474,6 +474,32 @@ function setControlPanelOpen(open) {
   controlGear?.setAttribute("aria-expanded", controlPanelOpen ? "true" : "false");
 }
 
+function syncControlAnchor() {
+  if (!controlGear || !ui.carouselRegion) return;
+  const rect = ui.carouselRegion.getBoundingClientRect();
+  const rightGap = Math.max(10, window.innerWidth - rect.right + 8);
+  const bottomGap = Math.max(12, window.innerHeight - rect.bottom + 12);
+
+  controlGear.style.right = `${rightGap}px`;
+  controlGear.style.bottom = `${bottomGap}px`;
+
+  if (!controlPanel) return;
+  if (window.innerWidth <= 780) {
+    controlPanel.style.right = "";
+    controlPanel.style.bottom = "";
+    return;
+  }
+  controlPanel.style.right = `${rightGap + 50}px`;
+  controlPanel.style.bottom = `${bottomGap - 8}px`;
+}
+
+function syncControlVisibility() {
+  if (!controlGear || !ui.carousel) return;
+  const carouselVisible = !ui.carousel.classList.contains("is-hidden") && !carouselDismissed;
+  controlGear.classList.toggle("is-hidden", !carouselVisible);
+  if (!carouselVisible) setControlPanelOpen(false);
+}
+
 function setControlTab(tab) {
   controlActiveTab = tab;
   document.querySelectorAll(".controlTab").forEach((btn) => {
@@ -2410,10 +2436,15 @@ function showCarousel() {
   if (!ui.carousel) return;
 
   // User explicitly dismissed the carousel via toggle - keep it hidden
-  if (carouselDismissed) return;
+  if (carouselDismissed) {
+    syncControlVisibility();
+    return;
+  }
 
   ui.carousel.classList.remove("is-hidden");
   if (carouselHideTimer) clearTimeout(carouselHideTimer);
+  syncControlAnchor();
+  syncControlVisibility();
 
   // Pinned - carousel stays open, toggle stays visible alongside it
   if (carouselPinned) {
@@ -2424,12 +2455,15 @@ function showCarousel() {
   if (carouselHovered || isDragging || carouselScrolling) return;
   carouselHideTimer = setTimeout(() => {
     ui.carousel?.classList.add("is-hidden");
+    syncControlVisibility();
   }, CAROUSEL_HIDE_MS);
 }
 
 function showToggle(persistent) {
   if (!ui.carouselToggle) return;
   ui.carouselToggle.classList.remove("is-hidden");
+  syncControlAnchor();
+  syncControlVisibility();
   if (toggleHideTimer) clearTimeout(toggleHideTimer);
   // If persistent (pinned), dismissed, or carousel is hovered, don't auto-hide
   if (persistent || carouselPinned || carouselDismissed || carouselHovered) return;
@@ -2437,12 +2471,14 @@ function showToggle(persistent) {
   if (menuOpen || hamburgerHovered) return;
   toggleHideTimer = setTimeout(() => {
     ui.carouselToggle?.classList.add("is-hidden");
+    syncControlVisibility();
   }, HAMBURGER_HIDE_MS);
 }
 
 function setCarouselPinned(pinned) {
   carouselPinned = !!pinned;
   carouselDismissed = !carouselPinned;
+  syncControlVisibility();
   if (!ui.carouselToggle) return;
   ui.carouselToggle.classList.toggle("is-pinned", carouselPinned);
   ui.carouselToggle.setAttribute("aria-pressed", String(carouselPinned));
@@ -3395,6 +3431,8 @@ window.addEventListener("unhandledrejection", (event) => {
   setControlTab("animations");
   setControlPanelOpen(false);
   initCarousel(carouselStartTokenId);
+  syncControlAnchor();
+  syncControlVisibility();
   showHamburger();
   scheduleIdleTimer();
   showOnboarding(false);
@@ -3476,6 +3514,8 @@ window.addEventListener("resize", () => {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+  syncControlAnchor();
+  syncControlVisibility();
 
   // Recalculate carousel spacers and re-center on active card
   if (activeCarouselIndex != null && carouselTokenIds.length && ui.slides) {

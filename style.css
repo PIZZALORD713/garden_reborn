@@ -1068,6 +1068,12 @@ canvas {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+.controlGear.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.8) translateY(6px);
 }
 .controlGear svg { width: 20px; height: 20px; }
 .controlPanel {
