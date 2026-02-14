@@ -52,6 +52,13 @@ const FRIENDSIES_CHAIN = "eth";
 const DEFAULT_TOKEN_ID = 5;
 const DEFAULT_TOKEN_IDS = Array.from({ length: 10000 }, (_, i) => i + 1);
 
+const MASCOT_CONFIG = {
+  mascotTokenId: 8521,
+  mascotName: "Sauce-0x",
+  mascotOpenSeaImage:
+    "https://i.seadn.io/s/raw/files/e1ed6c4df4dfe488f3cd8045f741f3eb.png"
+};
+
 function isHexAddress(value) {
   return typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value.trim());
 }
@@ -456,6 +463,10 @@ const onboardingDemoBtn = document.getElementById("onboardingDemo");
 const onboardingSkipBtn = document.getElementById("onboardingSkip");
 const onboardingDismissBtn = document.getElementById("onboardingDismiss");
 const showOnboardingBtn = document.getElementById("showOnboardingBtn");
+const mascotPanel = document.getElementById("mascotPanel");
+const mascotToggle = document.getElementById("mascotToggle");
+const mascotBody = document.getElementById("mascotBody");
+const mascotSprite = document.getElementById("mascotSprite");
 const ONBOARDING_SEEN_KEY = "frenemies.onboarding.seen.v2";
 
 const debugUi = {
@@ -2076,6 +2087,37 @@ function getSelectedAnimUrl() {
   return controlAnimSelect?.value || onboardingAnimSelect?.value || ANIM_PRESETS[0]?.[1] || "";
 }
 
+function getAnimUrlByName(name) {
+  const target = String(name || "").toLowerCase();
+  const hit = ANIM_PRESETS.find(([animName]) => String(animName).toLowerCase() === target);
+  return hit?.[1] || "";
+}
+
+function initMascotHook() {
+  if (mascotToggle) mascotToggle.textContent = MASCOT_CONFIG.mascotName;
+  if (mascotSprite) {
+    mascotSprite.src = MASCOT_CONFIG.mascotOpenSeaImage;
+    mascotSprite.loading = "lazy";
+  }
+
+  mascotToggle?.addEventListener("click", () => {
+    const collapsed = mascotBody?.classList.toggle("is-collapsed");
+    mascotToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  });
+
+  mascotPanel?.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-mascot-emote]");
+    if (!btn) return;
+    const emoteName = btn.dataset.mascotEmote;
+    const animUrl = getAnimUrlByName(emoteName);
+    if (!animUrl) {
+      logLine(`Mascot emote missing in manifest: ${emoteName}`, "warn");
+      return;
+    }
+    await playAnimUrl(animUrl);
+  });
+}
+
 // ----------------------------
 // Load + build character
 // ----------------------------
@@ -3440,6 +3482,7 @@ window.addEventListener("unhandledrejection", (event) => {
 
   await loadAnimationManifest();
   populateOnboardingAnimSelect();
+  initMascotHook();
   setControlTab("animations");
   setControlPanelOpen(false);
   initCarousel(carouselStartTokenId);

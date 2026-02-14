@@ -1,0 +1,13 @@
+{
+  "version": "1",
+  "packs": [
+    {
+      "id": "frienemies-core",
+      "name": "fRiENEMiES Core Motions",
+      "version": "0.1.0",
+      "skeletonContract": "v1",
+      "manifest": "./example-pack/pack.json",
+      "tags": ["core", "starter"]
+    }
+  ]
+}

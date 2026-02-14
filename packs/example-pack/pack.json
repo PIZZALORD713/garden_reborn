@@ -1,0 +1,21 @@
+{
+  "id": "frienemies-core",
+  "name": "fRiENEMiES Core Motions",
+  "version": "0.1.0",
+  "author": "community",
+  "license": "CC-BY-4.0",
+  "skeletonContract": "v1",
+  "tags": ["idle", "emote", "starter"],
+  "clips": [
+    {
+      "name": "Idle",
+      "url": "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Idle.glb",
+      "loop": true
+    },
+    {
+      "name": "Wave",
+      "url": "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Wave.glb",
+      "loop": true
+    }
+  ]
+}
