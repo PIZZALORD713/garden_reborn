@@ -9,6 +9,8 @@
 - [x] slice-006-verification-pass — local smoke checks completed for upgraded UI surfaces (command bar/onboarding) with no app runtime errors in local host context.
 - [x] slice-007-identifier-utils-module — extract wallet/token identifier helpers into `identifier-utils.js` and wire `main.js` to consume shared helpers with fallback.
 
+- [x] slice-008-scene-bootstrap-module — extract scene/bootstrap helpers (`initScene`, `initLighting`, `initEnvironment`) into a dedicated runtime helper file without changing behavior.
+
 ## Next up
+- [ ] slice-009-core-flow-verification-pass — re-run smoke checks after bootstrap extraction (`node --check`, local browser load, command bar + onboarding interactions, console error scan).
 - [ ] Human QA sweep for full core flows in network-enabled environment (token load by ID, wallet/ENS lookup, animation playback, `.glb` export).
-- [ ] slice-008-scene-bootstrap-module — extract scene/bootstrap helpers (`initScene`, `initLighting`, `initEnvironment`) into a dedicated runtime helper file without changing behavior.

@@ -36,3 +36,9 @@
 - **Why:** Starts Phase 2 architecture split with a low-risk seam, reducing `main.js` concerns without changing token/search behavior.
 - **Implementation guard:** `main.js` now reads from `window.FrienemiesIdentifierUtils` with an internal fallback to preserve behavior if helper loading fails.
 - **Scope guard:** Helper extraction + wiring only; no changes to token loading, routing rules, carousel behavior, animation, or export flows.
+
+## 2026-02-18 — Slice 008 scene bootstrap module
+- **Decision:** Extract `initScene`, `initLighting`, and `initEnvironment` into `scene-bootstrap.js` and load it before `main.js`.
+- **Why:** Continues the Phase 2 modular split with another low-risk seam while keeping bootstrap behavior intact.
+- **Implementation guard:** `main.js` consumes `window.FrienemiesSceneBootstrap` with local fallback implementations to prevent runtime breaks if helper script fails to load.
+- **Scope guard:** Scene/bootstrap helper extraction + script wiring only; no changes to token search/load, routing, animation playback, carousel behavior, or export pipeline.

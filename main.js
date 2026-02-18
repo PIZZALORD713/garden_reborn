@@ -98,58 +98,63 @@ async function fetchWalletTokenIds(owner) {
 // ----------------------------
 // Scene bootstrap
 // ----------------------------
-function initScene() {
-  const scene = new THREE.Scene();
+const sceneBootstrapUtils = window.FrienemiesSceneBootstrap || {};
+const initScene =
+  sceneBootstrapUtils.initScene ||
+  function initSceneFallback() {
+    const scene = new THREE.Scene();
 
-  const camera = new THREE.PerspectiveCamera(
-    60,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    2000
-  );
-  // Initial framing: a bit further back + slightly lower so full body fits better on mobile
-  camera.position.set(0, 1.05, 6.6);
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      2000
+    );
+    // Initial framing: a bit further back + slightly lower so full body fits better on mobile
+    camera.position.set(0, 1.05, 6.6);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setClearColor(0xffffff);
-  renderer.outputEncoding = THREE.sRGBEncoding;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
-  renderer.physicallyCorrectLights = true;
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setClearColor(0xffffff);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.physicallyCorrectLights = true;
 
-  document.body.appendChild(renderer.domElement);
+    document.body.appendChild(renderer.domElement);
 
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.06;
-  controls.minDistance = 2;
-  controls.maxDistance = 14;
-  controls.target.set(0, 0.92, 0);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 2;
+    controls.maxDistance = 14;
+    controls.target.set(0, 0.92, 0);
 
-  return { scene, camera, renderer, controls };
-}
+    return { scene, camera, renderer, controls };
+  };
 
-function initLighting(scene) {
-  const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35);
-  scene.add(hemisphereLight);
+const initLighting =
+  sceneBootstrapUtils.initLighting ||
+  function initLightingFallback(scene) {
+    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35);
+    scene.add(hemisphereLight);
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
-  scene.add(ambientLight);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+    scene.add(ambientLight);
 
-  const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
-  keyLight.position.set(-0.5, 2.5, 5);
-  scene.add(keyLight);
-  scene.add(keyLight.target);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
+    keyLight.position.set(-0.5, 2.5, 5);
+    scene.add(keyLight);
+    scene.add(keyLight.target);
 
-  const rim = new THREE.DirectionalLight(0xffffff, 0.25);
-  rim.position.set(2.5, 1.5, -3.5);
-  scene.add(rim);
-  scene.add(rim.target);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.25);
+    rim.position.set(2.5, 1.5, -3.5);
+    scene.add(rim);
+    scene.add(rim.target);
 
-  return { hemisphereLight, ambientLight, keyLight, rim };
-}
+    return { hemisphereLight, ambientLight, keyLight, rim };
+  };
 
 function initCharacterLoader() {
   const dracoLoader = new THREE.DRACOLoader();
@@ -164,11 +169,13 @@ function initCharacterLoader() {
   return { dracoLoader, gltfLoader, textureLoader };
 }
 
-function initEnvironment(scene) {
-  const panoGroup = new THREE.Group();
-  scene.add(panoGroup);
-  return { panoGroup };
-}
+const initEnvironment =
+  sceneBootstrapUtils.initEnvironment ||
+  function initEnvironmentFallback(scene) {
+    const panoGroup = new THREE.Group();
+    scene.add(panoGroup);
+    return { panoGroup };
+  };
 
 const sceneBoot = initScene();
 const scene = sceneBoot.scene;
@@ -3659,4 +3666,5 @@ window.addEventListener("resize", () => {
     suppressScrollHandler = false;
   }
 });
+
 
