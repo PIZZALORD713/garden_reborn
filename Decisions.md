@@ -417,3 +417,12 @@
   - Browser smoke check succeeds on local host (`python -m http.server 4175`) and screenshot evidence captured in `slice-047-smoke.png`.
   - In-browser drag interaction exercised against token picker surface with no runtime console errors.
 - **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API, or architecture changes.
+
+## 2026-02-18 - Slice 048 interaction-shell state helpers
+- **Decision:** Extract interaction-shell state initialization/update helpers into `interaction-shell-utils.js` and wire `main.js` to consume helper exports with local fallbacks.
+- **Why:** Continues app-state modularization by isolating menu/hamburger/carousel interaction-shell state paths from `main.js` without changing user-facing behavior.
+- **Implementation guard:** `main.js` now initializes interaction-shell state via `getInitialInteractionShellState(...)` and routes interaction-shell field updates through `setInteractionShellField(...)` (`menuOpen`, `activePanel`, hover flags, timers, carousel pinned/dismissed/scolling state), while preserving fallback behavior if helper loading fails.
+- **Validation evidence:**
+  - `Get-ChildItem -File -Filter *.js | ForEach-Object { node --check $_.Name }` passes for all root runtime modules including `interaction-shell-utils.js`.
+  - Static-host browser smoke succeeded (`python -m http.server 4176` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4176/index.html slice-048-smoke.png`).
+- **Scope guard:** Helper extraction + script wiring + validation only; no changes to token search/load/routing, animation playback, carousel virtual-window math, or export pipeline behavior.

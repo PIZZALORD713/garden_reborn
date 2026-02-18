@@ -70,4 +70,5 @@
 
 ## Next queue candidates
 - [x] slice-047-post-slice-046-verification-pass - run syntax + browser smoke checks after drag-physics helper extraction to confirm carousel drag/fling surfaces still render without runtime errors.
-- [ ] slice-048-interaction-shell-state-helpers - extract interaction-shell state selectors/updaters from `main.js` into a dedicated helper module while preserving behavior through fallback wiring.
+- [x] slice-048-interaction-shell-state-helpers - extract interaction-shell state selectors/updaters from `main.js` into a dedicated helper module while preserving behavior through fallback wiring.
+- [ ] slice-049-post-slice-048-verification-pass - run syntax + browser smoke checks after interaction-shell helper extraction to confirm menu/hamburger/carousel interaction shells still render without runtime errors.
