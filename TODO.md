@@ -36,3 +36,4 @@
 - [x] slice-027-load-queue-utils-module — extract token-load request/debounce guard helpers into `load-queue-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
 - [x] slice-028-post-slice-027-verification-pass — run syntax + browser smoke checks after load-queue helper extraction to confirm token search/load surfaces still render without runtime errors.
 - [x] slice-029-image-load-utils-module — extract token preview image hydration/observer helpers into `image-load-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
+- [x] slice-030-post-slice-029-verification-pass — run syntax + browser smoke checks after image-load helper extraction to confirm carousel/search surfaces still render without runtime errors.

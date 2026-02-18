@@ -254,3 +254,11 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesImageLoadUtils` (`hydrateImageFromDataset`, `createTokenImageObserver`, `observeTokenImage`) with in-file fallback implementations.
 - **Validation evidence:** `node --check` passes for `main.js` and `image-load-utils.js` after wiring updates.
 - **Scope guard:** Helper extraction + script wiring only; no changes to token search semantics, routing behavior, animation/export flows, or carousel index logic.
+
+## 2026-02-18 — Slice 030 post-slice-029 verification pass
+- **Decision:** Run a verification-only slice immediately after image-load helper extraction before any further decomposition.
+- **Why:** Keeps drift low by confirming carousel preview hydration and search/load surfaces still boot cleanly after observer helper extraction.
+- **Validation evidence:**
+  - `node --check` passes for `main.js` and all extracted utility modules, including `image-load-utils.js`.
+  - Browser smoke capture succeeds via `python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-030-smoke.png`.
+- **Scope guard:** Verification/docs only; no runtime behavior changes.
