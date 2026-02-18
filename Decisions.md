@@ -30,3 +30,9 @@
 - **Why:** Confirms slices 001–005 landed coherently and avoids drifting into new scope before evidence-backed handoff.
 - **Validation evidence:** `node --check main.js` passes; local browser snapshot confirms command bar + non-blocking onboarding are present; onboarding-visible token-card click succeeds; no app runtime console errors observed (only environment/network resource misses like favicon/external image DNS).
 - **Scope guard:** Validation/docs only; no product behavior or architecture changes.
+
+## 2026-02-18 — Slice 007 identifier utils module
+- **Decision:** Extract `isHexAddress`, `isEnsName`, and URL owner parsing into a dedicated `identifier-utils.js` runtime helper loaded before `main.js`.
+- **Why:** Starts Phase 2 architecture split with a low-risk seam, reducing `main.js` concerns without changing token/search behavior.
+- **Implementation guard:** `main.js` now reads from `window.FrienemiesIdentifierUtils` with an internal fallback to preserve behavior if helper loading fails.
+- **Scope guard:** Helper extraction + wiring only; no changes to token loading, routing rules, carousel behavior, animation, or export flows.
