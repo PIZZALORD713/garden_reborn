@@ -82,6 +82,7 @@ const buildOwnerPath =
   ((ownerSlug) => `/${encodeURIComponent(String(ownerSlug ?? "").trim())}`);
 
 const searchUtils = window.FrienemiesSearchUtils || {};
+const searchUiUtils = window.FrienemiesSearchUiUtils || {};
 const normalizeSearchInput =
   searchUtils.normalizeSearchInput ||
   ((value) => String(value ?? "").trim());
@@ -96,6 +97,56 @@ const parseTokenIdInput =
     if (!Number.isInteger(tokenId)) return null;
     if (tokenId < min || tokenId > max) return null;
     return tokenId;
+  });
+const updateResetCollectionVisibilityFromUtils =
+  searchUiUtils.updateResetCollectionVisibility ||
+  ((button, tokenIds, defaultTokenIds) => {
+    if (!button) return;
+    const isFiltered = tokenIds.length < defaultTokenIds.length;
+    button.classList.toggle("is-visible", isFiltered);
+    button.setAttribute("aria-hidden", isFiltered ? "false" : "true");
+  });
+const renderSearchMessageFromUtils =
+  searchUiUtils.renderSearchMessage ||
+  ((container, message, { tone = "info", showReset = false, hint = "" } = {}) => {
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    const notice = document.createElement("div");
+    notice.className = `searchNotice searchNotice--${tone}`;
+    notice.setAttribute("role", "status");
+    notice.setAttribute("aria-live", "polite");
+
+    const msgEl = document.createElement("p");
+    msgEl.className = "searchNoticeMessage";
+    msgEl.textContent = String(message || "");
+    notice.appendChild(msgEl);
+
+    if (tone === "loading") {
+      const shimmer = document.createElement("div");
+      shimmer.className = "searchNoticeShimmer";
+      shimmer.setAttribute("aria-hidden", "true");
+      notice.appendChild(shimmer);
+    }
+
+    if (hint) {
+      const hintEl = document.createElement("p");
+      hintEl.className = "searchNoticeHint";
+      hintEl.textContent = String(hint);
+      notice.appendChild(hintEl);
+    }
+
+    if (showReset) {
+      const actionBtn = document.createElement("button");
+      actionBtn.className = "searchNoticeAction";
+      actionBtn.type = "button";
+      actionBtn.dataset.searchAction = "reset-collection";
+      actionBtn.textContent = "View full collection";
+      notice.appendChild(actionBtn);
+    }
+
+    container.appendChild(notice);
   });
 
 const controlPanelUtils = window.FrienemiesControlPanelUtils || {};
@@ -2913,51 +2964,15 @@ function hideOnboarding(markSeen = true) {
 }
 
 function updateResetCollectionVisibility() {
-  if (!resetCollectionBtn) return;
-  const isFiltered = carouselTokenIds.length < DEFAULT_TOKEN_IDS.length;
-  resetCollectionBtn.classList.toggle("is-visible", isFiltered);
-  resetCollectionBtn.setAttribute("aria-hidden", isFiltered ? "false" : "true");
+  updateResetCollectionVisibilityFromUtils(
+    resetCollectionBtn,
+    carouselTokenIds,
+    DEFAULT_TOKEN_IDS
+  );
 }
 
-function renderSearchMessage(message, { tone = "info", showReset = false, hint = "" } = {}) {
-  if (!searchResults) return;
-
-  searchResults.innerHTML = "";
-
-  const notice = document.createElement("div");
-  notice.className = `searchNotice searchNotice--${tone}`;
-  notice.setAttribute("role", "status");
-  notice.setAttribute("aria-live", "polite");
-
-  const msgEl = document.createElement("p");
-  msgEl.className = "searchNoticeMessage";
-  msgEl.textContent = String(message || "");
-  notice.appendChild(msgEl);
-
-  if (tone === "loading") {
-    const shimmer = document.createElement("div");
-    shimmer.className = "searchNoticeShimmer";
-    shimmer.setAttribute("aria-hidden", "true");
-    notice.appendChild(shimmer);
-  }
-
-  if (hint) {
-    const hintEl = document.createElement("p");
-    hintEl.className = "searchNoticeHint";
-    hintEl.textContent = String(hint);
-    notice.appendChild(hintEl);
-  }
-
-  if (showReset) {
-    const actionBtn = document.createElement("button");
-    actionBtn.className = "searchNoticeAction";
-    actionBtn.type = "button";
-    actionBtn.dataset.searchAction = "reset-collection";
-    actionBtn.textContent = "View full collection";
-    notice.appendChild(actionBtn);
-  }
-
-  searchResults.appendChild(notice);
+function renderSearchMessage(message, options = {}) {
+  renderSearchMessageFromUtils(searchResults, message, options);
 }
 
 function resetToFullCollection() {
