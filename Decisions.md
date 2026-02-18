@@ -132,3 +132,15 @@
   - `npx vercel dev --listen 127.0.0.1:4174` exits with `No existing credentials found. Please run \`vercel login\` or pass "--token"`.
   - Environment check confirms missing Vercel runtime vars: `VERCEL_TOKEN=False VERCEL_ORG_ID=False VERCEL_PROJECT_ID=False`.
 - **Scope guard:** Blocker reconfirmation + docs only; no app code, behavior, or UX changes.
+
+## 2026-02-18 — Slice 014 human QA sweep completed (API runtime unblocked)
+- **Decision:** Mark slice-014 complete after running full core-flow QA against a live API-backed runtime.
+- **Why:** Required quality gate for wallet/ENS flow is now verifiable with `vercel dev` launched via token-auth in this environment.
+- **Validation evidence:**
+  - API runtime booted with `npx vercel dev --yes --token $VERCEL_TOKEN --listen 127.0.0.1:4174` (`Ready! Available at http://127.0.0.1:4175`).
+  - Direct API probe succeeded: `/api/friendsiesTokens?owner=vitalik.eth&contract=0xe5af63234f93afd72a8b9114803e33f6d9766956&chain=eth` returned `200` with resolved owner payload.
+  - UI QA on `http://127.0.0.1:4175/index.html`: token-ID load (`8448`) updated carousel neighborhood to `#8438-#8458`; ENS/wallet lookup (`vitalik.eth`) returned expected no-token state copy (flow executed via API, no 404 blocker).
+  - Animation path exercised via quick action (`Wave`) and `.glb` export trigger executed via `Download .glb`.
+  - Browser console check showed no runtime errors (only existing `THREE.GLTFExporter` warnings).
+  - Mobile sanity pass at `390x844` retained reachable primary search + load controls.
+- **Scope guard:** QA/docs-only completion step; no app code, behavior, or UX changes.
