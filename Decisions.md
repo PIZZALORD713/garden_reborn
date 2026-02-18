@@ -87,3 +87,11 @@
   - `.glb` export path triggered through `#downloadGlbBtn` (GLTFExporter warnings only; no app crash).
   - Wallet/ENS lookup to `vitalik.eth` hits `GET /api/friendsiesTokens...` → `404` under static host (`python -m http.server`), so full network-enabled sweep remains blocked until API-backed dev runtime is used.
 - **Scope guard:** Validation/docs only; no product behavior changes.
+
+## 2026-02-18 — Slice 014 blocker confirmation (API runtime access)
+- **Decision:** Attempt to start API-backed runtime with `npx vercel dev --listen 127.0.0.1:4174` and treat runtime-auth failure as a P0 blocker for completing slice-014 QA.
+- **Why:** Full core-flow verification explicitly requires wallet/ENS path, which depends on `/api/friendsiesTokens` being available under a real serverless runtime.
+- **Validation evidence:**
+  - `npx vercel dev` exits immediately with `Error: No existing credentials found. Please run \`vercel login\` or pass "--token"`.
+  - Without a booted API runtime, wallet/ENS flow cannot be verified end-to-end in this environment.
+- **Scope guard:** Blocker capture/docs only; no product behavior changes.
