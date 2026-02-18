@@ -52,4 +52,5 @@
 - [x] slice-037-post-slice-036-verification-pass — run syntax + browser smoke checks after bottom-surface/state-store changes to confirm command bar/carousel/settings surfaces still render without runtime errors.
 
 ## Next queue candidates
-- [ ] slice-038-control-shell-state-helpers — extract control-shell state selectors/updaters from `main.js` into a dedicated helper module while preserving behavior through fallback wiring.
+- [x] slice-038-control-shell-state-helpers — extract control-shell state selectors/updaters from `main.js` into a dedicated helper module while preserving behavior through fallback wiring.
+- [ ] slice-039-post-slice-038-verification-pass — run syntax + browser smoke checks after control-shell helper extraction to confirm command bar/carousel/settings/control panel surfaces still render without runtime errors.

@@ -321,3 +321,10 @@
   - `Get-ChildItem -Name *.js | ForEach-Object { node --check $_ }` passes for all root runtime modules.
   - Browser smoke capture succeeds against `http://127.0.0.1:4173/index.html` via `npx playwright screenshot --device="Desktop Chrome" ... slice-037-smoke.png`.
 - **Scope guard:** Verification/docs only; no runtime behavior, UX, or architecture changes.
+
+## 2026-02-18 — Slice 038 control-shell state helpers
+- **Decision:** Extract control-shell state selectors/updaters into `control-shell-utils.js` and wire `main.js` to consume them with local fallbacks.
+- **Why:** Continues the low-drift Phase 2 decomposition by isolating bottom-surface/control-panel/tab/status state normalization away from `main.js` while preserving existing UI behavior.
+- **Implementation guard:** `main.js` now initializes control-shell runtime state through `getInitialControlShellState(...)` and routes updates through helper wrappers (`updateBottomSurfaceModeState`, `updateControlPanelOpenState`, `updateControlActiveTabState`, `updateStatusTextState`) with in-file fallback implementations.
+- **Validation evidence:** `node --check` passes for `main.js`, `control-shell-utils.js`, and all other root `*.js` runtime modules.
+- **Scope guard:** State helper extraction + script wiring only; no token search/load/routing, animation playback, carousel interaction rules, or export behavior changes.

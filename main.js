@@ -599,6 +599,7 @@ const debugUi = {
 };
 
 const appStateStoreUtils = window.FrienemiesAppStateStore || {};
+const controlShellUtils = window.FrienemiesControlShellUtils || {};
 const createAppState =
   appStateStoreUtils.createState ||
   (() => ({
@@ -665,9 +666,90 @@ const createAppState =
   }));
 const appState = createAppState();
 
-let bottomSurfaceMode = appState?.controlShell?.bottomSurfaceMode ?? BOTTOM_SURFACE_MODE.CAROUSEL;
-let controlPanelOpen = appState?.controlShell?.controlPanelOpen ?? false;
-let controlActiveTab = appState?.controlShell?.controlActiveTab ?? "animations";
+const getInitialControlShellState =
+  controlShellUtils.getInitialControlShellState ||
+  ((options = {}) => {
+    const defaults = options.defaults || {};
+    const modeMap = options.modeMap || BOTTOM_SURFACE_MODE;
+    const shell = options.appState?.controlShell || {};
+    return {
+      bottomSurfaceMode:
+        shell.bottomSurfaceMode === modeMap.SETTINGS
+          ? modeMap.SETTINGS
+          : modeMap.CAROUSEL,
+      controlPanelOpen:
+        typeof shell.controlPanelOpen === "boolean"
+          ? shell.controlPanelOpen
+          : !!defaults.controlPanelOpen,
+      controlActiveTab:
+        typeof shell.controlActiveTab === "string" && shell.controlActiveTab.trim()
+          ? shell.controlActiveTab
+          : defaults.controlActiveTab || "animations",
+      statusText:
+        typeof shell.statusText === "string"
+          ? shell.statusText
+          : defaults.statusText || "booting…"
+    };
+  });
+
+const updateBottomSurfaceModeStateFromUtils =
+  controlShellUtils.updateBottomSurfaceModeState ||
+  ((options = {}) => {
+    const modeMap = options.modeMap || BOTTOM_SURFACE_MODE;
+    const nextMode = options.mode === modeMap.SETTINGS
+      ? modeMap.SETTINGS
+      : modeMap.CAROUSEL;
+    if (options.appState?.controlShell) {
+      options.appState.controlShell.bottomSurfaceMode = nextMode;
+    }
+    return nextMode;
+  });
+
+const updateControlPanelOpenStateFromUtils =
+  controlShellUtils.updateControlPanelOpenState ||
+  ((options = {}) => {
+    const nextOpen = !!options.open;
+    if (options.appState?.controlShell) {
+      options.appState.controlShell.controlPanelOpen = nextOpen;
+    }
+    return nextOpen;
+  });
+
+const updateControlActiveTabStateFromUtils =
+  controlShellUtils.updateControlActiveTabState ||
+  ((options = {}) => {
+    const rawTab = typeof options.tab === "string" ? options.tab.trim() : "";
+    const nextTab = rawTab || options.fallbackTab || "animations";
+    if (options.appState?.controlShell) {
+      options.appState.controlShell.controlActiveTab = nextTab;
+    }
+    return nextTab;
+  });
+
+const updateStatusTextStateFromUtils =
+  controlShellUtils.updateStatusTextState ||
+  ((options = {}) => {
+    const nextStatus = String(options.statusText || "");
+    if (options.appState?.controlShell) {
+      options.appState.controlShell.statusText = nextStatus;
+    }
+    return nextStatus;
+  });
+
+const initialControlShellState = getInitialControlShellState({
+  appState,
+  modeMap: BOTTOM_SURFACE_MODE,
+  defaults: {
+    bottomSurfaceMode: BOTTOM_SURFACE_MODE.CAROUSEL,
+    controlPanelOpen: false,
+    controlActiveTab: "animations",
+    statusText: "booting…"
+  }
+});
+
+let bottomSurfaceMode = initialControlShellState.bottomSurfaceMode;
+let controlPanelOpen = initialControlShellState.controlPanelOpen;
+let controlActiveTab = initialControlShellState.controlActiveTab;
 const logBuffer = [];
 const LOG_BUFFER_MAX = 300;
 
@@ -756,16 +838,20 @@ const applyControlTabState =
   };
 
 function setBottomSurfaceMode(mode) {
-  const nextMode = mode === BOTTOM_SURFACE_MODE.SETTINGS
-    ? BOTTOM_SURFACE_MODE.SETTINGS
-    : BOTTOM_SURFACE_MODE.CAROUSEL;
-  bottomSurfaceMode = nextMode;
-  ui.carouselRegion?.setAttribute("data-bottom-surface-mode", nextMode);
-  ui.carouselRegion?.classList.toggle("is-settings", nextMode === BOTTOM_SURFACE_MODE.SETTINGS);
+  bottomSurfaceMode = updateBottomSurfaceModeStateFromUtils({
+    mode,
+    appState,
+    modeMap: BOTTOM_SURFACE_MODE
+  });
+  ui.carouselRegion?.setAttribute("data-bottom-surface-mode", bottomSurfaceMode);
+  ui.carouselRegion?.classList.toggle("is-settings", bottomSurfaceMode === BOTTOM_SURFACE_MODE.SETTINGS);
 }
 
 function setControlPanelOpen(open) {
-  controlPanelOpen = !!open;
+  controlPanelOpen = updateControlPanelOpenStateFromUtils({
+    open,
+    appState
+  });
   setBottomSurfaceMode(controlPanelOpen ? BOTTOM_SURFACE_MODE.SETTINGS : BOTTOM_SURFACE_MODE.CAROUSEL);
   setControlPanelOpenState({
     open: controlPanelOpen,
@@ -803,9 +889,13 @@ function syncControlVisibility() {
 }
 
 function setControlTab(tab) {
-  controlActiveTab = tab;
-  applyControlTabState({
+  controlActiveTab = updateControlActiveTabStateFromUtils({
     tab,
+    appState,
+    fallbackTab: "animations"
+  });
+  applyControlTabState({
+    tab: controlActiveTab,
     tabButtons: document.querySelectorAll(".controlTab"),
     sections: document.querySelectorAll(".controlSection")
   });
@@ -867,10 +957,12 @@ function renderConsoleViewer() {
   renderConsoleViewerFromUtils({ viewer: consoleViewer, logBuffer });
 }
 
-let statusText = appState?.controlShell?.statusText ?? "booting…";
+let statusText = initialControlShellState.statusText;
 function setStatus(s) {
-  statusText = String(s || "");
-  if (appState?.controlShell) appState.controlShell.statusText = statusText;
+  statusText = updateStatusTextStateFromUtils({
+    statusText: s,
+    appState
+  });
   logLine(`• ${statusText}`, "dim");
 }
 
