@@ -462,3 +462,12 @@
   - Route checks succeeded: `GET /fren/8448` and `GET /fren/vitalik.eth` both return `200` on the API-backed runtime.
   - Desktop/mobile smoke captures succeeded via Playwright CLI (`slice-052-smoke-desktop.png`, `slice-052-smoke-mobile.png`).
 - **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API contract, or architecture changes.
+
+## 2026-02-18 - Slice 053 carousel-query state sync hardening
+- **Decision:** Route the remaining carousel-query state writes (`loadDebounceTimer`, `imageObserver`, `carouselListenersBound`) through `updateCarouselQueryFieldFromUtils`.
+- **Why:** Keeps `appState.carouselQuery` synchronized with runtime locals, tightening the state-store seam with no behavior change.
+- **Implementation guard:** Existing timer, observer, and listener flow order remains unchanged; only assignment paths now pass through shared helper.
+- **Validation evidence:**
+  - `Get-ChildItem -File -Filter *.js | ForEach-Object { node --check $_.Name }` passes for all root runtime modules.
+  - Static-host browser smoke succeeded (`python -m http.server 4184` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4184/index.html slice-053-smoke.png`).
+- **Scope guard:** State-write path hardening only; no changes to token routing/search semantics, animation playback behavior, or export pipeline.
