@@ -345,4 +345,5 @@
 - **Decision:** Intercept repeated `THREE.GLTFExporter` normalScale warning spam during export and replace it with one explanatory in-app console note after completion.
 - **Why:** Warning is known/noisy in this pipeline and can confuse users into thinking export failed; reducing repetition preserves signal without changing model semantics.
 - **Validation evidence:** `node --check main.js` passes; browser smoke capture saved as `slice-040-export-hardening-smoke.png`.
+- **Execution note:** Smoke screenshot captured from local host `http://127.0.0.1:4180` using Playwright desktop Chrome profile.
 - **Scope guard:** Focused hardening only (export feedback/fallback + panel focus stability + warning-noise handling); no token search/load, animation, routing, or bottom-surface behavior changes.
