@@ -84,6 +84,7 @@ const buildOwnerPath =
 const searchUtils = window.FrienemiesSearchUtils || {};
 const searchUiUtils = window.FrienemiesSearchUiUtils || {};
 const loadQueueUtils = window.FrienemiesLoadQueueUtils || {};
+const mascotUtils = window.FrienemiesMascotUtils || {};
 const normalizeSearchInput =
   searchUtils.normalizeSearchInput ||
   ((value) => String(value ?? "").trim());
@@ -2390,28 +2391,52 @@ function getAnimUrlByName(name) {
   return getAnimUrlByNameFromPresets(name, ANIM_PRESETS);
 }
 
-function initMascotHook() {
-  if (mascotToggle) mascotToggle.textContent = MASCOT_CONFIG.mascotName;
-  if (mascotSprite) {
-    mascotSprite.src = MASCOT_CONFIG.mascotOpenSeaImage;
-    mascotSprite.loading = "lazy";
-  }
-
-  mascotToggle?.addEventListener("click", () => {
-    const collapsed = mascotBody?.classList.toggle("is-collapsed");
-    mascotToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-  });
-
-  mascotPanel?.addEventListener("click", async (event) => {
-    const btn = event.target.closest("[data-mascot-emote]");
-    if (!btn) return;
-    const emoteName = btn.dataset.mascotEmote;
-    const animUrl = getAnimUrlByName(emoteName);
-    if (!animUrl) {
-      logLine(`Mascot emote missing in manifest: ${emoteName}`, "warn");
-      return;
+const initMascotHookFromUtils =
+  mascotUtils.initMascotHook ||
+  function initMascotHookFromUtilsFallback({
+    mascotToggle: mascotToggleEl,
+    mascotSprite: mascotSpriteEl,
+    mascotBody: mascotBodyEl,
+    mascotPanel: mascotPanelEl,
+    mascotConfig,
+    getAnimUrlByName: getAnimUrlByNameFn,
+    playAnimUrl: playAnimUrlFn,
+    logLine: logLineFn
+  } = {}) {
+    if (mascotToggleEl) mascotToggleEl.textContent = mascotConfig?.mascotName || "Mascot";
+    if (mascotSpriteEl) {
+      mascotSpriteEl.src = mascotConfig?.mascotOpenSeaImage || "";
+      mascotSpriteEl.loading = "lazy";
     }
-    await playAnimUrl(animUrl);
+
+    mascotToggleEl?.addEventListener("click", () => {
+      const collapsed = mascotBodyEl?.classList.toggle("is-collapsed");
+      mascotToggleEl.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    });
+
+    mascotPanelEl?.addEventListener("click", async (event) => {
+      const btn = event.target.closest("[data-mascot-emote]");
+      if (!btn) return;
+      const emoteName = btn.dataset.mascotEmote;
+      const animUrl = getAnimUrlByNameFn?.(emoteName);
+      if (!animUrl) {
+        logLineFn?.(`Mascot emote missing in manifest: ${emoteName}`, "warn");
+        return;
+      }
+      await playAnimUrlFn?.(animUrl);
+    });
+  };
+
+function initMascotHook() {
+  initMascotHookFromUtils({
+    mascotToggle,
+    mascotSprite,
+    mascotBody,
+    mascotPanel,
+    mascotConfig: MASCOT_CONFIG,
+    getAnimUrlByName,
+    playAnimUrl,
+    logLine
   });
 }
 

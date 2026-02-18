@@ -262,3 +262,10 @@
   - `node --check` passes for `main.js` and all extracted utility modules, including `image-load-utils.js`.
   - Browser smoke capture succeeds via `python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-030-smoke.png`.
 - **Scope guard:** Verification/docs only; no runtime behavior changes.
+
+## 2026-02-18 — Slice 031 mascot utils module
+- **Decision:** Extract mascot panel bootstrap + emote-trigger wiring into `mascot-utils.js` and load it before `main.js`.
+- **Why:** Continues Phase 2 modular decomposition on a contained mascot UI seam while preserving existing emote behavior.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesMascotUtils.initMascotHook` with an in-file fallback implementation if helper loading fails.
+- **Validation evidence:** `node --check` passes for `main.js`, `mascot-utils.js`, and all previously extracted utility modules.
+- **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing semantics, carousel mechanics, animation playback behavior, or export pipeline.
