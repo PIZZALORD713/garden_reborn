@@ -16,6 +16,21 @@
 
   <body>
     <div id="ui" class="ui">
+      <form id="commandBar" class="commandBar" role="search" aria-label="Primary search">
+        <label class="commandBarLabel" for="commandInput">Load token ID, wallet address, or ENS name</label>
+        <div class="commandBarRow">
+          <input
+            id="commandInput"
+            class="searchInput commandInput"
+            type="text"
+            placeholder="e.g. 8448, 0xabc...123, or pizzalord.eth"
+            autocomplete="off"
+            inputmode="search"
+          />
+          <button id="commandSubmit" class="commandSubmit" type="submit">Load</button>
+        </div>
+      </form>
+
       <div id="carouselRegion" class="carouselRegion">
         <button
           id="carouselToggle"

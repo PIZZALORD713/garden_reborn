@@ -14,3 +14,8 @@
 - **Decision:** Introduce named typography size tokens (`--text-xs/sm/md/lg/xl`) and swap high-traffic UI labels/inputs/buttons from literal px sizes to token references.
 - **Why:** Tightens visual consistency and makes future UI tuning cheaper than touching dozens of one-off declarations.
 - **Scope guard:** CSS-only sizing normalization; no layout, copy, or behavior changes.
+
+## 2026-02-17 — Slice 004 search entry unification
+- **Decision:** Add a persistent top command bar as the primary search surface and route onboarding/find submissions through one `submitPrimarySearch()` helper.
+- **Why:** Creates one obvious place to load token/wallet/ENS while preserving existing Find sheet and onboarding entry points as secondary mirrors.
+- **Scope guard:** UI + submission wiring only; no token-loading logic, routing behavior, or carousel mechanics changes.

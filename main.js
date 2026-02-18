@@ -441,6 +441,8 @@ const ui = {
 };
 
 const searchInput = document.getElementById("searchInput");
+const commandBar = document.getElementById("commandBar");
+const commandInput = document.getElementById("commandInput");
 const searchResults = document.getElementById("searchResults");
 const resetCollectionBtn = document.getElementById("resetCollectionBtn");
 const copyLinkBtn = document.getElementById("copyLinkBtn");
@@ -2608,12 +2610,22 @@ function showOnboarding(force = false) {
   setTimeout(() => { onboardingInput?.focus(); }, 420);
 }
 
+function submitPrimarySearch(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return false;
+
+  if (searchInput && searchInput.value !== value) searchInput.value = value;
+  if (onboardingInput && onboardingInput.value !== value) onboardingInput.value = value;
+  if (commandInput && commandInput.value !== value) commandInput.value = value;
+
+  handleSearch(value);
+  return true;
+}
+
 function submitOnboardingInput() {
   if (!onboardingInput) return false;
   const raw = onboardingInput.value.trim();
-  if (!raw) return false;
-  handleSearch(raw);
-  return true;
+  return submitPrimarySearch(raw);
 }
 
 function hideOnboarding(markSeen = true) {
@@ -3389,9 +3401,12 @@ ui.menu?.addEventListener("click", (event) => {
 
 searchInput?.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
-  const raw = searchInput.value.trim();
-  if (!raw) return;
-  handleSearch(raw);
+  submitPrimarySearch(searchInput.value);
+});
+
+commandBar?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  submitPrimarySearch(commandInput?.value);
 });
 
 resetCollectionBtn?.addEventListener("click", () => {
@@ -3444,7 +3459,7 @@ onboardingEnterBtn?.addEventListener("click", () => {
 // "Try a Demo" — loads pizzalord.eth
 onboardingDemoBtn?.addEventListener("click", () => {
   hideOnboarding(true);
-  handleSearch("pizzalord.eth");
+  submitPrimarySearch("pizzalord.eth");
 });
 
 // "Skip for now" — simple dismiss
