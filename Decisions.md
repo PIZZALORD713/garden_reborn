@@ -124,3 +124,11 @@
 - **Validation evidence:**
   - `npx vercel dev --listen 127.0.0.1:4174` exits with `No existing credentials found. Please run \`vercel login\` or pass "--token"`.
 - **Scope guard:** Docs/status update only; no app code, behavior, or UX changes.
+
+## 2026-02-18 — Slice 014 blocker reconfirmation #5 (autopilot run @ ~07:02 CT)
+- **Decision:** Keep execution paused at slice-014 and continue avoiding slice-015+ work.
+- **Why:** Wallet/ENS verification gate still cannot run without API-backed dev runtime credentials.
+- **Validation evidence:**
+  - `npx vercel dev --listen 127.0.0.1:4174` exits with `No existing credentials found. Please run \`vercel login\` or pass "--token"`.
+  - Environment check confirms missing Vercel runtime vars: `VERCEL_TOKEN=False VERCEL_ORG_ID=False VERCEL_PROJECT_ID=False`.
+- **Scope guard:** Blocker reconfirmation + docs only; no app code, behavior, or UX changes.
