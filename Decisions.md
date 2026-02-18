@@ -328,3 +328,11 @@
 - **Implementation guard:** `main.js` now initializes control-shell runtime state through `getInitialControlShellState(...)` and routes updates through helper wrappers (`updateBottomSurfaceModeState`, `updateControlPanelOpenState`, `updateControlActiveTabState`, `updateStatusTextState`) with in-file fallback implementations.
 - **Validation evidence:** `node --check` passes for `main.js`, `control-shell-utils.js`, and all other root `*.js` runtime modules.
 - **Scope guard:** State helper extraction + script wiring only; no token search/load/routing, animation playback, carousel interaction rules, or export behavior changes.
+
+## 2026-02-18 — Slice 039 post-slice-038 verification pass
+- **Decision:** Run a verification-only slice immediately after control-shell helper extraction before taking the next UI hardening task.
+- **Why:** Confirms the new control-shell state helpers did not regress core command-bar/carousel/settings/panel shells and keeps queue drift low.
+- **Validation evidence:**
+  - `Get-ChildItem -Name *.js | ForEach-Object { node --check $_ }` passes for all root runtime modules.
+  - Browser smoke capture succeeds against `http://127.0.0.1:4173/index.html` via `npx playwright screenshot --device="Desktop Chrome" ... slice-039-smoke.png`.
+- **Scope guard:** Verification/docs only; no runtime behavior, UX, or architecture changes.
