@@ -77,3 +77,4 @@
 ## Next queue candidates
 - [x] slice-051-post-slice-050-verification-pass - run syntax + browser smoke checks after avatar-runtime helper extraction to confirm token load/animation/export surfaces still render without runtime errors.
 - [x] slice-052-core-flow-verification-pass - rerun API-backed verification after state-helper extraction set through slice-050 (`node --check`, API route checks incl. wallet token count, desktop/mobile Playwright smoke captures) with no runtime startup errors.
+- [x] slice-053-carousel-query-state-sync-hardening - route remaining carousel-query state writes (`loadDebounceTimer`, `imageObserver`, `carouselListenersBound`) through shared update helper so `appState.carouselQuery` stays synchronized.

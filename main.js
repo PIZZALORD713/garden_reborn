@@ -3708,24 +3708,32 @@ function debounceTokenLoad(tokenId, { force = false } = {}) {
     appState
   });
   if (loadDebounceTimer) clearTimeout(loadDebounceTimer);
-  loadDebounceTimer = setTimeout(() => {
-    loadDebounceTimer = null;
-    if (!allFriendsies) return;
-    const id = pendingTokenId;
-    pendingTokenId = updateCarouselQueryFieldFromUtils({
-      key: "pendingTokenId",
-      value: null,
-      appState
-    });
-    if (shouldSkipQueuedTokenLoad({ id, tokenIdSet: carouselTokenIdSet, lastLoadedTokenId, force })) return;
+  loadDebounceTimer = updateCarouselQueryFieldFromUtils({
+    key: "loadDebounceTimer",
+    value: setTimeout(() => {
+      loadDebounceTimer = updateCarouselQueryFieldFromUtils({
+        key: "loadDebounceTimer",
+        value: null,
+        appState
+      });
+      if (!allFriendsies) return;
+      const id = pendingTokenId;
+      pendingTokenId = updateCarouselQueryFieldFromUtils({
+        key: "pendingTokenId",
+        value: null,
+        appState
+      });
+      if (shouldSkipQueuedTokenLoad({ id, tokenIdSet: carouselTokenIdSet, lastLoadedTokenId, force })) return;
 
-    lastLoadedTokenId = updateCarouselQueryFieldFromUtils({
-      key: "lastLoadedTokenId",
-      value: id,
-      appState
-    });
-    loadToken(id);
-  }, 150);
+      lastLoadedTokenId = updateCarouselQueryFieldFromUtils({
+        key: "lastLoadedTokenId",
+        value: id,
+        appState
+      });
+      loadToken(id);
+    }, 150),
+    appState
+  });
 }
 
 function requestTokenLoad(tokenId, { force = false } = {}) {
@@ -3785,11 +3793,15 @@ function getPreviewUrl(tokenId) {
 }
 
 function ensureImageObserver() {
-  imageObserver = createTokenImageObserver({
-    existingObserver: imageObserver,
-    canObserve: "IntersectionObserver" in window,
-    root: ui.carouselViewport || null,
-    rootMargin: "60px"
+  imageObserver = updateCarouselQueryFieldFromUtils({
+    key: "imageObserver",
+    value: createTokenImageObserver({
+      existingObserver: imageObserver,
+      canObserve: "IntersectionObserver" in window,
+      root: ui.carouselViewport || null,
+      rootMargin: "60px"
+    }),
+    appState
   });
 }
 
@@ -4104,7 +4116,11 @@ function bindCarouselListeners() {
     }, { passive: true });
   }
 
-  carouselListenersBound = true;
+  carouselListenersBound = updateCarouselQueryFieldFromUtils({
+    key: "carouselListenersBound",
+    value: true,
+    appState
+  });
 }
 
 function setActiveCarouselIndex(index, { loadToken: shouldLoad = true, forceLoad = false } = {}) {
