@@ -59,4 +59,4 @@
 - [x] slice-041-post-slice-040-verification-pass - run syntax + browser smoke checks after export/a11y hardening to confirm command bar/carousel/settings/export surfaces still render without runtime errors.
 
 ## Next queue candidates
-- [ ] slice-042-core-flow-verification-pass - run full core-flow checks (token ID load, wallet/ENS search, animation play, `.glb` export, mobile sanity) after slice-040 hardening set.
+- [x] slice-042-core-flow-verification-pass - run full core-flow checks (token ID load, wallet/ENS search, animation play, `.glb` export, mobile sanity) after slice-040 hardening set.

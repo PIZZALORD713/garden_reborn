@@ -355,3 +355,21 @@
   - `Get-ChildItem -Name *.js | ForEach-Object { node --check $_ }` passes for all root runtime modules.
   - Browser smoke capture succeeds against `http://127.0.0.1:4181/index.html` via `npx playwright screenshot --device="Desktop Chrome" ... slice-041-smoke.png`.
 - **Scope guard:** Verification/docs only; no runtime behavior, UX, API, or architecture changes.
+
+## 2026-02-18 - Slice 042 core-flow verification pass
+- **Decision:** Execute a full API-backed core-flow verification sweep after slice-040 hardening and subsequent slices, with verification-only scope.
+- **Why:** Confirms token load, wallet/ENS lookup, animation trigger, export UX fallback, and mobile rendering remain stable before any further feature work.
+- **Validation evidence:**
+  - Syntax gate passed for all root runtime JS modules via `Get-ChildItem -File -Filter *.js | ForEach-Object { node --check $_ }`.
+  - API runtime verified on Vercel dev using token auth: `npx vercel dev --token $VERCEL_TOKEN --yes --listen 3000` (`http://localhost:3000`).
+  - Live `/api/friendsiesTokens` checks succeeded:
+    - `owner=vitalik.eth` resolved ENS and returned `200` with empty token set.
+    - `owner=pizzalord.eth` resolved ENS and returned `200` with populated token set including `8448`.
+  - In-app token-ID load verified: entering `8448` re-centered carousel window to `#8438`-`#8458`.
+  - In-app wallet/ENS flow verified: entering `pizzalord.eth` populated owned-token carousel results via live API route.
+  - Animation trigger verified via quick action `Wave`.
+  - `.glb` export trigger + UX fallback verified: status surfaced `Download started. If no file appears, use “Open saved export link”.` and fallback link became active (`aria-hidden="false"`) with blob URL + filename.
+  - Mobile sanity verified at `390x844` after resize.
+  - Smoke evidence captured as `slice-042-smoke-desktop.png` and `slice-042-smoke-mobile.png`.
+- **Caveats:** Browser console showed only a benign `favicon.ico` 404 under local dev; no runtime flow errors observed.
+- **Scope guard:** Verification/docs/evidence only; no feature or runtime code-path changes.
