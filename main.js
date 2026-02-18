@@ -2265,11 +2265,11 @@ if (exportUtils.optimizeGlbForWindows) optimizeGlbForWindows = exportUtils.optim
 function downloadRigGlb() {
   if (!loadedParts?.length || !bodyRoot) {
     logLine("Nothing loaded yet — load a fRiENDSiES asset first.", "warn");
-    return;
+    return false;
   }
   if (!THREE?.GLTFExporter) {
     logLine("GLTFExporter missing (script tag not loaded).", "warn");
-    return;
+    return false;
   }
 
   // We want option A: rigged + T-pose only.
@@ -2458,7 +2458,10 @@ function downloadRigGlb() {
     avatarGroup.updateMatrixWorld(true);
 
     logLine(`Export error: ${err?.message || err}`, "warn");
+    return false;
   }
+
+  return true;
 }
 
 // ----------------------------
@@ -3969,9 +3972,11 @@ copyLinkBtn?.addEventListener("click", () => {
 });
 
 downloadGlbBtn?.addEventListener("click", () => {
-  downloadRigGlb();
+  const started = downloadRigGlb();
   if (downloadGlbBtn) {
-    downloadGlbBtn.textContent = "Export started — your .glb is downloading.";
+    downloadGlbBtn.textContent = started
+      ? "Export started — your .glb is downloading."
+      : "Export failed — check Console tab.";
     setTimeout(() => {
       if (downloadGlbBtn) downloadGlbBtn.textContent = "Download .glb";
     }, 1800);
