@@ -103,9 +103,17 @@
   - `npx vercel dev --listen 127.0.0.1:4174` exits with `Error: No existing credentials found. Please run \`vercel login\` or pass "--token"`.
 - **Scope guard:** Docs-only blocker reconfirmation; no product behavior changes.
 
-## 2026-02-18 — Slice 014 blocker reconfirmation #2 (autopilot run @ ~04:44 CT)
+## 2026-02-18 ï¿½ Slice 014 blocker reconfirmation #2 (autopilot run @ ~04:44 CT)
 - **Decision:** Hold execution at slice-014 and do not advance queue while wallet/ENS QA remains unverifiable.
 - **Why:** Program quality gates require wallet/ENS search validation in an API-backed runtime.
 - **Validation evidence:**
   - `npx vercel dev --listen 127.0.0.1:4174` exits immediately with `No existing credentials found. Please run \`vercel login\` or pass "--token"`.
 - **Scope guard:** Blocker capture only; no codepath/UI behavior edits.
+
+## 2026-02-18 â€” Slice 014 blocker reconfirmation #3 (autopilot run @ ~04:59 CT)
+- **Decision:** Keep queue frozen at slice-014; do not start slice-015+ until wallet/ENS QA can run against a live `/api/friendsiesTokens` route.
+- **Why:** Advancing without this check would violate the required quality gates and increase regression risk.
+- **Validation evidence:**
+  - `npx vercel dev --listen 127.0.0.1:4174` still exits with `No existing credentials found. Please run \`vercel login\` or pass "--token"`.
+  - Static-host fallback (`python -m http.server`) still cannot serve `/api/friendsiesTokens` (404), so wallet/ENS end-to-end remains blocked.
+- **Scope guard:** Blocker evidence only; no app code or UX behavior changes.
