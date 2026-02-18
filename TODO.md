@@ -75,4 +75,5 @@
 - [x] slice-050-avatar-runtime-state-helpers - extract avatar runtime state initialization/update helpers into `avatar-runtime-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
 
 ## Next queue candidates
-- [ ] slice-051-post-slice-050-verification-pass - run syntax + browser smoke checks after avatar-runtime helper extraction to confirm token load/animation/export surfaces still render without runtime errors.
+- [x] slice-051-post-slice-050-verification-pass - run syntax + browser smoke checks after avatar-runtime helper extraction to confirm token load/animation/export surfaces still render without runtime errors.
+- [ ] slice-052-core-flow-verification-pass - run full API-backed core-flow checks (token ID load, wallet/ENS search, animation play, `.glb` export, mobile sanity) after state-helper extraction set through slice-050.
