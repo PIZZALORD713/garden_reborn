@@ -209,3 +209,11 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesConsoleUtils` for console render/append/clear helpers with in-file fallback implementations for each helper.
 - **Validation evidence:** `node --check` passes for `main.js`, `console-utils.js`, and all previously extracted utility modules.
 - **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing, carousel behavior, animation playback, or export pipeline.
+
+## 2026-02-18 — Slice 024 post-slice-023 verification pass
+- **Decision:** Run a dedicated verification pass immediately after console helper extraction before starting additional modularization slices.
+- **Why:** Confirms transcript/control surfaces remain stable after moving console rendering logic out of `main.js`, keeping drift low.
+- **Validation evidence:**
+  - `node --check` passes for `main.js` and all extracted utility modules (`identifier-utils.js`, `scene-bootstrap.js`, `look-utils.js`, `anim-utils.js`, `carousel-utils.js`, `export-utils.js`, `search-utils.js`, `routing-utils.js`, `anim-select-utils.js`, `rig-utils.js`, `token-utils.js`, `control-panel-utils.js`, `console-utils.js`).
+  - Browser smoke capture succeeds via `python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-024-smoke.png`.
+- **Scope guard:** Verification/docs only; no product behavior, UX, or architecture changes in runtime code paths.
