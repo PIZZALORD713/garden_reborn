@@ -102,3 +102,10 @@
 - **Validation evidence:**
   - `npx vercel dev --listen 127.0.0.1:4174` exits with `Error: No existing credentials found. Please run \`vercel login\` or pass "--token"`.
 - **Scope guard:** Docs-only blocker reconfirmation; no product behavior changes.
+
+## 2026-02-18 — Slice 014 blocker reconfirmation #2 (autopilot run @ ~04:44 CT)
+- **Decision:** Hold execution at slice-014 and do not advance queue while wallet/ENS QA remains unverifiable.
+- **Why:** Program quality gates require wallet/ENS search validation in an API-backed runtime.
+- **Validation evidence:**
+  - `npx vercel dev --listen 127.0.0.1:4174` exits immediately with `No existing credentials found. Please run \`vercel login\` or pass "--token"`.
+- **Scope guard:** Blocker capture only; no codepath/UI behavior edits.
