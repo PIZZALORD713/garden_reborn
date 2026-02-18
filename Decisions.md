@@ -277,3 +277,16 @@
   - `node --check` passes for `main.js` and all extracted `*utils.js` modules, including `mascot-utils.js`.
   - Browser smoke capture succeeds via `python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-032-smoke.png`.
 - **Scope guard:** Verification/docs only; no runtime behavior, UX, or architecture changes.
+
+## 2026-02-18 — Slice 033 core-flow verification pass
+- **Decision:** Run a full core-flow QA sweep after slice-031/032 before starting additional architecture work.
+- **Why:** Confirms the extracted helper set still preserves required user flows and keeps drift low before the next refactor seam.
+- **Validation evidence:**
+  - `node --check` passes for all runtime JS modules in repo root (`Get-ChildItem -Name *.js | ForEach-Object { node --check $_ }`).
+  - API-backed runtime launched with `npx vercel dev --yes --token $VERCEL_TOKEN --listen 127.0.0.1:4174` (served at `http://127.0.0.1:4175`).
+  - Primary token-ID flow verified: loading `8448` via command bar re-centered carousel window around `#8438`–`#8458`.
+  - Wallet/ENS lookup verified against live API runtime by loading `vitalik.eth` (no static-host 404; search path executed with expected no-token response state).
+  - Animation play exercised via mascot quick action (`Wave`) with no runtime failures.
+  - `.glb` export path exercised via `Download .glb` control (`Export started — your .glb is downloading.`).
+  - Mobile sanity verified by resizing active browser to `390x844` and capturing screenshot evidence (`slice-033-smoke-desktop.png` for desktop + browser mobile capture evidence).
+- **Scope guard:** Verification/docs only; no runtime behavior, UX, or architecture changes.

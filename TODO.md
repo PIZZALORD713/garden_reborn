@@ -43,4 +43,7 @@
 - [x] slice-032-post-slice-031-verification-pass — run syntax + browser smoke checks after mascot helper extraction to confirm mascot/search/control surfaces still render without runtime errors.
 
 ## Next queue candidates
-- [ ] slice-033-core-flow-verification-pass — run full core-flow checks (token ID load, wallet/ENS search, animation play, `.glb` export, mobile sanity) after mascot helper extraction set.
+- [x] slice-033-core-flow-verification-pass — run full core-flow checks (token ID load, wallet/ENS search, animation play, `.glb` export, mobile sanity) after mascot helper extraction set.
+
+## Upcoming
+- [ ] slice-034-app-state-boundary-plan — define/document current global mutable state boundaries and propose a no-behavior-change extraction seam for centralized app-state follow-up.
