@@ -2098,6 +2098,7 @@ const ANIM_MANIFEST_URL =
   "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/animations.json";
 
 const animUtils = window.FrienemiesAnimUtils || {};
+const animSelectUtils = window.FrienemiesAnimSelectUtils || {};
 const normalizeAnimManifestItem =
   animUtils.normalizeAnimManifestItem ||
   function normalizeAnimManifestItemFallback(item) {
@@ -2146,13 +2147,36 @@ function populateAnimationSelect(selectEl) {
   populateAnimationSelectWithPresets(selectEl, ANIM_PRESETS);
 }
 
+const populateOnboardingAnimationSelects =
+  animSelectUtils.populateOnboardingAnimationSelects ||
+  function populateOnboardingAnimationSelectsFallback(
+    onboardingSelectEl,
+    controlSelectEl,
+    populateFn,
+    presets = []
+  ) {
+    if (typeof populateFn !== "function") return;
+    populateFn(onboardingSelectEl, presets);
+    populateFn(controlSelectEl, presets);
+  };
+
 function populateOnboardingAnimSelect() {
-  populateAnimationSelect(onboardingAnimSelect);
-  populateAnimationSelect(controlAnimSelect);
+  populateOnboardingAnimationSelects(
+    onboardingAnimSelect,
+    controlAnimSelect,
+    populateAnimationSelectWithPresets,
+    ANIM_PRESETS
+  );
 }
 
+const getSelectedAnimUrlFromInputs =
+  animSelectUtils.getSelectedAnimUrl ||
+  function getSelectedAnimUrlFromInputsFallback(controlSelectEl, onboardingSelectEl, presets = []) {
+    return controlSelectEl?.value || onboardingSelectEl?.value || presets?.[0]?.[1] || "";
+  };
+
 function getSelectedAnimUrl() {
-  return controlAnimSelect?.value || onboardingAnimSelect?.value || ANIM_PRESETS[0]?.[1] || "";
+  return getSelectedAnimUrlFromInputs(controlAnimSelect, onboardingAnimSelect, ANIM_PRESETS);
 }
 
 const getAnimUrlByNameFromPresets =

@@ -21,3 +21,4 @@
 - [x] slice-014a-local-core-flow-smoke — local static-host smoke completed for token load by ID + animation play + `.glb` export trigger; wallet/ENS path confirmed blocked by missing local API route (expected in static host).
 - [x] slice-015-search-utils-module — extract primary search input normalization/token-ID parsing helpers into `search-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
 - [x] slice-016-routing-utils-module — extract URL owner parsing + history path builders into `routing-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
+- [x] slice-017-anim-select-utils-module — extract animation select orchestration helpers into `anim-select-utils.js` and wire `main.js` to consume helper exports with fallback behavior.

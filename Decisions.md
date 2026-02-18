@@ -158,3 +158,10 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesRoutingUtils` (`getWalletOwnerFromUrl`, `buildCollectionPath`, `buildOwnerPath`) with in-file fallback implementations.
 - **Validation evidence:** `node --check` passes for `main.js`, `routing-utils.js`, and all previously extracted helper modules.
 - **Scope guard:** Helper extraction + script wiring only; no changes to token routing semantics, wallet/ENS lookup behavior, animation playback, carousel mechanics, or export pipeline.
+
+## 2026-02-18 — Slice 017 animation select utils module
+- **Decision:** Extract animation-select orchestration helpers into `anim-select-utils.js` and load it before `main.js`.
+- **Why:** Continues Phase 2 decomposition by moving select-specific wiring (`populateOnboardingAnimationSelects`, selected URL fallback resolution) out of `main.js` while preserving behavior.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesAnimSelectUtils` with in-file fallback implementations for both extracted helpers.
+- **Validation evidence:** `node --check` passes for `main.js`, `anim-select-utils.js`, and all previously extracted helper modules.
+- **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing semantics, carousel mechanics, animation playback behavior, or export pipeline.
