@@ -171,6 +171,7 @@ const consoleUtils = window.FrienemiesConsoleUtils || {};
 
 const rigUtils = window.FrienemiesRigUtils || {};
 const tokenUtils = window.FrienemiesTokenUtils || {};
+const imageLoadUtils = window.FrienemiesImageLoadUtils || {};
 
 async function fetchWalletTokenIds(owner) {
   const params = new URLSearchParams({
@@ -3109,43 +3110,60 @@ function requestTokenLoad(tokenId, { force = false } = {}) {
 const buildPreviewUrl =
   tokenUtils.buildPreviewUrl ||
   ((baseUrl, tokenId) => `${String(baseUrl || "").replace(/\/$/, "")}/${tokenId}/friendsie.jpg`);
+const hydrateImageFromDataset =
+  imageLoadUtils.hydrateImageFromDataset ||
+  ((img, { markLoaded = true, clearDataset = true } = {}) => {
+    if (!img) return false;
+    const src = img.dataset?.src;
+    if (!src) return false;
+    img.src = src;
+    if (markLoaded && img.dataset) img.dataset.loaded = "true";
+    if (clearDataset) img.removeAttribute("data-src");
+    return true;
+  });
+const createTokenImageObserver =
+  imageLoadUtils.createTokenImageObserver ||
+  (({ existingObserver = null, canObserve = true, root = null, rootMargin = "60px" } = {}) => {
+    if (existingObserver || !canObserve || !("IntersectionObserver" in window)) {
+      return existingObserver || null;
+    }
+    return new IntersectionObserver(
+      (entries, observer) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          hydrateImageFromDataset(entry.target);
+          observer?.unobserve(entry.target);
+        });
+      },
+      { root, rootMargin }
+    );
+  });
+const observeImageWithFallback =
+  imageLoadUtils.observeTokenImage ||
+  (({ img, observer }) => {
+    if (!img) return false;
+    if (!observer) return hydrateImageFromDataset(img, { markLoaded: false, clearDataset: false });
+    observer.observe(img);
+    return true;
+  });
 
 function getPreviewUrl(tokenId) {
   return buildPreviewUrl(PREVIEW_BASE_URL, tokenId);
 }
 
 function ensureImageObserver() {
-  if (imageObserver || !("IntersectionObserver" in window)) return;
-  imageObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        const img = entry.target;
-        const src = img.dataset.src;
-        if (src && !img.dataset.loaded) {
-          img.src = src;
-          img.dataset.loaded = "true";
-          img.removeAttribute("data-src");
-        }
-        imageObserver?.unobserve(img);
-      });
-    },
-    {
-      root: ui.carouselViewport || null,
-      rootMargin: "60px"
-    }
-  );
+  imageObserver = createTokenImageObserver({
+    existingObserver: imageObserver,
+    canObserve: "IntersectionObserver" in window,
+    root: ui.carouselViewport || null,
+    rootMargin: "60px"
+  });
 }
 
 function observeTokenImage(img) {
   if (!img) return;
   ensureImageObserver();
-  if (!imageObserver) {
-    const src = img.dataset.src;
-    if (src) img.src = src;
-    return;
-  }
-  imageObserver.observe(img);
+  observeImageWithFallback({ img, observer: imageObserver });
 }
 
 function createTokenSlide(id, index) {

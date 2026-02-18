@@ -247,3 +247,10 @@
   - `node --check` passes for `main.js` plus all extracted utility modules (`identifier/scene/look/anim/carousel/export/search/routing/anim-select/rig/token/control-panel/console/search-ui/load-queue`).
   - Browser smoke capture succeeds via `python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-028-smoke.png`.
 - **Scope guard:** Verification/docs only; no runtime behavior or architecture changes.
+
+## 2026-02-18 — Slice 029 image load utils module
+- **Decision:** Extract token preview image hydration + observer helpers into `image-load-utils.js` and load it before `main.js`.
+- **Why:** Continues Phase 2 helper modularization on a tightly scoped carousel image seam while preserving lazy-load behavior through fallback wiring.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesImageLoadUtils` (`hydrateImageFromDataset`, `createTokenImageObserver`, `observeTokenImage`) with in-file fallback implementations.
+- **Validation evidence:** `node --check` passes for `main.js` and `image-load-utils.js` after wiring updates.
+- **Scope guard:** Helper extraction + script wiring only; no changes to token search semantics, routing behavior, animation/export flows, or carousel index logic.
