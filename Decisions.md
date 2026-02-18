@@ -194,3 +194,11 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesControlPanelUtils` with in-file fallback implementations for each extracted helper.
 - **Validation evidence:** `node --check` passes for `main.js`, `control-panel-utils.js`, and all previously extracted helper modules.
 - **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing semantics, animation/export flows, or carousel mechanics.
+
+## 2026-02-18 — Slice 022 post-slice-021 verification pass
+- **Decision:** Run an immediate verification pass after control-panel helper extraction before taking any additional refactor slices.
+- **Why:** Keeps drift low and confirms control surfaces still behave correctly after modularization.
+- **Validation evidence:**
+  - `node --check` passes for `main.js` and all extracted helper modules, including `control-panel-utils.js`.
+  - Browser smoke on `http://127.0.0.1:4173/index.html` confirms control panel interaction states: closed→open (`aria-hidden: true→false`, `aria-expanded: false→true`), tab switching works (`animations`/`lighting`/`console`), then open→closed (`aria-hidden: false→true`) with no captured runtime errors.
+- **Scope guard:** Verification/docs only; no product behavior, UX, or architecture changes beyond validation artifacts.

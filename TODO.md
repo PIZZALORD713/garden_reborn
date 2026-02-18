@@ -28,4 +28,4 @@
 
 ## Next queue candidates
 - [x] slice-021-control-panel-utils-module — extract control panel tab/anchor/visibility helpers into `control-panel-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
-- [ ] slice-022-post-slice-021-verification-pass — run syntax + browser smoke checks after control-panel helper extraction to confirm UI control surfaces still render and interact without runtime errors.
+- [x] slice-022-post-slice-021-verification-pass — run syntax + browser smoke checks after control-panel helper extraction to confirm UI control surfaces still render and interact without runtime errors.
