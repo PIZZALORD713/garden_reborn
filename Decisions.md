@@ -348,7 +348,7 @@
 - **Execution note:** Smoke screenshot captured from local host `http://127.0.0.1:4180` using Playwright desktop Chrome profile.
 - **Scope guard:** Focused hardening only (export feedback/fallback + panel focus stability + warning-noise handling); no token search/load, animation, routing, or bottom-surface behavior changes.
 
-## 2026-02-18 — Slice 041 post-slice-040 verification pass
+## 2026-02-18 ï¿½ Slice 041 post-slice-040 verification pass
 - **Decision:** Run a verification-only slice immediately after export/a11y hardening before attempting another behavior change.
 - **Why:** Keeps drift low by validating that command bar, carousel/settings shell, and export affordances still boot/render cleanly after slice-040 changes.
 - **Validation evidence:**
@@ -368,13 +368,13 @@
   - In-app token-ID load verified: entering `8448` re-centered carousel window to `#8438`-`#8458`.
   - In-app wallet/ENS flow verified: entering `pizzalord.eth` populated owned-token carousel results via live API route.
   - Animation trigger verified via quick action `Wave`.
-  - `.glb` export trigger + UX fallback verified: status surfaced `Download started. If no file appears, use “Open saved export link”.` and fallback link became active (`aria-hidden="false"`) with blob URL + filename.
+  - `.glb` export trigger + UX fallback verified: status surfaced `Download started. If no file appears, use ï¿½Open saved export linkï¿½.` and fallback link became active (`aria-hidden="false"`) with blob URL + filename.
   - Mobile sanity verified at `390x844` after resize.
   - Smoke evidence captured as `slice-042-smoke-desktop.png` and `slice-042-smoke-mobile.png`.
 - **Caveats:** Browser console showed only a benign `favicon.ico` 404 under local dev; no runtime flow errors observed.
 - **Scope guard:** Verification/docs/evidence only; no feature or runtime code-path changes.
 
-## 2026-02-18 — Slice 043 upstream sync merge
+## 2026-02-18 ï¿½ Slice 043 upstream sync merge
 - **Decision:** Complete the in-progress origin/main merge on the UI-upgrade branch and resolve only explicit conflicts.
 - **Why:** Unmerged conflicts in index.html + main.js blocked all further slice work.
 - **Conflict resolution:**
@@ -384,3 +384,12 @@
   - Get-ChildItem -File -Filter *.js | ForEach-Object { node --check .Name } passed.
   - Static-host smoke succeeded after merge (python -m http.server 4182 + Playwright screenshot run).
 - **Scope guard:** Merge resolution + validation only; no new feature scope.
+
+## 2026-02-18 - Slice 044 carousel-query state helpers
+- **Decision:** Extract carousel-query state normalization/update helpers into `carousel-query-utils.js` and wire `main.js` to consume helper exports with fallback implementations.
+- **Why:** Continues the app-state modularization plan by isolating carousel/search/load state access paths without changing user-facing behavior.
+- **Implementation guard:** `main.js` now initializes carousel-query state via `getInitialCarouselQueryState(...)` and routes token-list + field updates (`pendingTokenId`, `lastLoadedTokenId`, `activeCarouselIndex`, `suppressScrollHandler`, `scrollRafPending`) through helper wrappers that also sync `appState.carouselQuery`.
+- **Validation evidence:**
+  - `Get-ChildItem -File -Filter *.js | ForEach-Object { node --check $_.Name }` passed for all root runtime modules.
+  - Static-host browser smoke succeeded (`python -m http.server 4183` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4183/index.html slice-044-smoke.png`).
+- **Scope guard:** Helper extraction + wiring + validation only; no changes to token routing semantics, wallet/ENS search behavior, animation playback, or export pipeline.

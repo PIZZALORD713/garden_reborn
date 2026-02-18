@@ -114,6 +114,7 @@ const buildOwnerPath =
 const searchUtils = window.FrienemiesSearchUtils || {};
 const searchUiUtils = window.FrienemiesSearchUiUtils || {};
 const loadQueueUtils = window.FrienemiesLoadQueueUtils || {};
+const carouselQueryUtils = window.FrienemiesCarouselQueryUtils || {};
 const mascotUtils = window.FrienemiesMascotUtils || {};
 const normalizeSearchInput =
   searchUtils.normalizeSearchInput ||
@@ -3008,16 +3009,74 @@ let carouselPinned = appState?.interactionShell?.carouselPinned ?? false;
 let carouselDismissed = appState?.interactionShell?.carouselDismissed ?? false;
 let toggleHideTimer = appState?.interactionShell?.toggleHideTimer ?? null;
 
-let carouselTokenIds = appState?.carouselQuery?.carouselTokenIds ?? [...DEFAULT_TOKEN_IDS];
-let carouselTokenIdSet = appState?.carouselQuery?.carouselTokenIdSet ?? new Set(carouselTokenIds);
-let activeCarouselIndex = appState?.carouselQuery?.activeCarouselIndex ?? null;
-let pendingTokenId = appState?.carouselQuery?.pendingTokenId ?? null;
-let lastLoadedTokenId = appState?.carouselQuery?.lastLoadedTokenId ?? null;
-let loadDebounceTimer = appState?.carouselQuery?.loadDebounceTimer ?? null;
-let imageObserver = appState?.carouselQuery?.imageObserver ?? null;
-let carouselListenersBound = appState?.carouselQuery?.carouselListenersBound ?? false;
-let scrollRafPending = appState?.carouselQuery?.scrollRafPending ?? false;
-let suppressScrollHandler = appState?.carouselQuery?.suppressScrollHandler ?? false;
+const getInitialCarouselQueryState =
+  carouselQueryUtils.getInitialCarouselQueryState ||
+  function getInitialCarouselQueryStateFallback({ appState, defaultTokenIds }) {
+    const source = Array.isArray(appState?.carouselQuery?.carouselTokenIds)
+      ? appState.carouselQuery.carouselTokenIds
+      : defaultTokenIds;
+    const normalizedTokenIds = Array.from(
+      new Set(
+        source
+          .map((id) => Number(id))
+          .filter((id) => Number.isFinite(id))
+      )
+    ).sort((a, b) => a - b);
+
+    return {
+      carouselTokenIds: normalizedTokenIds,
+      carouselTokenIdSet: new Set(normalizedTokenIds),
+      activeCarouselIndex: appState?.carouselQuery?.activeCarouselIndex ?? null,
+      pendingTokenId: appState?.carouselQuery?.pendingTokenId ?? null,
+      lastLoadedTokenId: appState?.carouselQuery?.lastLoadedTokenId ?? null,
+      loadDebounceTimer: appState?.carouselQuery?.loadDebounceTimer ?? null,
+      imageObserver: appState?.carouselQuery?.imageObserver ?? null,
+      carouselListenersBound: appState?.carouselQuery?.carouselListenersBound ?? false,
+      scrollRafPending: appState?.carouselQuery?.scrollRafPending ?? false,
+      suppressScrollHandler: appState?.carouselQuery?.suppressScrollHandler ?? false
+    };
+  };
+
+const updateCarouselTokenIdsStateFromUtils =
+  carouselQueryUtils.updateCarouselTokenIdsState ||
+  function updateCarouselTokenIdsStateFallback({ tokenIds, appState, fallbackTokenIds = [] }) {
+    const source = Array.isArray(tokenIds) ? tokenIds : fallbackTokenIds;
+    const unique = Array.from(new Set(source.map((id) => Number(id)).filter((id) => Number.isFinite(id))));
+    unique.sort((a, b) => a - b);
+    if (appState?.carouselQuery) {
+      appState.carouselQuery.carouselTokenIds = unique;
+      appState.carouselQuery.carouselTokenIdSet = new Set(unique);
+    }
+    return {
+      carouselTokenIds: unique,
+      carouselTokenIdSet: new Set(unique)
+    };
+  };
+
+const updateCarouselQueryFieldFromUtils =
+  carouselQueryUtils.updateCarouselQueryField ||
+  function updateCarouselQueryFieldFallback({ key, value, appState }) {
+    if (appState?.carouselQuery && typeof key === "string" && key in appState.carouselQuery) {
+      appState.carouselQuery[key] = value;
+    }
+    return value;
+  };
+
+const initialCarouselQueryState = getInitialCarouselQueryState({
+  appState,
+  defaultTokenIds: DEFAULT_TOKEN_IDS
+});
+
+let carouselTokenIds = initialCarouselQueryState.carouselTokenIds;
+let carouselTokenIdSet = initialCarouselQueryState.carouselTokenIdSet;
+let activeCarouselIndex = initialCarouselQueryState.activeCarouselIndex;
+let pendingTokenId = initialCarouselQueryState.pendingTokenId;
+let lastLoadedTokenId = initialCarouselQueryState.lastLoadedTokenId;
+let loadDebounceTimer = initialCarouselQueryState.loadDebounceTimer;
+let imageObserver = initialCarouselQueryState.imageObserver;
+let carouselListenersBound = initialCarouselQueryState.carouselListenersBound;
+let scrollRafPending = initialCarouselQueryState.scrollRafPending;
+let suppressScrollHandler = initialCarouselQueryState.suppressScrollHandler;
 
 /* ── Pointer-drag momentum state ── */
 let isDragging = appState?.dragPhysics?.isDragging ?? false;
@@ -3140,10 +3199,18 @@ function onCarouselScroll() {
   if (suppressScrollHandler) return;
   carouselScrolling = true;
   if (scrollRafPending) return;
-  scrollRafPending = true;
+  scrollRafPending = updateCarouselQueryFieldFromUtils({
+    key: "scrollRafPending",
+    value: true,
+    appState
+  });
 
   requestAnimationFrame(() => {
-    scrollRafPending = false;
+    scrollRafPending = updateCarouselQueryFieldFromUtils({
+      key: "scrollRafPending",
+      value: false,
+      appState
+    });
     if (!ui.carouselViewport || !ui.slides) return;
 
     const scrollLeft = ui.carouselViewport.scrollLeft;
@@ -3348,7 +3415,9 @@ function renderSearchMessage(message, options = {}) {
 function resetToFullCollection() {
   setCarouselTokenIds(DEFAULT_TOKEN_IDS);
   initCarousel(DEFAULT_TOKEN_ID);
-  frenRouteActive = false`r`n  updateFrenMeta(null);`r`n  window.history.pushState({}, "", buildCollectionPath());
+  frenRouteActive = false;
+  updateFrenMeta(null);
+  window.history.pushState({}, "", buildCollectionPath());
   logLine("🔄 Reset to full collection");
   updateResetCollectionVisibility();
 }
@@ -3413,7 +3482,11 @@ async function handleSearch(query) {
         scrollToCarouselIndex(fullIndex);
         setActiveCarouselIndex(fullIndex);
       } else {
-        lastLoadedTokenId = asNum;
+        lastLoadedTokenId = updateCarouselQueryFieldFromUtils({
+          key: "lastLoadedTokenId",
+          value: asNum,
+          appState
+        });
         loadToken(asNum);
       }
     }
@@ -3439,16 +3512,28 @@ async function handleSearch(query) {
 }
 
 function debounceTokenLoad(tokenId, { force = false } = {}) {
-  pendingTokenId = tokenId;
+  pendingTokenId = updateCarouselQueryFieldFromUtils({
+    key: "pendingTokenId",
+    value: tokenId,
+    appState
+  });
   if (loadDebounceTimer) clearTimeout(loadDebounceTimer);
   loadDebounceTimer = setTimeout(() => {
     loadDebounceTimer = null;
     if (!allFriendsies) return;
     const id = pendingTokenId;
-    pendingTokenId = null;
+    pendingTokenId = updateCarouselQueryFieldFromUtils({
+      key: "pendingTokenId",
+      value: null,
+      appState
+    });
     if (shouldSkipQueuedTokenLoad({ id, tokenIdSet: carouselTokenIdSet, lastLoadedTokenId, force })) return;
 
-    lastLoadedTokenId = id;
+    lastLoadedTokenId = updateCarouselQueryFieldFromUtils({
+      key: "lastLoadedTokenId",
+      value: id,
+      appState
+    });
     loadToken(id);
   }, 150);
 }
@@ -3456,7 +3541,11 @@ function debounceTokenLoad(tokenId, { force = false } = {}) {
 function requestTokenLoad(tokenId, { force = false } = {}) {
   const id = normalizeRequestedTokenId(tokenId);
   if (!canRequestTokenLoad(carouselTokenIdSet, id)) return;
-  pendingTokenId = id;
+  pendingTokenId = updateCarouselQueryFieldFromUtils({
+    key: "pendingTokenId",
+    value: id,
+    appState
+  });
   if (!allFriendsies) return;
   debounceTokenLoad(id, { force });
 }
@@ -3834,7 +3923,11 @@ function setActiveCarouselIndex(index, { loadToken: shouldLoad = true, forceLoad
     if (prev) prev.classList.remove("is-active");
     const next = ui.slides.querySelector(`[data-index=\"${index}\"]`);
     if (next) next.classList.add("is-active");
-    activeCarouselIndex = index;
+    activeCarouselIndex = updateCarouselQueryFieldFromUtils({
+      key: "activeCarouselIndex",
+      value: index,
+      appState
+    });
   }
 
   // Trigger 3D model load:
@@ -3856,7 +3949,11 @@ function scrollToCarouselIndex(index) {
   stopMomentum();
 
   // Ensure target slides are rendered
-  suppressScrollHandler = true;
+  suppressScrollHandler = updateCarouselQueryFieldFromUtils({
+    key: "suppressScrollHandler",
+    value: true,
+    appState
+  });
   renderCarouselRange(index);
 
   const targetLeft = indexToScrollLeft(index);
@@ -3869,7 +3966,11 @@ function scrollToCarouselIndex(index) {
 
   const restoreSnap = () => {
     ui.carouselViewport.style.scrollSnapType = "";
-    suppressScrollHandler = false;
+    suppressScrollHandler = updateCarouselQueryFieldFromUtils({
+      key: "suppressScrollHandler",
+      value: false,
+      appState
+    });
   };
 
   if (distance > 20 * step) {
@@ -3899,15 +4000,13 @@ function scrollToCarouselIndex(index) {
 }
 
 function setCarouselTokenIds(tokenIds) {
-  const cleaned = Array.isArray(tokenIds)
-    ? tokenIds
-        .map((id) => Number(id))
-        .filter((id) => Number.isFinite(id))
-    : [];
-  const unique = Array.from(new Set(cleaned));
-  unique.sort((a, b) => a - b);
-  carouselTokenIds = unique;
-  carouselTokenIdSet = new Set(unique);
+  const nextTokenState = updateCarouselTokenIdsStateFromUtils({
+    tokenIds,
+    appState,
+    fallbackTokenIds: DEFAULT_TOKEN_IDS
+  });
+  carouselTokenIds = nextTokenState.carouselTokenIds;
+  carouselTokenIdSet = nextTokenState.carouselTokenIdSet;
   updateResetCollectionVisibility();
 }
 
@@ -3916,7 +4015,11 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
   ui.slides.innerHTML = "";
   ui.slides.dataset.renderStart = "-1";
   ui.slides.dataset.renderEnd = "-1";
-  activeCarouselIndex = null;
+  activeCarouselIndex = updateCarouselQueryFieldFromUtils({
+    key: "activeCarouselIndex",
+    value: null,
+    appState
+  });
 
   if (carouselTokenIds.length === 0) {
     const li = document.createElement("li");
@@ -3966,13 +4069,21 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
 
   if (carouselTokenIds.length) {
     // Suppress scroll handler during initial positioning
-    suppressScrollHandler = true;
+    suppressScrollHandler = updateCarouselQueryFieldFromUtils({
+      key: "suppressScrollHandler",
+      value: true,
+      appState
+    });
     renderCarouselRange(startIndex);
 
     requestAnimationFrame(() => {
       // Set initial scroll position (instant, no smooth)
       ui.carouselViewport.scrollLeft = indexToScrollLeft(startIndex);
-      suppressScrollHandler = false;
+      suppressScrollHandler = updateCarouselQueryFieldFromUtils({
+        key: "suppressScrollHandler",
+        value: false,
+        appState
+      });
       setActiveCarouselIndex(startIndex, { loadToken: true });
     });
   }
@@ -4283,7 +4394,11 @@ function navigateToFrenToken(tokenId, { replace = false } = {}) {
     setActiveCarouselIndex(index, { forceLoad: true });
   } else {
     // Token in range but not in carousel (shouldn't happen with full collection)
-    lastLoadedTokenId = id;
+    lastLoadedTokenId = updateCarouselQueryFieldFromUtils({
+      key: "lastLoadedTokenId",
+      value: id,
+      appState
+    });
     loadToken(id);
   }
 }
@@ -4304,7 +4419,11 @@ function handleFrenTokenFromMetadata(frenTokenId) {
     scrollToCarouselIndex(index);
     setActiveCarouselIndex(index, { forceLoad: true });
   } else {
-    lastLoadedTokenId = frenTokenId;
+    lastLoadedTokenId = updateCarouselQueryFieldFromUtils({
+      key: "lastLoadedTokenId",
+      value: frenTokenId,
+      appState
+    });
     loadToken(frenTokenId);
   }
 }
@@ -4321,7 +4440,11 @@ window.addEventListener("popstate", (event) => {
     if (allFriendsies) {
       handleFrenTokenFromMetadata(frenToken);
     } else {
-      pendingTokenId = frenToken;
+      pendingTokenId = updateCarouselQueryFieldFromUtils({
+        key: "pendingTokenId",
+        value: frenToken,
+        appState
+      });
     }
     return;
   }
@@ -4518,11 +4641,20 @@ window.addEventListener("resize", () => {
     const renderStart = Number(ui.slides.dataset.renderStart || 0);
     const renderEnd = Number(ui.slides.dataset.renderEnd || 0);
     updateSpacerWidths(renderStart, renderEnd);
-    suppressScrollHandler = true;
+    suppressScrollHandler = updateCarouselQueryFieldFromUtils({
+      key: "suppressScrollHandler",
+      value: true,
+      appState
+    });
     ui.carouselViewport.scrollLeft = indexToScrollLeft(activeCarouselIndex);
-    suppressScrollHandler = false;
+    suppressScrollHandler = updateCarouselQueryFieldFromUtils({
+      key: "suppressScrollHandler",
+      value: false,
+      appState
+    });
   }
 });
+
 
 
 

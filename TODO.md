@@ -62,3 +62,7 @@
 - [x] slice-042-core-flow-verification-pass - run full core-flow checks (token ID load, wallet/ENS search, animation play, `.glb` export, mobile sanity) after slice-040 hardening set.
 
 - [x] slice-043-upstream-sync-merge - complete in-progress origin/main merge, resolve conflicts in index/main, and rerun syntax + smoke validation.
+- [x] slice-044-carousel-query-state-helpers - extract carousel-query state initialization/update helpers into `carousel-query-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
+
+## Upcoming
+- [ ] slice-045-post-slice-044-verification-pass - run syntax + browser smoke checks after carousel-query helper extraction to confirm carousel/search/load surfaces still render without runtime errors.
