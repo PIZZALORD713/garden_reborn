@@ -60,9 +60,11 @@ const MASCOT_CONFIG = {
 };
 
 const identifierUtils = window.FrienemiesIdentifierUtils || {};
+const routingUtils = window.FrienemiesRoutingUtils || {};
 const isHexAddress = identifierUtils.isHexAddress || ((value) => typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value.trim()));
 const isEnsName = identifierUtils.isEnsName || ((value) => typeof value === "string" && value.trim().toLowerCase().endsWith(".eth"));
 const getWalletOwnerFromUrl =
+  routingUtils.getWalletOwnerFromUrl ||
   identifierUtils.getWalletOwnerFromUrl ||
   (() => {
     const params = new URLSearchParams(window.location.search);
@@ -74,6 +76,10 @@ const getWalletOwnerFromUrl =
     if (isHexAddress(candidate) || isEnsName(candidate)) return candidate;
     return null;
   });
+const buildCollectionPath = routingUtils.buildCollectionPath || (() => "/");
+const buildOwnerPath =
+  routingUtils.buildOwnerPath ||
+  ((ownerSlug) => `/${encodeURIComponent(String(ownerSlug ?? "").trim())}`);
 
 const searchUtils = window.FrienemiesSearchUtils || {};
 const normalizeSearchInput =
@@ -2795,7 +2801,7 @@ function renderSearchMessage(message, { tone = "info", showReset = false, hint =
 function resetToFullCollection() {
   setCarouselTokenIds(DEFAULT_TOKEN_IDS);
   initCarousel(DEFAULT_TOKEN_ID);
-  window.history.pushState({}, "", "/");
+  window.history.pushState({}, "", buildCollectionPath());
   logLine("🔄 Reset to full collection");
   updateResetCollectionVisibility();
 }
@@ -2819,7 +2825,7 @@ async function navigateToWallet(owner) {
     initCarousel(walletData.tokenIds[0]);
     if (searchResults) searchResults.innerHTML = "";
     const slug = walletData.ownerInput || owner;
-    window.history.pushState({}, "", `/${encodeURIComponent(slug)}`);
+    window.history.pushState({}, "", buildOwnerPath(slug));
     setMenuOpen(false);
     logLine(`🔍 Search: loaded ${walletData.tokenIds.length} tokens for ${slug}`);
   } catch (err) {

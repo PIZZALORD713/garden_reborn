@@ -151,3 +151,10 @@
 - **Implementation guard:** `main.js` consumes `window.FrienemiesSearchUtils` with local fallback implementations to preserve runtime behavior if helper loading fails.
 - **Validation evidence:** `node --check` passes for `main.js`, `search-utils.js`, and previously extracted helper modules.
 - **Scope guard:** Helper extraction + wiring only; no changes to token-routing rules, wallet/ENS lookup behavior, animation playback, carousel mechanics, or export pipeline.
+
+## 2026-02-18 — Slice 016 routing utils module
+- **Decision:** Extract URL owner parsing + canonical history path builders into `routing-utils.js` and load it before `main.js`.
+- **Why:** Continues the Phase 2 modular split by isolating route/deep-link helpers from `main.js` while preserving existing search and wallet entry behavior.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesRoutingUtils` (`getWalletOwnerFromUrl`, `buildCollectionPath`, `buildOwnerPath`) with in-file fallback implementations.
+- **Validation evidence:** `node --check` passes for `main.js`, `routing-utils.js`, and all previously extracted helper modules.
+- **Scope guard:** Helper extraction + script wiring only; no changes to token routing semantics, wallet/ENS lookup behavior, animation playback, carousel mechanics, or export pipeline.
