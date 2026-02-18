@@ -2425,57 +2425,98 @@ const SNAP_BUFFER = 5;
 // ---------------------
 // Carousel geometry helpers
 // ---------------------
+const carouselUtils = window.FrienemiesCarouselUtils || {};
 
-function getCardMetrics() {
-  const style = getComputedStyle(document.documentElement);
-  const cardWidth = parseFloat(style.getPropertyValue("--card-width")) || 120;
-  const cardGap = parseFloat(style.getPropertyValue("--card-gap")) || 14;
-  return { cardWidth, cardGap, step: cardWidth + cardGap };
-}
+const getCardMetrics =
+  carouselUtils.getCardMetrics ||
+  function getCardMetricsFallback() {
+    const style = getComputedStyle(document.documentElement);
+    const cardWidth = parseFloat(style.getPropertyValue("--card-width")) || 120;
+    const cardGap = parseFloat(style.getPropertyValue("--card-gap")) || 14;
+    return { cardWidth, cardGap, step: cardWidth + cardGap };
+  };
 
-function getViewportMetrics() {
-  const vp = ui.carouselViewport;
-  if (!vp) return { vpWidth: 0, visibleCount: 5 };
-  const vpWidth = vp.clientWidth;
-  const { step } = getCardMetrics();
-  const visibleCount = Math.max(1, Math.floor(vpWidth / step));
-  return { vpWidth, visibleCount };
-}
+const getViewportMetrics =
+  carouselUtils.getViewportMetrics ||
+  function getViewportMetricsFallback(viewport, step) {
+    const vpWidth = viewport?.clientWidth || 0;
+    const visibleCount = Math.max(1, Math.floor(vpWidth / (step || 1)));
+    return { vpWidth, visibleCount };
+  };
+
+const indexToScrollLeftByMetrics =
+  carouselUtils.indexToScrollLeft ||
+  function indexToScrollLeftByMetricsFallback(index, metrics) {
+    const { vpWidth = 0, step = 1, cardWidth = 0 } = metrics || {};
+    const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
+    return edgePad + index * step + cardWidth / 2 - vpWidth / 2;
+  };
+
+const scrollLeftToIndexByMetrics =
+  carouselUtils.scrollLeftToIndex ||
+  function scrollLeftToIndexByMetricsFallback(scrollLeft, metrics) {
+    const { vpWidth = 0, step = 1, cardWidth = 0, totalCount = 0 } = metrics || {};
+    if (!totalCount) return 0;
+    const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
+    const centerPixel = scrollLeft + vpWidth / 2;
+    const index = Math.round((centerPixel - edgePad - cardWidth / 2) / step);
+    return Math.max(0, Math.min(totalCount - 1, index));
+  };
+
+const getSpacerWidths =
+  carouselUtils.getSpacerWidths ||
+  function getSpacerWidthsFallback(params) {
+    const {
+      renderStart = 0,
+      renderEnd = 0,
+      totalCount = 0,
+      vpWidth = 0,
+      step = 1,
+      cardWidth = 0
+    } = params || {};
+
+    const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
+    const leftWidth = edgePad + renderStart * step;
+    const rightTokens = totalCount - renderEnd;
+    const rightWidth = rightTokens * step + edgePad;
+
+    return {
+      leftWidth: Math.max(0, leftWidth),
+      rightWidth: Math.max(0, rightWidth)
+    };
+  };
 
 function indexToScrollLeft(index) {
   const { step, cardWidth } = getCardMetrics();
-  const { vpWidth } = getViewportMetrics();
-  // edgePad is the left spacer's minimum width (centering padding for the first card).
-  // Token i's center in the scroll content is at: edgePad + i * step + cardWidth / 2.
-  // To center that in the viewport: scrollLeft = tokenCenter - vpWidth / 2.
-  const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
-  return edgePad + index * step + cardWidth / 2 - vpWidth / 2;
+  const { vpWidth } = getViewportMetrics(ui.carouselViewport, step);
+  return indexToScrollLeftByMetrics(index, { step, cardWidth, vpWidth });
 }
 
 function scrollLeftToIndex(scrollLeft) {
   const { step, cardWidth } = getCardMetrics();
-  const { vpWidth } = getViewportMetrics();
-  const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
-  // Inverse of indexToScrollLeft: solve for index
-  const centerPixel = scrollLeft + vpWidth / 2;
-  const index = Math.round((centerPixel - edgePad - cardWidth / 2) / step);
-  return Math.max(0, Math.min(carouselTokenIds.length - 1, index));
+  const { vpWidth } = getViewportMetrics(ui.carouselViewport, step);
+  return scrollLeftToIndexByMetrics(scrollLeft, {
+    step,
+    cardWidth,
+    vpWidth,
+    totalCount: carouselTokenIds.length
+  });
 }
 
 function updateSpacerWidths(renderStart, renderEnd) {
   const { step, cardWidth } = getCardMetrics();
-  const { vpWidth } = getViewportMetrics();
-  const n = carouselTokenIds.length;
+  const { vpWidth } = getViewportMetrics(ui.carouselViewport, step);
+  const widths = getSpacerWidths({
+    renderStart,
+    renderEnd,
+    totalCount: carouselTokenIds.length,
+    vpWidth,
+    step,
+    cardWidth
+  });
 
-  // Edge padding so first/last card can center in the viewport
-  const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
-
-  const leftWidth = edgePad + renderStart * step;
-  const rightTokens = n - renderEnd;
-  const rightWidth = rightTokens * step + edgePad;
-
-  if (ui.spacerLeft) ui.spacerLeft.style.width = Math.max(0, leftWidth) + "px";
-  if (ui.spacerRight) ui.spacerRight.style.width = Math.max(0, rightWidth) + "px";
+  if (ui.spacerLeft) ui.spacerLeft.style.width = `${widths.leftWidth}px`;
+  if (ui.spacerRight) ui.spacerRight.style.width = `${widths.rightWidth}px`;
 }
 
 function onCarouselScroll() {

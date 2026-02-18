@@ -62,3 +62,10 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesAnimUtils` while preserving local fallback implementations if helper script fails to load.
 - **Validation evidence:** `node --check` passes for `main.js`, `anim-utils.js`, `look-utils.js`, `identifier-utils.js`, and `scene-bootstrap.js`.
 - **Scope guard:** Utility extraction + script wiring only; no changes to token loading/routing, carousel behavior, animation playback semantics, or export logic.
+
+## 2026-02-18 — Slice 012 carousel utils module
+- **Decision:** Extract carousel geometry math helpers (card/viewport metrics, index↔scroll conversion, spacer width calculation) into `carousel-utils.js` and load it before `main.js`.
+- **Why:** Continues the Phase 2 modular split on a contained UI seam while keeping carousel behavior stable through fallback wiring.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesCarouselUtils` with local fallback implementations for every extracted helper.
+- **Validation evidence:** `node --check` passes for `main.js`, `carousel-utils.js`, `anim-utils.js`, `look-utils.js`, `identifier-utils.js`, and `scene-bootstrap.js`.
+- **Scope guard:** Geometry/helper extraction + script wiring only; no changes to token loading/routing, drag/momentum behavior, animation playback, or export logic.

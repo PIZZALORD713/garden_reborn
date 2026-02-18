@@ -15,4 +15,5 @@
 - [x] slice-009-core-flow-verification-pass — re-run smoke checks after bootstrap extraction (`node --check`, local browser load, command bar + onboarding interactions, console error scan).
 - [x] slice-010-look-utils-module — extract look-control normalization/validation/tone mapping helpers into `look-utils.js` with `main.js` fallback wiring.
 - [x] slice-011-animation-utils-module — extract animation manifest normalization/select helpers into `anim-utils.js` with `main.js` fallback wiring.
+- [x] slice-012-carousel-utils-module — extract carousel geometry math/helpers into `carousel-utils.js` with `main.js` fallback wiring.
 - [ ] Human QA sweep for full core flows in network-enabled environment (token load by ID, wallet/ENS lookup, animation playback, `.glb` export).
