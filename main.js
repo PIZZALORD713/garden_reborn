@@ -83,6 +83,7 @@ const buildOwnerPath =
 
 const searchUtils = window.FrienemiesSearchUtils || {};
 const searchUiUtils = window.FrienemiesSearchUiUtils || {};
+const loadQueueUtils = window.FrienemiesLoadQueueUtils || {};
 const normalizeSearchInput =
   searchUtils.normalizeSearchInput ||
   ((value) => String(value ?? "").trim());
@@ -105,6 +106,22 @@ const updateResetCollectionVisibilityFromUtils =
     const isFiltered = tokenIds.length < defaultTokenIds.length;
     button.classList.toggle("is-visible", isFiltered);
     button.setAttribute("aria-hidden", isFiltered ? "false" : "true");
+  });
+const normalizeRequestedTokenId =
+  loadQueueUtils.normalizeRequestedTokenId ||
+  ((tokenId) => {
+    const id = Number(tokenId);
+    return Number.isFinite(id) ? id : null;
+  });
+const canRequestTokenLoad =
+  loadQueueUtils.canRequestTokenLoad ||
+  ((tokenIdSet, tokenId) => Number.isFinite(tokenId) && tokenIdSet instanceof Set && tokenIdSet.has(tokenId));
+const shouldSkipQueuedTokenLoad =
+  loadQueueUtils.shouldSkipQueuedTokenLoad ||
+  (({ id, tokenIdSet, lastLoadedTokenId, force = false }) => {
+    if (!Number.isFinite(id)) return true;
+    if (!(tokenIdSet instanceof Set) || !tokenIdSet.has(id)) return true;
+    return !force && id === lastLoadedTokenId;
   });
 const renderSearchMessageFromUtils =
   searchUiUtils.renderSearchMessage ||
@@ -3074,10 +3091,7 @@ function debounceTokenLoad(tokenId, { force = false } = {}) {
     if (!allFriendsies) return;
     const id = pendingTokenId;
     pendingTokenId = null;
-    if (!Number.isFinite(id) || !carouselTokenIdSet.has(id)) return;
-
-    // Avoid redundant loads while scrolling, but allow explicit re-loads.
-    if (!force && id === lastLoadedTokenId) return;
+    if (shouldSkipQueuedTokenLoad({ id, tokenIdSet: carouselTokenIdSet, lastLoadedTokenId, force })) return;
 
     lastLoadedTokenId = id;
     loadToken(id);
@@ -3085,8 +3099,8 @@ function debounceTokenLoad(tokenId, { force = false } = {}) {
 }
 
 function requestTokenLoad(tokenId, { force = false } = {}) {
-  const id = Number(tokenId);
-  if (!Number.isFinite(id) || !carouselTokenIdSet.has(id)) return;
+  const id = normalizeRequestedTokenId(tokenId);
+  if (!canRequestTokenLoad(carouselTokenIdSet, id)) return;
   pendingTokenId = id;
   if (!allFriendsies) return;
   debounceTokenLoad(id, { force });

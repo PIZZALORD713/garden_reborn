@@ -232,3 +232,10 @@
   - `node --check` passes for `main.js` and all extracted utility modules, including `search-ui-utils.js`.
   - Browser smoke capture succeeds via `python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-026-smoke.png`.
 - **Scope guard:** Verification/docs only; no product behavior, UX, or architecture changes in runtime code paths.
+
+## 2026-02-18 — Slice 027 load queue utils module
+- **Decision:** Extract token-load request/debounce guard helpers into `load-queue-utils.js` and load it before `main.js`.
+- **Why:** Continues Phase 2 modular decomposition on a narrow search/load seam while preserving runtime behavior and existing debounce timing.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesLoadQueueUtils` (`normalizeRequestedTokenId`, `canRequestTokenLoad`, `shouldSkipQueuedTokenLoad`) with in-file fallback implementations.
+- **Validation evidence:** `node --check` passes for `main.js`, `load-queue-utils.js`, and all previously extracted utility modules.
+- **Scope guard:** Helper extraction + script wiring only; no changes to token-routing semantics, wallet/ENS behavior, carousel mechanics, animation playback, or export pipeline.
