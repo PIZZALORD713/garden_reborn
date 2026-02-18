@@ -98,6 +98,8 @@ const parseTokenIdInput =
     return tokenId;
   });
 
+const controlPanelUtils = window.FrienemiesControlPanelUtils || {};
+
 const rigUtils = window.FrienemiesRigUtils || {};
 const tokenUtils = window.FrienemiesTokenUtils || {};
 
@@ -525,58 +527,132 @@ let controlActiveTab = "animations";
 const logBuffer = [];
 const LOG_BUFFER_MAX = 300;
 
+const setControlPanelOpenState =
+  controlPanelUtils.setControlPanelOpenState ||
+  function setControlPanelOpenStateFallback({
+    open,
+    panel,
+    gear
+  }) {
+    panel?.classList.toggle("is-open", !!open);
+    panel?.setAttribute("aria-hidden", open ? "false" : "true");
+    gear?.setAttribute("aria-expanded", open ? "true" : "false");
+  };
+
+const computeControlAnchorStyles =
+  controlPanelUtils.computeControlAnchorStyles ||
+  function computeControlAnchorStylesFallback({
+    windowWidth,
+    windowHeight,
+    carouselRect,
+    hasPanel
+  }) {
+    const bottomGap = Math.max(12, windowHeight - carouselRect.bottom + 12);
+
+    if (windowWidth <= 780) {
+      return {
+        gearStyle: {
+          left: "",
+          right: "12px",
+          bottom: `${bottomGap}px`
+        },
+        panelStyle: hasPanel
+          ? {
+              left: "",
+              right: "",
+              bottom: ""
+            }
+          : null
+      };
+    }
+
+    const gearLeft = Math.min(windowWidth - 54, carouselRect.right + 10);
+    const panelWidth = Math.min(360, windowWidth - 96);
+    const preferredLeft = gearLeft + 50;
+    const maxLeft = windowWidth - panelWidth - 12;
+
+    return {
+      gearStyle: {
+        left: `${gearLeft}px`,
+        right: "auto",
+        bottom: `${bottomGap}px`
+      },
+      panelStyle: hasPanel
+        ? {
+            left: `${Math.min(preferredLeft, maxLeft)}px`,
+            right: "auto",
+            bottom: `${Math.max(20, bottomGap - 6)}px`
+          }
+        : null
+    };
+  };
+
+const computeControlVisibility =
+  controlPanelUtils.computeControlVisibility ||
+  function computeControlVisibilityFallback({
+    isCarouselHidden,
+    carouselDismissed: isCarouselDismissed
+  }) {
+    return !isCarouselHidden && !isCarouselDismissed;
+  };
+
+const applyControlTabState =
+  controlPanelUtils.applyControlTabState ||
+  function applyControlTabStateFallback({
+    tab,
+    tabButtons,
+    sections
+  }) {
+    tabButtons.forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.controlTab === tab);
+    });
+    sections.forEach((el) => {
+      el.classList.toggle("is-active", el.dataset.controlSection === tab);
+    });
+  };
+
 function setControlPanelOpen(open) {
   controlPanelOpen = !!open;
-  controlPanel?.classList.toggle("is-open", controlPanelOpen);
-  controlPanel?.setAttribute("aria-hidden", controlPanelOpen ? "false" : "true");
-  controlGear?.setAttribute("aria-expanded", controlPanelOpen ? "true" : "false");
+  setControlPanelOpenState({
+    open: controlPanelOpen,
+    panel: controlPanel,
+    gear: controlGear
+  });
 }
 
 function syncControlAnchor() {
   if (!controlGear || !ui.carouselRegion) return;
   const rect = ui.carouselRegion.getBoundingClientRect();
-  const bottomGap = Math.max(12, window.innerHeight - rect.bottom + 12);
+  const nextStyles = computeControlAnchorStyles({
+    windowWidth: window.innerWidth,
+    windowHeight: window.innerHeight,
+    carouselRect: rect,
+    hasPanel: !!controlPanel
+  });
 
-  if (window.innerWidth <= 780) {
-    controlGear.style.left = "";
-    controlGear.style.right = "12px";
-    controlGear.style.bottom = `${bottomGap}px`;
-    if (controlPanel) {
-      controlPanel.style.left = "";
-      controlPanel.style.right = "";
-      controlPanel.style.bottom = "";
-    }
-    return;
+  if (!nextStyles?.gearStyle) return;
+  Object.assign(controlGear.style, nextStyles.gearStyle);
+  if (controlPanel && nextStyles.panelStyle) {
+    Object.assign(controlPanel.style, nextStyles.panelStyle);
   }
-
-  const gearLeft = Math.min(window.innerWidth - 54, rect.right + 10);
-  controlGear.style.left = `${gearLeft}px`;
-  controlGear.style.right = "auto";
-  controlGear.style.bottom = `${bottomGap}px`;
-
-  if (!controlPanel) return;
-  const panelWidth = Math.min(360, window.innerWidth - 96);
-  const preferredLeft = gearLeft + 50;
-  const maxLeft = window.innerWidth - panelWidth - 12;
-  controlPanel.style.left = `${Math.min(preferredLeft, maxLeft)}px`;
-  controlPanel.style.right = "auto";
-  controlPanel.style.bottom = `${Math.max(20, bottomGap - 6)}px`;
 }
 
 function syncControlVisibility() {
   if (!controlGear || !ui.carousel) return;
-  const carouselVisible = !ui.carousel.classList.contains("is-hidden") && !carouselDismissed;
+  const carouselVisible = computeControlVisibility({
+    isCarouselHidden: ui.carousel.classList.contains("is-hidden"),
+    carouselDismissed
+  });
   controlGear.classList.toggle("is-hidden", !carouselVisible);
   if (!carouselVisible) setControlPanelOpen(false);
 }
 
 function setControlTab(tab) {
   controlActiveTab = tab;
-  document.querySelectorAll(".controlTab").forEach((btn) => {
-    btn.classList.toggle("is-active", btn.dataset.controlTab === tab);
-  });
-  document.querySelectorAll(".controlSection").forEach((el) => {
-    el.classList.toggle("is-active", el.dataset.controlSection === tab);
+  applyControlTabState({
+    tab,
+    tabButtons: document.querySelectorAll(".controlTab"),
+    sections: document.querySelectorAll(".controlSection")
   });
 }
 

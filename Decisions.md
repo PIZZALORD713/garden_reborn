@@ -187,3 +187,10 @@
   - `node --check` passes for `main.js` plus all extracted helper modules (`identifier-utils.js`, `scene-bootstrap.js`, `look-utils.js`, `anim-utils.js`, `carousel-utils.js`, `export-utils.js`, `search-utils.js`, `routing-utils.js`, `anim-select-utils.js`, `rig-utils.js`, `token-utils.js`).
   - Local browser smoke capture succeeds via `python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-020-smoke.png`.
 - **Scope guard:** Verification/docs only; no product behavior, UX, or architecture changes in runtime code paths.
+
+## 2026-02-18 — Slice 021 control panel utils module
+- **Decision:** Extract control-panel open/tab/anchor/visibility helper primitives into `control-panel-utils.js` and load it before `main.js`.
+- **Why:** Continues Phase 2 modular decomposition with a contained UI-control seam while preserving existing runtime behavior.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesControlPanelUtils` with in-file fallback implementations for each extracted helper.
+- **Validation evidence:** `node --check` passes for `main.js`, `control-panel-utils.js`, and all previously extracted helper modules.
+- **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing semantics, animation/export flows, or carousel mechanics.

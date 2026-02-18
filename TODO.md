@@ -27,4 +27,5 @@
 - [x] slice-020-post-extraction-verification-pass — run syntax + browser smoke checks after slices 015–019 extraction set to confirm command-bar/onboarding UI still renders without runtime errors.
 
 ## Next queue candidates
-- [ ] slice-021-control-panel-utils-module — extract control panel tab/anchor/visibility helpers into a dedicated utility module with `main.js` fallback wiring.
+- [x] slice-021-control-panel-utils-module — extract control panel tab/anchor/visibility helpers into `control-panel-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
+- [ ] slice-022-post-slice-021-verification-pass — run syntax + browser smoke checks after control-panel helper extraction to confirm UI control surfaces still render and interact without runtime errors.
