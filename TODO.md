@@ -46,4 +46,5 @@
 - [x] slice-033-core-flow-verification-pass — run full core-flow checks (token ID load, wallet/ENS search, animation play, `.glb` export, mobile sanity) after mascot helper extraction set.
 
 ## Upcoming
-- [ ] slice-034-app-state-boundary-plan — define/document current global mutable state boundaries and propose a no-behavior-change extraction seam for centralized app-state follow-up.
+- [x] slice-034-app-state-boundary-plan — document current global mutable state boundaries in `ARCHITECTURE.md` and define a no-behavior-change extraction seam (`app-state-store.js`) for centralized app-state follow-up.
+- [ ] slice-035-app-state-store-module — add `app-state-store.js` grouped state factory and wire `main.js` to consume it with local fallback, no behavior changes.

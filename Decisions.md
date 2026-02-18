@@ -290,3 +290,12 @@
   - `.glb` export path exercised via `Download .glb` control (`Export started — your .glb is downloading.`).
   - Mobile sanity verified by resizing active browser to `390x844` and capturing screenshot evidence (`slice-033-smoke-desktop.png` for desktop + browser mobile capture evidence).
 - **Scope guard:** Verification/docs only; no runtime behavior, UX, or architecture changes.
+
+## 2026-02-18 — Slice 034 app-state boundary plan
+- **Decision:** Document current mutable state boundaries and choose `app-state-store.js` as the next no-behavior-change extraction seam.
+- **Why:** The helper-module split is deep enough that state centralization is now the highest leverage step to reduce drift before any deeper refactor.
+- **Validation evidence:**
+  - Added `ARCHITECTURE.md` section `App state boundary map (slice-034)` enumerating current top-level mutable state buckets and ownership.
+  - Added extraction plan defining Phase A (`window.FrienemiesAppStateStore.createState()` shim) and Phase B follow-up bucket modules while preserving existing function call order.
+  - Updated `TODO.md` to mark slice-034 complete and queue slice-035 (`app-state-store-module`).
+- **Scope guard:** Docs/planning only; no runtime code, behavior, UX, or API changes.
