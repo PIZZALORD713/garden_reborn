@@ -54,4 +54,4 @@
 ## Next queue candidates
 - [x] slice-038-control-shell-state-helpers — extract control-shell state selectors/updaters from `main.js` into a dedicated helper module while preserving behavior through fallback wiring.
 - [x] slice-039-post-slice-038-verification-pass — run syntax + browser smoke checks after control-shell helper extraction to confirm command bar/carousel/settings/control panel surfaces still render without runtime errors.
-- [ ] slice-040-export-download-a11y-hardening — tighten GLB export feedback/fallback UX, suppress noisy normalScale export warnings with a single explanatory log note, and defocus active controls before setting menu/panel `aria-hidden` to prevent focused-descendant accessibility warnings.
+- [x] slice-040-export-download-a11y-hardening — tighten GLB export feedback/fallback UX, suppress noisy normalScale export warnings with a single explanatory log note, and defocus active controls before setting menu/panel `aria-hidden` to prevent focused-descendant accessibility warnings.

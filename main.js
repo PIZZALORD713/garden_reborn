@@ -565,6 +565,8 @@ const searchResults = document.getElementById("searchResults");
 const resetCollectionBtn = document.getElementById("resetCollectionBtn");
 const copyLinkBtn = document.getElementById("copyLinkBtn");
 const downloadGlbBtn = document.getElementById("downloadGlbBtn");
+const exportStatus = document.getElementById("exportStatus");
+const exportFallbackLink = document.getElementById("exportFallbackLink");
 const controlGear = document.getElementById("controlGear");
 const controlPanel = document.getElementById("controlPanel");
 const controlAnimSelect = document.getElementById("controlAnimSelect");
@@ -597,6 +599,48 @@ const ONBOARDING_SEEN_KEY = "frenemies.onboarding.seen.v2";
 const debugUi = {
   log: null
 };
+
+const exportUiState = {
+  lastBlobUrl: null,
+  lastFilename: "",
+  warningSuppressedCount: 0,
+  pending: false
+};
+
+function setExportStatus(message, tone = "") {
+  if (!exportStatus) return;
+  exportStatus.textContent = String(message || "");
+  exportStatus.classList.toggle("is-warn", tone === "warn");
+  exportStatus.classList.toggle("is-ok", tone === "ok");
+}
+
+function setExportFallbackLink(url, filename) {
+  if (!exportFallbackLink) return;
+  const hasLink = !!url;
+  exportFallbackLink.setAttribute("aria-hidden", hasLink ? "false" : "true");
+  exportFallbackLink.href = hasLink ? url : "#";
+  exportFallbackLink.download = hasLink && filename ? filename : "";
+}
+
+function releaseLastExportBlobUrl() {
+  if (!exportUiState.lastBlobUrl) return;
+  URL.revokeObjectURL(exportUiState.lastBlobUrl);
+  exportUiState.lastBlobUrl = null;
+}
+
+function defocusIfInside(container, fallbackTarget) {
+  if (!container) return;
+  const active = document.activeElement;
+  if (!active || !container.contains(active)) return;
+  if (typeof active.blur === "function") active.blur();
+  if (fallbackTarget && typeof fallbackTarget.focus === "function") {
+    fallbackTarget.focus({ preventScroll: true });
+  }
+}
+
+window.addEventListener("beforeunload", () => {
+  releaseLastExportBlobUrl();
+});
 
 const appStateStoreUtils = window.FrienemiesAppStateStore || {};
 const controlShellUtils = window.FrienemiesControlShellUtils || {};
@@ -1546,13 +1590,21 @@ function printRigBones() {
 // ----------------------------
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  let clickError = null;
+
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (err) {
+    clickError = err;
+  }
+
+  return { url, clickError };
 }
 
 function drawTextureToCanvas(ctx, tex, w, h) {
@@ -2398,9 +2450,23 @@ function downloadRigGlb() {
   const exporter = new THREE.GLTFExporter();
   const filename = `friendsies_${id || "export"}_rig_tpose.glb`;
 
+  exportUiState.pending = true;
+  setExportStatus(`Preparing ${filename}…`);
   logLine(`Exporting ${filename}…`, "dim");
 
   // (faceAnchor already detached only for cloning; it is not part of exportRoot)
+
+  exportUiState.warningSuppressedCount = 0;
+  const originalConsoleWarn = console.warn;
+  const suppressedWarningNeedle = "THREE.GLTFExporter: Normal scale components are different";
+  console.warn = function patchedExportWarn(...args) {
+    const first = String(args?.[0] || "");
+    if (first.includes(suppressedWarningNeedle)) {
+      exportUiState.warningSuppressedCount += 1;
+      return;
+    }
+    return originalConsoleWarn.apply(console, args);
+  };
 
   try {
     // NOTE: In Three r128 GLTFExporter.parse signature is:
@@ -2408,12 +2474,16 @@ function downloadRigGlb() {
     exporter.parse(
       exportRoot,
       (result) => {
+        console.warn = originalConsoleWarn;
+        exportUiState.pending = false;
+
         avatarGroup.scale.copy(oldScale);
         avatarGroup.position.copy(oldPos);
         avatarGroup.updateMatrixWorld(true);
 
         const glb = result instanceof ArrayBuffer ? result : null;
         if (!glb) {
+          setExportStatus("Export failed before download. Open Console for details.", "warn");
           logLine(
             `Export failed: expected ArrayBuffer (.glb) but got ${typeof result}.`,
             "warn"
@@ -2441,8 +2511,31 @@ function downloadRigGlb() {
           outGlb = glb;
         }
 
-        downloadBlob(new Blob([outGlb], { type: "model/gltf-binary" }), filename);
-        logLine(`✅ Download started: ${filename}`);
+        releaseLastExportBlobUrl();
+        const blob = new Blob([outGlb], { type: "model/gltf-binary" });
+        const { url, clickError } = downloadBlob(blob, filename);
+        exportUiState.lastBlobUrl = url;
+        exportUiState.lastFilename = filename;
+        setExportFallbackLink(url, filename);
+
+        if (clickError) {
+          setExportStatus(
+            "Download was blocked by browser. Use “Open saved export link” to save manually.",
+            "warn"
+          );
+          logLine(`⚠️ Download click failed: ${clickError?.message || clickError}`, "warn");
+        } else {
+          setExportStatus("Download started. If no file appears, use “Open saved export link”.", "ok");
+          logLine(`✅ Download started: ${filename}`);
+        }
+
+        if (exportUiState.warningSuppressedCount > 0) {
+          logLine(
+            `ℹ️ Export note: suppressed ${exportUiState.warningSuppressedCount} known GLTFExporter normalScale warnings (visual-only).`,
+            "dim"
+          );
+          exportUiState.warningSuppressedCount = 0;
+        }
       },
       {
         binary: true,
@@ -2452,11 +2545,15 @@ function downloadRigGlb() {
       }
     );
   } catch (err) {
+    console.warn = originalConsoleWarn;
+    exportUiState.pending = false;
+
     // restore on error
     avatarGroup.scale.copy(oldScale);
     avatarGroup.position.copy(oldPos);
     avatarGroup.updateMatrixWorld(true);
 
+    setExportStatus("Export failed before download. Open Console for details.", "warn");
     logLine(`Export error: ${err?.message || err}`, "warn");
     return false;
   }
@@ -3128,6 +3225,9 @@ function handleUserActivity() {
 
 function setMenuOpen(open) {
   menuOpen = !!open;
+  if (!menuOpen) {
+    defocusIfInside(ui.menu, ui.hamburger);
+  }
   if (ui.hamburger) {
     ui.hamburger.classList.toggle("is-open", menuOpen);
   }
@@ -3144,6 +3244,7 @@ function setActivePanel(name) {
   Object.entries(ui.panels).forEach(([key, el]) => {
     if (!el) return;
     const isOpen = key === activePanel;
+    if (!isOpen) defocusIfInside(el, ui.hamburger);
     el.classList.toggle("is-open", isOpen);
     el.setAttribute("aria-hidden", isOpen ? "false" : "true");
   });
@@ -3972,15 +4073,17 @@ copyLinkBtn?.addEventListener("click", () => {
 });
 
 downloadGlbBtn?.addEventListener("click", () => {
-  const started = downloadRigGlb();
-  if (downloadGlbBtn) {
-    downloadGlbBtn.textContent = started
-      ? "Export started — your .glb is downloading."
-      : "Export failed — check Console tab.";
-    setTimeout(() => {
-      if (downloadGlbBtn) downloadGlbBtn.textContent = "Download .glb";
-    }, 1800);
+  if (exportUiState.pending) {
+    setExportStatus("Export is already running…", "warn");
+    return;
   }
+
+  const started = downloadRigGlb();
+  if (!started) {
+    setExportStatus("Export did not start. Open Console for details.", "warn");
+    return;
+  }
+
   setMenuOpen(false);
 });
 

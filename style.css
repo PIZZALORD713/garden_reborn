@@ -647,6 +647,29 @@ canvas {
   font-weight: 600;
 }
 
+.sheetStatus {
+  min-height: 1.2em;
+  margin: 8px 2px 0;
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+.sheetStatus.is-warn {
+  color: #9e5a00;
+}
+
+.sheetStatus.is-ok {
+  color: #196127;
+}
+
+.exportFallbackLink {
+  margin-top: 8px;
+}
+
+.exportFallbackLink[aria-hidden="true"] {
+  display: none;
+}
+
 .fieldLabel {
   display: block;
   margin: 0 0 6px;

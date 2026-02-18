@@ -336,3 +336,13 @@
   - `Get-ChildItem -Name *.js | ForEach-Object { node --check $_ }` passes for all root runtime modules.
   - Browser smoke capture succeeds against `http://127.0.0.1:4173/index.html` via `npx playwright screenshot --device="Desktop Chrome" ... slice-039-smoke.png`.
 - **Scope guard:** Verification/docs only; no runtime behavior, UX, or architecture changes.
+
+## 2026-02-18 — Slice 040 export download + a11y hardening
+- **Decision:** Harden GLB export UX by adding persistent in-panel export status messaging plus a retained fallback blob link (`Open saved export link`) when browser download behavior is blocked/suppressed.
+- **Why:** User testing showed Chrome export flows can look like a no-op despite successful generation; explicit status + manual fallback prevents dead ends and lowers support ambiguity.
+- **Decision:** Defocus focused descendants before hiding menu/sheets with `aria-hidden="true"`.
+- **Why:** Prevents the accessibility warning where a focused button remains inside a hidden share panel.
+- **Decision:** Intercept repeated `THREE.GLTFExporter` normalScale warning spam during export and replace it with one explanatory in-app console note after completion.
+- **Why:** Warning is known/noisy in this pipeline and can confuse users into thinking export failed; reducing repetition preserves signal without changing model semantics.
+- **Validation evidence:** `node --check main.js` passes; browser smoke capture saved as `slice-040-export-hardening-smoke.png`.
+- **Scope guard:** Focused hardening only (export feedback/fallback + panel focus stability + warning-noise handling); no token search/load, animation, routing, or bottom-surface behavior changes.
