@@ -1348,6 +1348,8 @@ function pruneExportHelpers(exportRoot) {
 // Goal: Improve Windows 3D Viewer compatibility without breaking Blender.
 // This is intentionally conservative: if anything looks off, we fall back to raw GLB.
 // ----------------------------
+const exportUtils = window.FrienemiesExportUtils || {};
+
 function parseGlb(arrayBuffer) {
   const u8 = new Uint8Array(arrayBuffer);
   const dv = new DataView(arrayBuffer);
@@ -1846,6 +1848,19 @@ function optimizeGlbForWindows(rawGlb) {
 
   return { glb: buildGlb(json, binChunk), report };
 }
+
+if (exportUtils.parseGlb) parseGlb = exportUtils.parseGlb;
+if (exportUtils.buildGlb) buildGlb = exportUtils.buildGlb;
+if (exportUtils.deepEqualJson) deepEqualJson = exportUtils.deepEqualJson;
+if (exportUtils.dedupeSamplers) dedupeSamplers = exportUtils.dedupeSamplers;
+if (exportUtils.dedupeSkins) dedupeSkins = exportUtils.dedupeSkins;
+if (exportUtils.bakeAndRemoveKHRTextureTransform_FlipYOnly) {
+  bakeAndRemoveKHRTextureTransform_FlipYOnly = exportUtils.bakeAndRemoveKHRTextureTransform_FlipYOnly;
+}
+if (exportUtils.sanitizeMaterialsForWindows) {
+  sanitizeMaterialsForWindows = exportUtils.sanitizeMaterialsForWindows;
+}
+if (exportUtils.optimizeGlbForWindows) optimizeGlbForWindows = exportUtils.optimizeGlbForWindows;
 
 function downloadRigGlb() {
   if (!loadedParts?.length || !bodyRoot) {

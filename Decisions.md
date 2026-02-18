@@ -69,3 +69,10 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesCarouselUtils` with local fallback implementations for every extracted helper.
 - **Validation evidence:** `node --check` passes for `main.js`, `carousel-utils.js`, `anim-utils.js`, `look-utils.js`, `identifier-utils.js`, and `scene-bootstrap.js`.
 - **Scope guard:** Geometry/helper extraction + script wiring only; no changes to token loading/routing, drag/momentum behavior, animation playback, or export logic.
+
+## 2026-02-18 — Slice 013 export utils module
+- **Decision:** Extract GLB export post-processing helpers (`parseGlb`, dedupe/sanitize steps, and optimizer wrapper) into `export-utils.js` and load it before `main.js`.
+- **Why:** Continues Phase 2 decomposition on a cohesive export seam while preserving runtime behavior through fallback wiring.
+- **Implementation guard:** `main.js` retains existing helper implementations and overrides to `window.FrienemiesExportUtils` when available.
+- **Validation evidence:** `node --check` passes for `main.js`, `export-utils.js`, and all previously extracted utility modules.
+- **Scope guard:** Export helper extraction + script wiring only; no changes to token search/routing, carousel behavior, animation playback semantics, or UX flow.

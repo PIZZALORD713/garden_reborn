@@ -16,4 +16,5 @@
 - [x] slice-010-look-utils-module — extract look-control normalization/validation/tone mapping helpers into `look-utils.js` with `main.js` fallback wiring.
 - [x] slice-011-animation-utils-module — extract animation manifest normalization/select helpers into `anim-utils.js` with `main.js` fallback wiring.
 - [x] slice-012-carousel-utils-module — extract carousel geometry math/helpers into `carousel-utils.js` with `main.js` fallback wiring.
+- [x] slice-013-export-utils-module — extract GLB export optimization helpers into `export-utils.js` with `main.js` fallback wiring.
 - [ ] Human QA sweep for full core flows in network-enabled environment (token load by ID, wallet/ENS lookup, animation playback, `.glb` export).
