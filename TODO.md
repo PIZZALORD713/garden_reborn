@@ -60,3 +60,5 @@
 
 ## Next queue candidates
 - [x] slice-042-core-flow-verification-pass - run full core-flow checks (token ID load, wallet/ENS search, animation play, `.glb` export, mobile sanity) after slice-040 hardening set.
+
+- [x] slice-043-upstream-sync-merge - complete in-progress origin/main merge, resolve conflicts in index/main, and rerun syntax + smoke validation.

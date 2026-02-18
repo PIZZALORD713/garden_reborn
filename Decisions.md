@@ -373,3 +373,14 @@
   - Smoke evidence captured as `slice-042-smoke-desktop.png` and `slice-042-smoke-mobile.png`.
 - **Caveats:** Browser console showed only a benign `favicon.ico` 404 under local dev; no runtime flow errors observed.
 - **Scope guard:** Verification/docs/evidence only; no feature or runtime code-path changes.
+
+## 2026-02-18 — Slice 043 upstream sync merge
+- **Decision:** Complete the in-progress origin/main merge on the UI-upgrade branch and resolve only explicit conflicts.
+- **Why:** Unmerged conflicts in index.html + main.js blocked all further slice work.
+- **Conflict resolution:**
+  - index.html: preserve incoming Open Graph metadata and keep latest stylesheet cache bust (style.css?v=2026-02-18b).
+  - main.js: preserve reset behavior that clears /fren route state while keeping shared route builder (uildCollectionPath()).
+- **Validation evidence:**
+  - Get-ChildItem -File -Filter *.js | ForEach-Object { node --check .Name } passed.
+  - Static-host smoke succeeded after merge (python -m http.server 4182 + Playwright screenshot run).
+- **Scope guard:** Merge resolution + validation only; no new feature scope.
