@@ -676,6 +676,7 @@ window.addEventListener("beforeunload", () => {
 
 const appStateStoreUtils = window.FrienemiesAppStateStore || {};
 const controlShellUtils = window.FrienemiesControlShellUtils || {};
+const interactionShellUtils = window.FrienemiesInteractionShellUtils || {};
 const createAppState =
   appStateStoreUtils.createState ||
   (() => ({
@@ -2996,19 +2997,86 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
 const HAMBURGER_HIDE_MS = 1000;
 const CAROUSEL_HIDE_MS = 1000;
 const IDLE_TIMEOUT_MS = 10000;
-let hamburgerTimer = appState?.interactionShell?.hamburgerTimer ?? null;
-let carouselHideTimer = appState?.interactionShell?.carouselHideTimer ?? null;
-let idleTimer = appState?.interactionShell?.idleTimer ?? null;
-let idleActive = appState?.interactionShell?.idleActive ?? false;
-let activePanel = appState?.interactionShell?.activePanel ?? null;
-let menuOpen = appState?.interactionShell?.menuOpen ?? false;
-let orbitReleaseTimer = appState?.interactionShell?.orbitReleaseTimer ?? null;
-let carouselHovered = appState?.interactionShell?.carouselHovered ?? false;
-let carouselScrolling = appState?.interactionShell?.carouselScrolling ?? false;
-let hamburgerHovered = appState?.interactionShell?.hamburgerHovered ?? false;
-let carouselPinned = appState?.interactionShell?.carouselPinned ?? false;
-let carouselDismissed = appState?.interactionShell?.carouselDismissed ?? false;
-let toggleHideTimer = appState?.interactionShell?.toggleHideTimer ?? null;
+
+const getInitialInteractionShellState =
+  interactionShellUtils.getInitialInteractionShellState ||
+  function getInitialInteractionShellStateFallback({ appState, defaults = {} } = {}) {
+    const shell = appState?.interactionShell || {};
+    return {
+      hamburgerTimer: shell.hamburgerTimer ?? defaults.hamburgerTimer ?? null,
+      carouselHideTimer: shell.carouselHideTimer ?? defaults.carouselHideTimer ?? null,
+      idleTimer: shell.idleTimer ?? defaults.idleTimer ?? null,
+      idleActive: typeof shell.idleActive === "boolean" ? shell.idleActive : !!defaults.idleActive,
+      activePanel: shell.activePanel ?? defaults.activePanel ?? null,
+      menuOpen: typeof shell.menuOpen === "boolean" ? shell.menuOpen : !!defaults.menuOpen,
+      orbitReleaseTimer: shell.orbitReleaseTimer ?? defaults.orbitReleaseTimer ?? null,
+      carouselHovered:
+        typeof shell.carouselHovered === "boolean"
+          ? shell.carouselHovered
+          : !!defaults.carouselHovered,
+      carouselScrolling:
+        typeof shell.carouselScrolling === "boolean"
+          ? shell.carouselScrolling
+          : !!defaults.carouselScrolling,
+      hamburgerHovered:
+        typeof shell.hamburgerHovered === "boolean"
+          ? shell.hamburgerHovered
+          : !!defaults.hamburgerHovered,
+      carouselPinned:
+        typeof shell.carouselPinned === "boolean" ? shell.carouselPinned : !!defaults.carouselPinned,
+      carouselDismissed:
+        typeof shell.carouselDismissed === "boolean"
+          ? shell.carouselDismissed
+          : !!defaults.carouselDismissed,
+      toggleHideTimer: shell.toggleHideTimer ?? defaults.toggleHideTimer ?? null
+    };
+  };
+
+const updateInteractionShellFieldFromUtils =
+  interactionShellUtils.updateInteractionShellField ||
+  function updateInteractionShellFieldFallback({ key, value, appState }) {
+    if (appState?.interactionShell && typeof key === "string" && key in appState.interactionShell) {
+      appState.interactionShell[key] = value;
+    }
+    return value;
+  };
+
+function setInteractionShellField(key, value) {
+  return updateInteractionShellFieldFromUtils({ key, value, appState });
+}
+
+const initialInteractionShellState = getInitialInteractionShellState({
+  appState,
+  defaults: {
+    hamburgerTimer: null,
+    carouselHideTimer: null,
+    idleTimer: null,
+    idleActive: false,
+    activePanel: null,
+    menuOpen: false,
+    orbitReleaseTimer: null,
+    carouselHovered: false,
+    carouselScrolling: false,
+    hamburgerHovered: false,
+    carouselPinned: false,
+    carouselDismissed: false,
+    toggleHideTimer: null
+  }
+});
+
+let hamburgerTimer = initialInteractionShellState.hamburgerTimer;
+let carouselHideTimer = initialInteractionShellState.carouselHideTimer;
+let idleTimer = initialInteractionShellState.idleTimer;
+let idleActive = initialInteractionShellState.idleActive;
+let activePanel = initialInteractionShellState.activePanel;
+let menuOpen = initialInteractionShellState.menuOpen;
+let orbitReleaseTimer = initialInteractionShellState.orbitReleaseTimer;
+let carouselHovered = initialInteractionShellState.carouselHovered;
+let carouselScrolling = initialInteractionShellState.carouselScrolling;
+let hamburgerHovered = initialInteractionShellState.hamburgerHovered;
+let carouselPinned = initialInteractionShellState.carouselPinned;
+let carouselDismissed = initialInteractionShellState.carouselDismissed;
+let toggleHideTimer = initialInteractionShellState.toggleHideTimer;
 
 const getInitialCarouselQueryState =
   carouselQueryUtils.getInitialCarouselQueryState ||
@@ -3240,7 +3308,7 @@ function updateSpacerWidths(renderStart, renderEnd) {
 
 function onCarouselScroll() {
   if (suppressScrollHandler) return;
-  carouselScrolling = true;
+  carouselScrolling = setInteractionShellField("carouselScrolling", true);
   if (scrollRafPending) return;
   scrollRafPending = updateCarouselQueryFieldFromUtils({
     key: "scrollRafPending",
@@ -3285,9 +3353,9 @@ function showHamburger() {
   // Toggle follows hamburger visibility (unless carousel is pinned)
   showToggle(false);
   if (menuOpen || hamburgerHovered) return;
-  hamburgerTimer = setTimeout(() => {
+  hamburgerTimer = setInteractionShellField("hamburgerTimer", setTimeout(() => {
     ui.hamburger?.classList.add("is-hidden");
-  }, HAMBURGER_HIDE_MS);
+  }, HAMBURGER_HIDE_MS));
 }
 
 function showCarousel() {
@@ -3311,10 +3379,10 @@ function showCarousel() {
   }
 
   if (carouselHovered || isDragging || carouselScrolling) return;
-  carouselHideTimer = setTimeout(() => {
+  carouselHideTimer = setInteractionShellField("carouselHideTimer", setTimeout(() => {
     ui.carousel?.classList.add("is-hidden");
     syncControlVisibility();
-  }, CAROUSEL_HIDE_MS);
+  }, CAROUSEL_HIDE_MS));
 }
 
 function showToggle(persistent) {
@@ -3327,15 +3395,15 @@ function showToggle(persistent) {
   if (persistent || carouselPinned || carouselDismissed || carouselHovered) return;
   // Otherwise follow hamburger timing
   if (menuOpen || hamburgerHovered) return;
-  toggleHideTimer = setTimeout(() => {
+  toggleHideTimer = setInteractionShellField("toggleHideTimer", setTimeout(() => {
     ui.carouselToggle?.classList.add("is-hidden");
     syncControlVisibility();
-  }, HAMBURGER_HIDE_MS);
+  }, HAMBURGER_HIDE_MS));
 }
 
 function setCarouselPinned(pinned) {
-  carouselPinned = !!pinned;
-  carouselDismissed = !carouselPinned;
+  carouselPinned = setInteractionShellField("carouselPinned", !!pinned);
+  carouselDismissed = setInteractionShellField("carouselDismissed", !carouselPinned);
   syncControlVisibility();
   if (!ui.carouselToggle) return;
   ui.carouselToggle.classList.toggle("is-pinned", carouselPinned);
@@ -3361,14 +3429,14 @@ function setCarouselPinned(pinned) {
 
 function scheduleIdleTimer() {
   if (idleTimer) clearTimeout(idleTimer);
-  idleTimer = setTimeout(() => {
-    idleActive = true;
-  }, IDLE_TIMEOUT_MS);
+  idleTimer = setInteractionShellField("idleTimer", setTimeout(() => {
+    idleActive = setInteractionShellField("idleActive", true);
+  }, IDLE_TIMEOUT_MS));
 }
 
 function handleUserActivity() {
   if (idleActive) {
-    idleActive = false;
+    idleActive = setInteractionShellField("idleActive", false);
     showHamburger();
   }
   showCarousel();
@@ -3376,7 +3444,7 @@ function handleUserActivity() {
 }
 
 function setMenuOpen(open) {
-  menuOpen = !!open;
+  menuOpen = setInteractionShellField("menuOpen", !!open);
   if (!menuOpen) {
     defocusIfInside(ui.menu, ui.hamburger);
   }
@@ -3392,7 +3460,7 @@ function setMenuOpen(open) {
 }
 
 function setActivePanel(name) {
-  activePanel = name;
+  activePanel = setInteractionShellField("activePanel", name);
   Object.entries(ui.panels).forEach(([key, el]) => {
     if (!el) return;
     const isOpen = key === activePanel;
@@ -3939,7 +4007,7 @@ function bindCarouselListeners() {
   // activeCarouselIndex (visual highlight) without triggering a model load.
   const onScrollSettle = () => {
     if (suppressScrollHandler) return;
-    carouselScrolling = false;
+    carouselScrolling = setInteractionShellField("carouselScrolling", false);
     const scrollLeft = ui.carouselViewport.scrollLeft;
     const centerIndex = scrollLeftToIndex(scrollLeft);
     setActiveCarouselIndex(centerIndex, { forceLoad: true });
@@ -4199,11 +4267,11 @@ consoleModal?.addEventListener("click", (event) => {
 });
 
 ui.hamburger?.addEventListener("pointerenter", () => {
-  hamburgerHovered = true;
+  hamburgerHovered = setInteractionShellField("hamburgerHovered", true);
   showHamburger();
 });
 ui.hamburger?.addEventListener("pointerleave", () => {
-  hamburgerHovered = false;
+  hamburgerHovered = setInteractionShellField("hamburgerHovered", false);
   showHamburger();
 });
 
@@ -4212,21 +4280,21 @@ ui.carouselToggle?.addEventListener("click", () => {
 });
 
 ui.carousel?.addEventListener("pointerenter", () => {
-  carouselHovered = true;
+  carouselHovered = setInteractionShellField("carouselHovered", true);
   showCarousel();
   showToggle(false);
 });
 ui.carousel?.addEventListener("pointerleave", () => {
-  carouselHovered = false;
+  carouselHovered = setInteractionShellField("carouselHovered", false);
   showCarousel();
   showToggle(false);
 });
 
 controls?.addEventListener("end", () => {
   if (orbitReleaseTimer) clearTimeout(orbitReleaseTimer);
-  orbitReleaseTimer = setTimeout(() => {
+  orbitReleaseTimer = setInteractionShellField("orbitReleaseTimer", setTimeout(() => {
     showHamburger();
-  }, 250);
+  }, 250));
 });
 
 ui.menu?.addEventListener("click", (event) => {
