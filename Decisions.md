@@ -42,3 +42,9 @@
 - **Why:** Continues the Phase 2 modular split with another low-risk seam while keeping bootstrap behavior intact.
 - **Implementation guard:** `main.js` consumes `window.FrienemiesSceneBootstrap` with local fallback implementations to prevent runtime breaks if helper script fails to load.
 - **Scope guard:** Scene/bootstrap helper extraction + script wiring only; no changes to token search/load, routing, animation playback, carousel behavior, or export pipeline.
+
+## 2026-02-18 — Slice 009 core flow verification pass
+- **Decision:** Complete a post-slice smoke verification pass before starting the next architecture split.
+- **Why:** Confirms extracted helper modules did not break boot/runtime entry surfaces and keeps drift low.
+- **Validation evidence:** `node --check` passes for `main.js`, `identifier-utils.js`, and `scene-bootstrap.js`; local host load via `python -m http.server 4173` + `npx playwright screenshot` succeeds against `index.html` (command bar/onboarding present in captured UI).
+- **Scope guard:** Validation + docs only; no functional code-path changes to search/load/animation/export.
