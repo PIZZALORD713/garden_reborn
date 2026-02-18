@@ -50,7 +50,37 @@ const FRIENDSIES_CHAIN = "eth";
 // Token defaults
 // ----------------------------
 const DEFAULT_TOKEN_ID = 5;
+const FREN_DEFAULT_TOKEN_ID = 7499;
+const SAUCE_PRESET_TOKEN_ID = 8521;
+const FREN_TOKEN_MIN = 1;
+const FREN_TOKEN_MAX = 10000;
 const DEFAULT_TOKEN_IDS = Array.from({ length: 10000 }, (_, i) => i + 1);
+let frenRouteActive = false;
+
+// ----------------------------
+// /fren/<token> route parsing (centralized)
+// ----------------------------
+function parseFrenTokenFromUrl(pathname) {
+  if (pathname == null) pathname = window.location.pathname;
+  const match = pathname.match(/^\/fren\/(\d+)\/?$/);
+  if (!match) return null;
+  const num = Number(match[1]);
+  if (!Number.isInteger(num) || num < FREN_TOKEN_MIN || num > FREN_TOKEN_MAX) return null;
+  return num;
+}
+
+function parseFrenTokenFromUrlRaw(pathname) {
+  // Returns the raw numeric value even if out of range, for error messaging.
+  if (pathname == null) pathname = window.location.pathname;
+  const match = pathname.match(/^\/fren\/(\d+)\/?$/);
+  if (!match) return null;
+  return Number(match[1]);
+}
+
+function isFrenRoute(pathname) {
+  if (pathname == null) pathname = window.location.pathname;
+  return /^\/fren\//.test(pathname);
+}
 
 const MASCOT_CONFIG = {
   mascotTokenId: 8521,
@@ -2914,6 +2944,18 @@ async function loadFriendsies(id) {
 
 function loadToken(tokenId) {
   loadFriendsies(tokenId);
+
+  // Keep URL in sync when browsing tokens on a /fren/ route
+  if (frenRouteActive && tokenId != null) {
+    const id = Number(tokenId);
+    if (Number.isFinite(id) && id >= FREN_TOKEN_MIN && id <= FREN_TOKEN_MAX) {
+      const currentFren = parseFrenTokenFromUrl();
+      if (currentFren !== id) {
+        window.history.replaceState({ frenToken: id }, "", `/fren/${id}`);
+      }
+      updateFrenMeta(id);
+    }
+  }
 }
 
 // ----------------------------
@@ -3306,7 +3348,7 @@ function renderSearchMessage(message, options = {}) {
 function resetToFullCollection() {
   setCarouselTokenIds(DEFAULT_TOKEN_IDS);
   initCarousel(DEFAULT_TOKEN_ID);
-  window.history.pushState({}, "", buildCollectionPath());
+  frenRouteActive = false`r`n  updateFrenMeta(null);`r`n  window.history.pushState({}, "", buildCollectionPath());
   logLine("🔄 Reset to full collection");
   updateResetCollectionVisibility();
 }
@@ -3326,6 +3368,8 @@ async function navigateToWallet(owner) {
       });
       return;
     }
+    frenRouteActive = false;
+    updateFrenMeta(null);
     setCarouselTokenIds(walletData.tokenIds);
     initCarousel(walletData.tokenIds[0]);
     if (searchResults) searchResults.innerHTML = "";
@@ -4171,13 +4215,175 @@ window.addEventListener("unhandledrejection", (event) => {
 
 
 // ----------------------------
+// Dynamic SEO / OG meta helpers
+// ----------------------------
+function updateFrenMeta(tokenId) {
+  if (tokenId != null) {
+    document.title = `fRiENEMiES #${tokenId}`;
+    setMetaTag("og:title", `fRiENEMiES #${tokenId}`);
+    setMetaTag("og:image", `https://storage.googleapis.com/friendsies-rendered-97557c/${tokenId}/friendsie.jpg`);
+    setMetaTag("og:url", `${window.location.origin}/fren/${tokenId}`);
+    setMetaTag("og:description", `View fRiENEMiES token #${tokenId} in the studio.`);
+    setMetaTag("og:type", "website");
+  } else {
+    document.title = "fRiENEMiES Studio \u2014 View \u2022 Animate \u2022 Export";
+    removeMetaTag("og:title");
+    removeMetaTag("og:image");
+    removeMetaTag("og:url");
+    removeMetaTag("og:description");
+    removeMetaTag("og:type");
+  }
+}
+
+function setMetaTag(property, content) {
+  let el = document.querySelector(`meta[property="${property}"]`);
+  if (!el) {
+    el = document.createElement("meta");
+    el.setAttribute("property", property);
+    document.head.appendChild(el);
+  }
+  el.setAttribute("content", content);
+}
+
+function removeMetaTag(property) {
+  const el = document.querySelector(`meta[property="${property}"]`);
+  if (el) el.remove();
+}
+
+// ----------------------------
+// /fren/ route navigation (client-side, no full reload)
+// ----------------------------
+function navigateToFrenToken(tokenId, { replace = false } = {}) {
+  const id = Number(tokenId);
+  if (!Number.isFinite(id) || id < FREN_TOKEN_MIN || id > FREN_TOKEN_MAX) {
+    logLine(`⚠️ Invalid fren token: ${tokenId}, falling back to #${FREN_DEFAULT_TOKEN_ID}`, "warn");
+    navigateToFrenToken(FREN_DEFAULT_TOKEN_ID, { replace: true });
+    return;
+  }
+
+  frenRouteActive = true;
+  const path = `/fren/${id}`;
+  if (replace) {
+    window.history.replaceState({ frenToken: id }, "", path);
+  } else {
+    window.history.pushState({ frenToken: id }, "", path);
+  }
+  updateFrenMeta(id);
+
+  // Ensure full collection carousel is available
+  if (carouselTokenIds.length < DEFAULT_TOKEN_IDS.length) {
+    setCarouselTokenIds(DEFAULT_TOKEN_IDS);
+    initCarousel(id);
+  }
+
+  // Scroll carousel to this token and load
+  const index = carouselTokenIds.indexOf(id);
+  if (index >= 0) {
+    scrollToCarouselIndex(index);
+    setActiveCarouselIndex(index, { forceLoad: true });
+  } else {
+    // Token in range but not in carousel (shouldn't happen with full collection)
+    lastLoadedTokenId = id;
+    loadToken(id);
+  }
+}
+
+function handleFrenTokenFromMetadata(frenTokenId) {
+  // Called after metadata loads when a /fren/ deep-link was detected.
+  // frenTokenId is already validated to be in [1..10000].
+  const entry = getEntryById(frenTokenId);
+  if (!entry) {
+    logLine(`⚠️ Token #${frenTokenId} not found in metadata, falling back to #${FREN_DEFAULT_TOKEN_ID}`, "warn");
+    setStatus(`token #${frenTokenId} not found`);
+    navigateToFrenToken(FREN_DEFAULT_TOKEN_ID, { replace: true });
+    return;
+  }
+  // Load the token via existing pipeline
+  const index = carouselTokenIds.indexOf(frenTokenId);
+  if (index >= 0) {
+    scrollToCarouselIndex(index);
+    setActiveCarouselIndex(index, { forceLoad: true });
+  } else {
+    lastLoadedTokenId = frenTokenId;
+    loadToken(frenTokenId);
+  }
+}
+
+// popstate: handle back/forward between /fren/ routes
+window.addEventListener("popstate", (event) => {
+  const pathname = window.location.pathname;
+
+  // Check if navigating to a /fren/ route
+  const frenToken = parseFrenTokenFromUrl(pathname);
+  if (frenToken != null) {
+    frenRouteActive = true;
+    updateFrenMeta(frenToken);
+    if (allFriendsies) {
+      handleFrenTokenFromMetadata(frenToken);
+    } else {
+      pendingTokenId = frenToken;
+    }
+    return;
+  }
+
+  // Check for raw out-of-range fren route
+  if (isFrenRoute(pathname)) {
+    frenRouteActive = true;
+    const raw = parseFrenTokenFromUrlRaw(pathname);
+    logLine(`⚠️ Invalid fren token: ${raw}, falling back to #${FREN_DEFAULT_TOKEN_ID}`, "warn");
+    navigateToFrenToken(FREN_DEFAULT_TOKEN_ID, { replace: true });
+    return;
+  }
+
+  // Non-fren route (e.g. back to /)
+  frenRouteActive = false;
+  updateFrenMeta(null);
+
+  // Check for wallet/ENS owner
+  const owner = getWalletOwnerFromUrl();
+  if (owner) {
+    navigateToWallet(owner);
+    return;
+  }
+
+  // Default: show full collection
+  setCarouselTokenIds(DEFAULT_TOKEN_IDS);
+  initCarousel(DEFAULT_TOKEN_ID);
+});
+
+// ----------------------------
 // Boot sequence
 // ----------------------------
 (async function boot() {
-  const ownerFromUrl = getWalletOwnerFromUrl();
+  const frenTokenValid = parseFrenTokenFromUrl();
+  const frenTokenRaw = parseFrenTokenFromUrlRaw();
+  const ownerFromUrl = !isFrenRoute() ? getWalletOwnerFromUrl() : null;
   let carouselStartTokenId = DEFAULT_TOKEN_ID;
 
-  if (ownerFromUrl) {
+  if (frenTokenValid != null) {
+    // /fren/<valid_token> deep-link
+    frenRouteActive = true;
+    carouselStartTokenId = frenTokenValid;
+    updateFrenMeta(frenTokenValid);
+    setCarouselTokenIds(DEFAULT_TOKEN_IDS);
+    logLine(`🔗 Fren deep-link: #${frenTokenValid}`, "dim");
+  } else if (isFrenRoute() && frenTokenRaw != null) {
+    // /fren/<invalid_token> (out of range)
+    frenRouteActive = true;
+    logLine(`⚠️ Invalid fren token: ${frenTokenRaw}, falling back to #${FREN_DEFAULT_TOKEN_ID}`, "warn");
+    carouselStartTokenId = FREN_DEFAULT_TOKEN_ID;
+    updateFrenMeta(FREN_DEFAULT_TOKEN_ID);
+    window.history.replaceState({ frenToken: FREN_DEFAULT_TOKEN_ID }, "", `/fren/${FREN_DEFAULT_TOKEN_ID}`);
+    setCarouselTokenIds(DEFAULT_TOKEN_IDS);
+  } else if (isFrenRoute()) {
+    // /fren/ with non-numeric or missing token
+    frenRouteActive = true;
+    logLine(`⚠️ Invalid fren route, falling back to #${FREN_DEFAULT_TOKEN_ID}`, "warn");
+    carouselStartTokenId = FREN_DEFAULT_TOKEN_ID;
+    updateFrenMeta(FREN_DEFAULT_TOKEN_ID);
+    window.history.replaceState({ frenToken: FREN_DEFAULT_TOKEN_ID }, "", `/fren/${FREN_DEFAULT_TOKEN_ID}`);
+    setCarouselTokenIds(DEFAULT_TOKEN_IDS);
+  } else if (ownerFromUrl) {
     setStatus("fetching wallet tokens…");
     try {
       const walletData = await fetchWalletTokenIds(ownerFromUrl);
@@ -4212,7 +4418,12 @@ window.addEventListener("unhandledrejection", (event) => {
   syncControlVisibility();
   showHamburger();
   scheduleIdleTimer();
-  showOnboarding(false);
+  // Skip onboarding when landing on a /fren/ deep-link
+  if (!frenRouteActive) {
+    showOnboarding(false);
+  } else {
+    hideOnboarding(true);
+  }
 
   validateLookConfig(LOOK_CONTROLS, "LOOK_CONTROLS", { isDev: IS_DEV, logLine });
   validateLookConfig(
@@ -4235,7 +4446,14 @@ window.addEventListener("unhandledrejection", (event) => {
     .then((data) => {
       allFriendsies = data;
       setStatus("ready ✅");
-      if (pendingTokenId) {
+
+      if (frenRouteActive && frenTokenValid) {
+        // /fren/ deep-link: validate token exists in metadata and load
+        handleFrenTokenFromMetadata(frenTokenValid);
+      } else if (frenRouteActive) {
+        // Invalid fren route already fell back to FREN_DEFAULT_TOKEN_ID
+        handleFrenTokenFromMetadata(FREN_DEFAULT_TOKEN_ID);
+      } else if (pendingTokenId) {
         debounceTokenLoad(pendingTokenId);
       } else {
         // Load whatever token the carousel was initialized to (wallet deep-link uses first owned).
@@ -4305,5 +4523,7 @@ window.addEventListener("resize", () => {
     suppressScrollHandler = false;
   }
 });
+
+
 
 
