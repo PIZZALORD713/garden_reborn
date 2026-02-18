@@ -66,3 +66,7 @@
 
 ## Upcoming
 - [x] slice-045-post-slice-044-verification-pass - run syntax + browser smoke checks after carousel-query helper extraction to confirm carousel/search/load surfaces still render without runtime errors.
+- [x] slice-046-drag-physics-state-helpers - extract drag/momentum state initialization/update helpers into `drag-physics-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
+
+## Next queue candidates
+- [ ] slice-047-post-slice-046-verification-pass - run syntax + browser smoke checks after drag-physics helper extraction to confirm carousel drag/fling surfaces still render without runtime errors.
