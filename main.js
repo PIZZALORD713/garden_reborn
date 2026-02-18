@@ -98,6 +98,8 @@ const parseTokenIdInput =
     return tokenId;
   });
 
+const rigUtils = window.FrienemiesRigUtils || {};
+
 async function fetchWalletTokenIds(owner) {
   const params = new URLSearchParams({
     owner,
@@ -811,31 +813,39 @@ function findFirstSkinnedMesh(root) {
   return found;
 }
 
-function baseKey(name) {
-  let s = (name || "").toLowerCase();
-  s = s.replace(/^armature[|:]/g, "");
-  s = s.replace(/^mixamorig[:]?/g, "");
-  s = s.replace(/\s+/g, "");
-  s = s.replace(/[^a-z0-9]+/g, "");
-  s = s.replace(/end$/g, "");
-  return s;
-}
+const baseKey =
+  rigUtils.baseKey ||
+  ((name) => {
+    let s = (name || "").toLowerCase();
+    s = s.replace(/^armature[|:]/g, "");
+    s = s.replace(/^mixamorig[:]?/g, "");
+    s = s.replace(/\s+/g, "");
+    s = s.replace(/[^a-z0-9]+/g, "");
+    s = s.replace(/end$/g, "");
+    return s;
+  });
 
-function aliasKey(key) {
-  key = key.replace(/^spine0+(\d+)$/, "spine$1");
-  if (key === "pelvis" || key === "hip") return "hips";
-  return key;
-}
+const aliasKey =
+  rigUtils.aliasKey ||
+  ((key) => {
+    const normalized = String(key || "").toLowerCase();
+    const spineKey = normalized.replace(/^spine0+(\d+)$/, "spine$1");
+    if (spineKey === "pelvis" || spineKey === "hip") return "hips";
+    return spineKey;
+  });
 
-function keyForName(name) {
-  return aliasKey(baseKey(name));
-}
+const keyForName =
+  rigUtils.keyForName ||
+  ((name) => aliasKey(baseKey(name)));
 
-function getBodyBoneByKey(key) {
-  if (!bodySkeleton) return null;
-  const target = aliasKey(key.toLowerCase());
-  return bodySkeleton.bones.find((b) => keyForName(b.name) === target) || null;
-}
+const getBodyBoneByKey =
+  rigUtils.getBoneByKey
+    ? (key) => rigUtils.getBoneByKey(bodySkeleton, key)
+    : ((key) => {
+        if (!bodySkeleton) return null;
+        const target = aliasKey(String(key || "").toLowerCase());
+        return bodySkeleton.bones.find((b) => keyForName(b.name) === target) || null;
+      });
 
 function collectRigInfo() {
   hipsRawName = null;
@@ -894,11 +904,14 @@ function attachPartToBodySkeleton(partScene) {
 }
 
 // ---- rigid reparent fix ----
-function buildBodyBoneMap() {
-  const map = new Map();
-  for (const b of bodySkeleton?.bones || []) map.set(keyForName(b.name), b);
-  return map;
-}
+const buildBodyBoneMap =
+  rigUtils.buildBoneMap
+    ? () => rigUtils.buildBoneMap(bodySkeleton)
+    : (() => {
+        const map = new Map();
+        for (const b of bodySkeleton?.bones || []) map.set(keyForName(b.name), b);
+        return map;
+      });
 
 function findBoneAncestor(obj) {
   let p = obj.parent;

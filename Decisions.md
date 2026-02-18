@@ -165,3 +165,10 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesAnimSelectUtils` with in-file fallback implementations for both extracted helpers.
 - **Validation evidence:** `node --check` passes for `main.js`, `anim-select-utils.js`, and all previously extracted helper modules.
 - **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing semantics, carousel mechanics, animation playback behavior, or export pipeline.
+
+## 2026-02-18 — Slice 018 rig utils module
+- **Decision:** Extract rig bone-key normalization and lookup helpers into `rig-utils.js` and load it before `main.js`.
+- **Why:** Continues Phase 2 modularization on a contained avatar-rig seam (`baseKey`/`aliasKey`/`keyForName` + bone map lookups) without altering runtime behavior.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesRigUtils` (`baseKey`, `aliasKey`, `keyForName`, `getBoneByKey`, `buildBoneMap`) with local fallback implementations if helper script fails to load.
+- **Validation evidence:** `node --check` passes for `main.js`, `rig-utils.js`, and all previously extracted helper modules.
+- **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing, carousel behavior, animation playback, onboarding UX, or export pipeline.
