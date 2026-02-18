@@ -40,4 +40,7 @@
 - [x] slice-031-mascot-utils-module — extract mascot panel bootstrap/emote trigger helpers into `mascot-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
 
 ## Upcoming
-- [ ] slice-032-post-slice-031-verification-pass — run syntax + browser smoke checks after mascot helper extraction to confirm mascot/search/control surfaces still render without runtime errors.
+- [x] slice-032-post-slice-031-verification-pass — run syntax + browser smoke checks after mascot helper extraction to confirm mascot/search/control surfaces still render without runtime errors.
+
+## Next queue candidates
+- [ ] slice-033-core-flow-verification-pass — run full core-flow checks (token ID load, wallet/ENS search, animation play, `.glb` export, mobile sanity) after mascot helper extraction set.

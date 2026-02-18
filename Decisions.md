@@ -269,3 +269,11 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesMascotUtils.initMascotHook` with an in-file fallback implementation if helper loading fails.
 - **Validation evidence:** `node --check` passes for `main.js`, `mascot-utils.js`, and all previously extracted utility modules.
 - **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing semantics, carousel mechanics, animation playback behavior, or export pipeline.
+
+## 2026-02-18 — Slice 032 post-slice-031 verification pass
+- **Decision:** Run an immediate verification-only slice after mascot helper extraction before starting the next queue item.
+- **Why:** Keeps drift low by confirming mascot/search/control surfaces still boot cleanly after the latest module split.
+- **Validation evidence:**
+  - `node --check` passes for `main.js` and all extracted `*utils.js` modules, including `mascot-utils.js`.
+  - Browser smoke capture succeeds via `python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-032-smoke.png`.
+- **Scope guard:** Verification/docs only; no runtime behavior, UX, or architecture changes.
