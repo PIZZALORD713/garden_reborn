@@ -408,3 +408,12 @@
 - **Implementation guard:** `main.js` now initializes drag state through `getInitialDragPhysicsState(...)` and writes drag fields through `setDragPhysicsField(...)`, which keeps `appState.dragPhysics` synchronized.
 - **Validation evidence:** `Get-ChildItem -Filter *.js | ForEach-Object { node --check $_.Name }` passes for all root runtime modules, including `drag-physics-utils.js`.
 - **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing, animation playback, control-panel behavior, or export pipeline.
+
+## 2026-02-18 - Slice 047 post-slice-046 verification pass
+- **Decision:** Run a verification-only slice immediately after drag-physics helper extraction before starting the next state-helper seam.
+- **Why:** Confirms carousel drag/fling surfaces still boot/render cleanly after drag-state modularization and keeps queue drift low.
+- **Validation evidence:**
+  - `Get-ChildItem -Filter *.js | ForEach-Object { node --check $_.Name }` passes for all root runtime modules.
+  - Browser smoke check succeeds on local host (`python -m http.server 4175`) and screenshot evidence captured in `slice-047-smoke.png`.
+  - In-browser drag interaction exercised against token picker surface with no runtime console errors.
+- **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API, or architecture changes.
