@@ -224,3 +224,11 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesSearchUiUtils` for `renderSearchMessage` and `updateResetCollectionVisibility`, with in-file fallback implementations if helper loading fails.
 - **Validation evidence:** `node --check` passes for `main.js`, `search-ui-utils.js`, and all previously extracted utility modules.
 - **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing semantics, carousel mechanics, animation playback, or export pipeline.
+
+## 2026-02-18 — Slice 026 post-slice-025 verification pass
+- **Decision:** Run an immediate verification slice after search-ui helper extraction before taking the next modularization step.
+- **Why:** Keeps execution in-order and drift low by proving Find/search surfaces still boot cleanly after helper extraction.
+- **Validation evidence:**
+  - `node --check` passes for `main.js` and all extracted utility modules, including `search-ui-utils.js`.
+  - Browser smoke capture succeeds via `python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-026-smoke.png`.
+- **Scope guard:** Verification/docs only; no product behavior, UX, or architecture changes in runtime code paths.
