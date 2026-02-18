@@ -299,3 +299,10 @@
   - Added extraction plan defining Phase A (`window.FrienemiesAppStateStore.createState()` shim) and Phase B follow-up bucket modules while preserving existing function call order.
   - Updated `TODO.md` to mark slice-034 complete and queue slice-035 (`app-state-store-module`).
 - **Scope guard:** Docs/planning only; no runtime code, behavior, UX, or API changes.
+
+## 2026-02-18 — Slice 036 bottom-surface mode fix
+- **Decision:** Introduce a small bottom-surface state machine (carousel | settings) and route gear interactions through it so settings reuses the carousel container footprint instead of opening as a separate overlay.
+- **Why:** Eliminates bottom-surface overlap by ensuring only one bottom UI surface is visible at a time.
+- **Implementation notes:** Moved #controlPanel into #carouselRegion; added .carouselRegion.is-settings CSS mode to swap carousel/settings visibility; gear now toggles settings mode on/off via setControlPanelOpen() + setBottomSurfaceMode().
+- **Mascot safety:** Sauce-0x panel is now disabled by default behind ENABLE_MASCOT_PANEL = false and .mascotPanel.is-disabled, preserving reversible code paths while preventing bottom overlap.
+- **Scope guard:** No animation playback, lighting preset, or console-tab behavior changes; this slice is layout/state orchestration only.

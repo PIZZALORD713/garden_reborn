@@ -177,12 +177,21 @@ canvas {
   bottom: 8px;
 }
 
-.carouselRegion.is-dismissed .glassCarousel {
+.carouselRegion.is-dismissed .glassCarousel,
+.carouselRegion.is-dismissed .controlPanel {
   display: none;
 }
 
 .carouselRegion.is-dismissed .carouselToggle {
   margin-bottom: 0;
+}
+
+.carouselRegion.is-settings .glassCarousel {
+  display: none;
+}
+
+.carouselRegion.is-settings .controlPanel {
+  display: block;
 }
 
 /* Toggle button */
@@ -1253,12 +1262,8 @@ canvas {
 .controlGear:hover { background: rgba(255, 255, 255, 0.66); }
 .controlGear svg { width: 18px; height: 18px; }
 .controlPanel {
-  position: fixed;
-  right: 66px;
-  bottom: 98px;
-  width: min(360px, calc(100vw - 96px));
-  z-index: 16;
   pointer-events: auto;
+  width: 100%;
   border-radius: var(--radius-lg);
   border: 1px solid var(--glass-border);
   background: var(--glass-surface-strong);
@@ -1327,6 +1332,11 @@ canvas {
   z-index: 18;
   overflow: hidden;
 }
+
+.mascotPanel.is-disabled {
+  display: none;
+}
+
 .mascotToggle {
   width: 100%;
   border: 0;

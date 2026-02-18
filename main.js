@@ -587,12 +587,18 @@ const mascotPanel = document.getElementById("mascotPanel");
 const mascotToggle = document.getElementById("mascotToggle");
 const mascotBody = document.getElementById("mascotBody");
 const mascotSprite = document.getElementById("mascotSprite");
+const ENABLE_MASCOT_PANEL = false;
+const BOTTOM_SURFACE_MODE = Object.freeze({
+  CAROUSEL: "carousel",
+  SETTINGS: "settings"
+});
 const ONBOARDING_SEEN_KEY = "frenemies.onboarding.seen.v2";
 
 const debugUi = {
   log: null
 };
 
+let bottomSurfaceMode = BOTTOM_SURFACE_MODE.CAROUSEL;
 let controlPanelOpen = false;
 let controlActiveTab = "animations";
 const logBuffer = [];
@@ -682,8 +688,18 @@ const applyControlTabState =
     });
   };
 
+function setBottomSurfaceMode(mode) {
+  const nextMode = mode === BOTTOM_SURFACE_MODE.SETTINGS
+    ? BOTTOM_SURFACE_MODE.SETTINGS
+    : BOTTOM_SURFACE_MODE.CAROUSEL;
+  bottomSurfaceMode = nextMode;
+  ui.carouselRegion?.setAttribute("data-bottom-surface-mode", nextMode);
+  ui.carouselRegion?.classList.toggle("is-settings", nextMode === BOTTOM_SURFACE_MODE.SETTINGS);
+}
+
 function setControlPanelOpen(open) {
   controlPanelOpen = !!open;
+  setBottomSurfaceMode(controlPanelOpen ? BOTTOM_SURFACE_MODE.SETTINGS : BOTTOM_SURFACE_MODE.CAROUSEL);
   setControlPanelOpenState({
     open: controlPanelOpen,
     panel: controlPanel,
@@ -714,8 +730,9 @@ function syncControlVisibility() {
     isCarouselHidden: ui.carousel.classList.contains("is-hidden"),
     carouselDismissed
   });
-  controlGear.classList.toggle("is-hidden", !carouselVisible);
-  if (!carouselVisible) setControlPanelOpen(false);
+  const gearVisible = bottomSurfaceMode === BOTTOM_SURFACE_MODE.SETTINGS ? true : carouselVisible;
+  controlGear.classList.toggle("is-hidden", !gearVisible);
+  if (!gearVisible && controlPanelOpen) setControlPanelOpen(false);
 }
 
 function setControlTab(tab) {
@@ -2428,6 +2445,10 @@ const initMascotHookFromUtils =
   };
 
 function initMascotHook() {
+  mascotPanel?.classList.toggle("is-disabled", !ENABLE_MASCOT_PANEL);
+  mascotPanel?.setAttribute("aria-hidden", ENABLE_MASCOT_PANEL ? "false" : "true");
+  if (!ENABLE_MASCOT_PANEL) return;
+
   initMascotHookFromUtils({
     mascotToggle,
     mascotSprite,
@@ -3657,6 +3678,7 @@ ui.hamburger?.addEventListener("click", () => {
 
 controlGear?.addEventListener("click", () => {
   setControlPanelOpen(!controlPanelOpen);
+  syncControlVisibility();
 });
 
 document.querySelectorAll(".controlTab").forEach((btn) => {
@@ -3915,6 +3937,7 @@ window.addEventListener("unhandledrejection", (event) => {
   populateOnboardingAnimSelect();
   initMascotHook();
   setControlTab("animations");
+  setBottomSurfaceMode(BOTTOM_SURFACE_MODE.CAROUSEL);
   setControlPanelOpen(false);
   initCarousel(carouselStartTokenId);
   syncControlAnchor();

@@ -11,7 +11,7 @@
       name="description"
       content="Community-built studio for viewing, previewing animations, and exporting rig-ready .glb assets."
     />
-    <link rel="stylesheet" href="/style.css?v=2026-02-13a" />
+    <link rel="stylesheet" href="/style.css?v=2026-02-18b" />
   </head>
 
   <body>
@@ -31,7 +31,7 @@
         </div>
       </form>
 
-      <div id="carouselRegion" class="carouselRegion">
+      <div id="carouselRegion" class="carouselRegion" data-bottom-surface-mode="carousel">
         <button
           id="carouselToggle"
           class="carouselToggle is-hidden"
@@ -46,6 +46,29 @@
             <div id="spacerRight" class="carouselSpacer"></div>
           </div>
         </div>
+
+        <aside id="controlPanel" class="controlPanel" aria-hidden="true">
+          <div class="controlTabs">
+            <button class="controlTab is-active" type="button" data-control-tab="animations">Animations</button>
+            <button class="controlTab" type="button" data-control-tab="lighting">Lighting/Scene</button>
+            <button class="controlTab" type="button" data-control-tab="console">Console</button>
+          </div>
+          <div class="controlBody">
+            <section class="controlSection is-active" data-control-section="animations">
+              <label class="fieldLabel" for="controlAnimSelect">Animation</label>
+              <select id="controlAnimSelect" class="searchInput"></select>
+              <button id="controlPlayAnimBtn" class="sheetAction" type="button">Play selected animation</button>
+            </section>
+            <section class="controlSection" data-control-section="lighting">
+              <button class="sheetAction" data-control-preset="Cinematic" type="button">Cinematic</button>
+              <button class="sheetAction" data-control-preset="Punchy Studio" type="button">Punchy Studio</button>
+              <button class="sheetAction" data-control-preset="Soft Pastel" type="button">Soft Pastel</button>
+            </section>
+            <section class="controlSection" data-control-section="console">
+              <button id="openConsoleModal" class="sheetAction" type="button">Open console viewer</button>
+            </section>
+          </div>
+        </aside>
       </div>
 
       <button id="controlGear" class="controlGear" type="button" aria-label="Open controls" aria-expanded="false">
@@ -55,30 +78,9 @@
         </svg>
       </button>
 
-      <aside id="controlPanel" class="controlPanel" aria-hidden="true">
-        <div class="controlTabs">
-          <button class="controlTab is-active" type="button" data-control-tab="animations">Animations</button>
-          <button class="controlTab" type="button" data-control-tab="lighting">Lighting/Scene</button>
-          <button class="controlTab" type="button" data-control-tab="console">Console</button>
-        </div>
-        <div class="controlBody">
-          <section class="controlSection is-active" data-control-section="animations">
-            <label class="fieldLabel" for="controlAnimSelect">Animation</label>
-            <select id="controlAnimSelect" class="searchInput"></select>
-            <button id="controlPlayAnimBtn" class="sheetAction" type="button">Play selected animation</button>
-          </section>
-          <section class="controlSection" data-control-section="lighting">
-            <button class="sheetAction" data-control-preset="Cinematic" type="button">Cinematic</button>
-            <button class="sheetAction" data-control-preset="Punchy Studio" type="button">Punchy Studio</button>
-            <button class="sheetAction" data-control-preset="Soft Pastel" type="button">Soft Pastel</button>
-          </section>
-          <section class="controlSection" data-control-section="console">
-            <button id="openConsoleModal" class="sheetAction" type="button">Open console viewer</button>
-          </section>
-        </div>
-      </aside>
+      
 
-      <aside id="mascotPanel" class="mascotPanel" aria-hidden="false">
+      <aside id="mascotPanel" class="mascotPanel is-disabled" aria-hidden="true">
         <button id="mascotToggle" class="mascotToggle" type="button" aria-expanded="true">Sauce-0x</button>
         <div id="mascotBody" class="mascotBody">
           <img id="mascotSprite" class="mascotSprite" alt="Sauce-0x mascot" />
