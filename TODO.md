@@ -56,3 +56,7 @@
 - [x] slice-039-post-slice-038-verification-pass - run syntax + browser smoke checks after control-shell helper extraction to confirm command bar/carousel/settings/control panel surfaces still render without runtime errors.
 - [x] slice-040-export-download-a11y-hardening - tighten GLB export feedback/fallback UX, suppress noisy normalScale export warnings with a single explanatory log note, and defocus active controls before setting menu/panel `aria-hidden` to prevent focused-descendant accessibility warnings.
 - [x] slice-040a-proof-capture - capture local browser smoke evidence for export hardening in `slice-040-export-hardening-smoke.png`.
+- [x] slice-041-post-slice-040-verification-pass - run syntax + browser smoke checks after export/a11y hardening to confirm command bar/carousel/settings/export surfaces still render without runtime errors.
+
+## Next queue candidates
+- [ ] slice-042-core-flow-verification-pass - run full core-flow checks (token ID load, wallet/ENS search, animation play, `.glb` export, mobile sanity) after slice-040 hardening set.

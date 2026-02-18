@@ -347,3 +347,11 @@
 - **Validation evidence:** `node --check main.js` passes; browser smoke capture saved as `slice-040-export-hardening-smoke.png`.
 - **Execution note:** Smoke screenshot captured from local host `http://127.0.0.1:4180` using Playwright desktop Chrome profile.
 - **Scope guard:** Focused hardening only (export feedback/fallback + panel focus stability + warning-noise handling); no token search/load, animation, routing, or bottom-surface behavior changes.
+
+## 2026-02-18 — Slice 041 post-slice-040 verification pass
+- **Decision:** Run a verification-only slice immediately after export/a11y hardening before attempting another behavior change.
+- **Why:** Keeps drift low by validating that command bar, carousel/settings shell, and export affordances still boot/render cleanly after slice-040 changes.
+- **Validation evidence:**
+  - `Get-ChildItem -Name *.js | ForEach-Object { node --check $_ }` passes for all root runtime modules.
+  - Browser smoke capture succeeds against `http://127.0.0.1:4181/index.html` via `npx playwright screenshot --device="Desktop Chrome" ... slice-041-smoke.png`.
+- **Scope guard:** Verification/docs only; no runtime behavior, UX, API, or architecture changes.
