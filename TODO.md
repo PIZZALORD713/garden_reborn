@@ -65,4 +65,4 @@
 - [x] slice-044-carousel-query-state-helpers - extract carousel-query state initialization/update helpers into `carousel-query-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
 
 ## Upcoming
-- [ ] slice-045-post-slice-044-verification-pass - run syntax + browser smoke checks after carousel-query helper extraction to confirm carousel/search/load surfaces still render without runtime errors.
+- [x] slice-045-post-slice-044-verification-pass - run syntax + browser smoke checks after carousel-query helper extraction to confirm carousel/search/load surfaces still render without runtime errors.
