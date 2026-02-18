@@ -401,3 +401,10 @@
   - `node --check main.js` + `Get-ChildItem -Filter *.js | ForEach-Object { node --check $_.Name }` passed for all root runtime modules.
   - Static-host browser smoke succeeded (`python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-045-smoke.png`).
 - **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API, or architecture changes.
+
+## 2026-02-18 - Slice 046 drag-physics state helpers
+- **Decision:** Extract drag/momentum state initialization + field update helpers into `drag-physics-utils.js` and wire `main.js` to consume helper exports with local fallbacks.
+- **Why:** Continues app-state modularization by isolating pointer-drag state access paths from `main.js` without changing carousel fling behavior.
+- **Implementation guard:** `main.js` now initializes drag state through `getInitialDragPhysicsState(...)` and writes drag fields through `setDragPhysicsField(...)`, which keeps `appState.dragPhysics` synchronized.
+- **Validation evidence:** `Get-ChildItem -Filter *.js | ForEach-Object { node --check $_.Name }` passes for all root runtime modules, including `drag-physics-utils.js`.
+- **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing, animation playback, control-panel behavior, or export pipeline.

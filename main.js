@@ -115,6 +115,7 @@ const searchUtils = window.FrienemiesSearchUtils || {};
 const searchUiUtils = window.FrienemiesSearchUiUtils || {};
 const loadQueueUtils = window.FrienemiesLoadQueueUtils || {};
 const carouselQueryUtils = window.FrienemiesCarouselQueryUtils || {};
+const dragPhysicsUtils = window.FrienemiesDragPhysicsUtils || {};
 const mascotUtils = window.FrienemiesMascotUtils || {};
 const normalizeSearchInput =
   searchUtils.normalizeSearchInput ||
@@ -3078,15 +3079,57 @@ let carouselListenersBound = initialCarouselQueryState.carouselListenersBound;
 let scrollRafPending = initialCarouselQueryState.scrollRafPending;
 let suppressScrollHandler = initialCarouselQueryState.suppressScrollHandler;
 
+const getInitialDragPhysicsState =
+  dragPhysicsUtils.getInitialDragPhysicsState ||
+  function getInitialDragPhysicsStateFallback({ appState, defaults = {} }) {
+    return {
+      isDragging: appState?.dragPhysics?.isDragging ?? !!defaults.isDragging,
+      wasDragging: appState?.dragPhysics?.wasDragging ?? !!defaults.wasDragging,
+      dragStartX: appState?.dragPhysics?.dragStartX ?? Number(defaults.dragStartX || 0),
+      dragStartScroll: appState?.dragPhysics?.dragStartScroll ?? Number(defaults.dragStartScroll || 0),
+      dragVelocity: appState?.dragPhysics?.dragVelocity ?? Number(defaults.dragVelocity || 0),
+      dragLastX: appState?.dragPhysics?.dragLastX ?? Number(defaults.dragLastX || 0),
+      dragLastTime: appState?.dragPhysics?.dragLastTime ?? Number(defaults.dragLastTime || 0),
+      momentumRaf: appState?.dragPhysics?.momentumRaf ?? (defaults.momentumRaf ?? null)
+    };
+  };
+
+const updateDragPhysicsFieldFromUtils =
+  dragPhysicsUtils.updateDragPhysicsField ||
+  function updateDragPhysicsFieldFallback({ key, value, appState }) {
+    if (appState?.dragPhysics && typeof key === "string" && key in appState.dragPhysics) {
+      appState.dragPhysics[key] = value;
+    }
+    return value;
+  };
+
+function setDragPhysicsField(key, value) {
+  return updateDragPhysicsFieldFromUtils({ key, value, appState });
+}
+
 /* ── Pointer-drag momentum state ── */
-let isDragging = appState?.dragPhysics?.isDragging ?? false;
-let wasDragging = appState?.dragPhysics?.wasDragging ?? false;  // persists through the click event after drag ends
-let dragStartX = appState?.dragPhysics?.dragStartX ?? 0;
-let dragStartScroll = appState?.dragPhysics?.dragStartScroll ?? 0;
-let dragVelocity = appState?.dragPhysics?.dragVelocity ?? 0;
-let dragLastX = appState?.dragPhysics?.dragLastX ?? 0;
-let dragLastTime = appState?.dragPhysics?.dragLastTime ?? 0;
-let momentumRaf = appState?.dragPhysics?.momentumRaf ?? null;
+const initialDragPhysicsState = getInitialDragPhysicsState({
+  appState,
+  defaults: {
+    isDragging: false,
+    wasDragging: false,
+    dragStartX: 0,
+    dragStartScroll: 0,
+    dragVelocity: 0,
+    dragLastX: 0,
+    dragLastTime: 0,
+    momentumRaf: null
+  }
+});
+
+let isDragging = initialDragPhysicsState.isDragging;
+let wasDragging = initialDragPhysicsState.wasDragging;  // persists through the click event after drag ends
+let dragStartX = initialDragPhysicsState.dragStartX;
+let dragStartScroll = initialDragPhysicsState.dragStartScroll;
+let dragVelocity = initialDragPhysicsState.dragVelocity;
+let dragLastX = initialDragPhysicsState.dragLastX;
+let dragLastTime = initialDragPhysicsState.dragLastTime;
+let momentumRaf = initialDragPhysicsState.momentumRaf;
 const DRAG_THRESHOLD = 6;       // px - below this, treat as click
 const MOMENTUM_FRICTION = 0.94; // per-frame multiplier (lower = more friction)
 const MOMENTUM_MIN_VEL = 0.5;   // px/frame - stop momentum below this
@@ -3745,7 +3788,10 @@ function renderCarouselRange(centerIndex) {
 
 /* ── Pointer-drag with momentum (desktop fling) ── */
 function stopMomentum() {
-  if (momentumRaf) { cancelAnimationFrame(momentumRaf); momentumRaf = null; }
+  if (momentumRaf) {
+    cancelAnimationFrame(momentumRaf);
+    momentumRaf = setDragPhysicsField("momentumRaf", null);
+  }
 }
 
 function applyMomentum() {
@@ -3758,8 +3804,8 @@ function applyMomentum() {
     return;
   }
   vp.scrollLeft -= dragVelocity;
-  dragVelocity *= MOMENTUM_FRICTION;
-  momentumRaf = requestAnimationFrame(applyMomentum);
+  dragVelocity = setDragPhysicsField("dragVelocity", dragVelocity * MOMENTUM_FRICTION);
+  momentumRaf = setDragPhysicsField("momentumRaf", requestAnimationFrame(applyMomentum));
 }
 
 function onDragStart(e) {
@@ -3771,12 +3817,12 @@ function onDragStart(e) {
   if (!vp) return;
 
   stopMomentum();
-  isDragging = false; // hasn't moved past threshold yet
-  dragStartX = e.clientX;
-  dragStartScroll = vp.scrollLeft;
-  dragLastX = e.clientX;
-  dragLastTime = performance.now();
-  dragVelocity = 0;
+  isDragging = setDragPhysicsField("isDragging", false); // hasn't moved past threshold yet
+  dragStartX = setDragPhysicsField("dragStartX", e.clientX);
+  dragStartScroll = setDragPhysicsField("dragStartScroll", vp.scrollLeft);
+  dragLastX = setDragPhysicsField("dragLastX", e.clientX);
+  dragLastTime = setDragPhysicsField("dragLastTime", performance.now());
+  dragVelocity = setDragPhysicsField("dragVelocity", 0);
 
   // Disable snap during drag so it doesn't fight the user
   vp.style.scrollSnapType = "none";
@@ -3792,7 +3838,7 @@ function onDragMove(e) {
 
   // Once past threshold, commit to dragging (prevents accidental drags on click)
   if (!isDragging && Math.abs(dx) > DRAG_THRESHOLD) {
-    isDragging = true;
+    isDragging = setDragPhysicsField("isDragging", true);
   }
 
   if (!isDragging) return;
@@ -3803,10 +3849,10 @@ function onDragMove(e) {
   if (dt > 0) {
     // Exponential smoothing of velocity for stable fling
     const instantVel = (e.clientX - dragLastX) / dt * 16; // px per ~frame
-    dragVelocity = 0.7 * instantVel + 0.3 * dragVelocity;
+    dragVelocity = setDragPhysicsField("dragVelocity", 0.7 * instantVel + 0.3 * dragVelocity);
   }
-  dragLastX = e.clientX;
-  dragLastTime = now;
+  dragLastX = setDragPhysicsField("dragLastX", e.clientX);
+  dragLastTime = setDragPhysicsField("dragLastTime", now);
 
   // Move scroll position opposite to drag direction
   vp.scrollLeft = dragStartScroll - dx;
@@ -3820,12 +3866,12 @@ function onDragEnd(e) {
   if (!vp.hasPointerCapture(e.pointerId)) return;
   vp.releasePointerCapture(e.pointerId);
 
-  wasDragging = isDragging;
+  wasDragging = setDragPhysicsField("wasDragging", isDragging);
 
   if (isDragging) {
     // Fling: apply momentum if velocity is high enough
     if (Math.abs(dragVelocity) > MOMENTUM_MIN_VEL) {
-      momentumRaf = requestAnimationFrame(applyMomentum);
+      momentumRaf = setDragPhysicsField("momentumRaf", requestAnimationFrame(applyMomentum));
     } else {
       // Low velocity - just re-enable snap to settle
       vp.style.scrollSnapType = "";
@@ -3845,11 +3891,13 @@ function onDragEnd(e) {
     }
   }
 
-  isDragging = false;
+  isDragging = setDragPhysicsField("isDragging", false);
   showCarousel();
 
   // Clear wasDragging after the click event has had a chance to check it
-  requestAnimationFrame(() => { wasDragging = false; });
+  requestAnimationFrame(() => {
+    wasDragging = setDragPhysicsField("wasDragging", false);
+  });
 }
 
 function bindCarouselListeners() {
