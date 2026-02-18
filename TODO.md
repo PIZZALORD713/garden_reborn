@@ -17,4 +17,5 @@
 - [x] slice-011-animation-utils-module — extract animation manifest normalization/select helpers into `anim-utils.js` with `main.js` fallback wiring.
 - [x] slice-012-carousel-utils-module — extract carousel geometry math/helpers into `carousel-utils.js` with `main.js` fallback wiring.
 - [x] slice-013-export-utils-module — extract GLB export optimization helpers into `export-utils.js` with `main.js` fallback wiring.
-- [ ] Human QA sweep for full core flows in network-enabled environment (token load by ID, wallet/ENS lookup, animation playback, `.glb` export).
+- [ ] slice-014-human-qa-sweep — full core-flow QA in network-enabled environment (token load by ID, wallet/ENS lookup, animation playback, `.glb` export). Blocked on running API-backed dev server; static `python -m http.server` returns 404 for `/api/friendsiesTokens`.
+- [x] slice-014a-local-core-flow-smoke — local static-host smoke completed for token load by ID + animation play + `.glb` export trigger; wallet/ENS path confirmed blocked by missing local API route (expected in static host).

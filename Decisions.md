@@ -76,3 +76,14 @@
 - **Implementation guard:** `main.js` retains existing helper implementations and overrides to `window.FrienemiesExportUtils` when available.
 - **Validation evidence:** `node --check` passes for `main.js`, `export-utils.js`, and all previously extracted utility modules.
 - **Scope guard:** Export helper extraction + script wiring only; no changes to token search/routing, carousel behavior, animation playback semantics, or UX flow.
+
+## 2026-02-18 — Slice 014a local core-flow smoke pass (+ blocker evidence for 014)
+- **Decision:** Run the next-in-order QA sweep in local host mode and explicitly capture blocker evidence before attempting further slices.
+- **Why:** Keeps execution in-order and drift-low; proves which core flows are green locally vs blocked by environment.
+- **Validation evidence:**
+  - `node --check` passes for `main.js` + all extracted utility modules.
+  - Local app served at `http://127.0.0.1:4173/index.html`; command-bar token load for `8448` updates carousel context around `#8448`.
+  - Animation play path triggered through `#controlPlayAnimBtn` with no runtime exceptions.
+  - `.glb` export path triggered through `#downloadGlbBtn` (GLTFExporter warnings only; no app crash).
+  - Wallet/ENS lookup to `vitalik.eth` hits `GET /api/friendsiesTokens...` → `404` under static host (`python -m http.server`), so full network-enabled sweep remains blocked until API-backed dev runtime is used.
+- **Scope guard:** Validation/docs only; no product behavior changes.
