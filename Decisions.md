@@ -48,3 +48,10 @@
 - **Why:** Confirms extracted helper modules did not break boot/runtime entry surfaces and keeps drift low.
 - **Validation evidence:** `node --check` passes for `main.js`, `identifier-utils.js`, and `scene-bootstrap.js`; local host load via `python -m http.server 4173` + `npx playwright screenshot` succeeds against `index.html` (command bar/onboarding present in captured UI).
 - **Scope guard:** Validation + docs only; no functional code-path changes to search/load/animation/export.
+
+## 2026-02-18 — Slice 010 look utils module
+- **Decision:** Extract look-control helper primitives (tone mapping resolver + key normalization + config validation + canonical snapshot) into `look-utils.js` and load it before `main.js`.
+- **Why:** Continues Phase 2 decomposition by removing another cohesive utility cluster from the monolith while preserving runtime behavior via fallback wiring.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesLookUtils` but keeps local fallback implementations if helper script fails to load.
+- **Validation evidence:** `node --check` passes for `main.js`, `look-utils.js`, `identifier-utils.js`, and `scene-bootstrap.js`.
+- **Scope guard:** Utility extraction + script wiring only; no changes to token loading/routing, carousel behavior, animation playback, or export logic.

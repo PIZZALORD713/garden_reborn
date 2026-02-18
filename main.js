@@ -261,38 +261,43 @@ function isMobileLike() {
   }
   return false;
 }
-const LOOK_ALLOWED_KEYS = [
-  "toneMapping",
-  "toneMappingExposure",
-  "ambientIntensity",
-  "hemiIntensity",
-  "keyLightIntensity",
-  "rimLightIntensity",
-  "envIntensityMultiplier",
-  "emissiveIntensityMultiplier"
-];
-const LEGACY_LOOK_KEY_MAP = {
-  keyIntensity: "keyLightIntensity",
-  rimIntensity: "rimLightIntensity",
-  envMapIntensity: "envIntensityMultiplier",
-  emissiveIntensity: "emissiveIntensityMultiplier"
-};
+const lookUtils = window.FrienemiesLookUtils || {};
+const LOOK_ALLOWED_KEYS =
+  lookUtils.LOOK_ALLOWED_KEYS || [
+    "toneMapping",
+    "toneMappingExposure",
+    "ambientIntensity",
+    "hemiIntensity",
+    "keyLightIntensity",
+    "rimLightIntensity",
+    "envIntensityMultiplier",
+    "emissiveIntensityMultiplier"
+  ];
+const LEGACY_LOOK_KEY_MAP =
+  lookUtils.LEGACY_LOOK_KEY_MAP || {
+    keyIntensity: "keyLightIntensity",
+    rimIntensity: "rimLightIntensity",
+    envMapIntensity: "envIntensityMultiplier",
+    emissiveIntensity: "emissiveIntensityMultiplier"
+  };
 const IS_DEV =
   location.hostname === "localhost" ||
   location.hostname === "127.0.0.1" ||
   location.hostname.endsWith(".local") ||
   location.hostname === "";
 
-function resolveToneMapping(name) {
-  switch (String(name).toLowerCase()) {
-    case "reinhard":
-      return THREE.ReinhardToneMapping;
-    case "aces":
-    case "acesfilmic":
-    default:
-      return THREE.ACESFilmicToneMapping;
-  }
-}
+const resolveToneMapping =
+  lookUtils.resolveToneMapping ||
+  function resolveToneMappingFallback(name) {
+    switch (String(name).toLowerCase()) {
+      case "reinhard":
+        return THREE.ReinhardToneMapping;
+      case "aces":
+      case "acesfilmic":
+      default:
+        return THREE.ACESFilmicToneMapping;
+    }
+  };
 
 function registerMaterialDefaults(m) {
   if (!m) return;
@@ -311,59 +316,69 @@ function registerMaterialDefaults(m) {
   }
 }
 
-function normalizeLookControls() {
-  for (const [legacyKey, canonicalKey] of Object.entries(LEGACY_LOOK_KEY_MAP)) {
-    if (legacyKey in LOOK_CONTROLS) {
-      if (LOOK_CONTROLS[canonicalKey] === undefined) {
-        LOOK_CONTROLS[canonicalKey] = LOOK_CONTROLS[legacyKey];
+const normalizeLookControls =
+  lookUtils.normalizeLookControls ||
+  function normalizeLookControlsFallback(controls) {
+    const target = controls || LOOK_CONTROLS;
+    for (const [legacyKey, canonicalKey] of Object.entries(LEGACY_LOOK_KEY_MAP)) {
+      if (legacyKey in target) {
+        if (target[canonicalKey] === undefined) {
+          target[canonicalKey] = target[legacyKey];
+        }
+        delete target[legacyKey];
       }
-      delete LOOK_CONTROLS[legacyKey];
     }
-  }
 
-  if (LOOK_CONTROLS.keyLightIntensity === undefined) {
-    LOOK_CONTROLS.keyLightIntensity = 0.75;
-  }
-  if (LOOK_CONTROLS.rimLightIntensity === undefined) {
-    LOOK_CONTROLS.rimLightIntensity = 0.35;
-  }
-  if (LOOK_CONTROLS.envIntensityMultiplier === undefined) {
-    LOOK_CONTROLS.envIntensityMultiplier = 1.0;
-  }
-  if (LOOK_CONTROLS.emissiveIntensityMultiplier === undefined) {
-    LOOK_CONTROLS.emissiveIntensityMultiplier = 1.0;
-  }
-}
+    if (target.keyLightIntensity === undefined) {
+      target.keyLightIntensity = 0.75;
+    }
+    if (target.rimLightIntensity === undefined) {
+      target.rimLightIntensity = 0.35;
+    }
+    if (target.envIntensityMultiplier === undefined) {
+      target.envIntensityMultiplier = 1.0;
+    }
+    if (target.emissiveIntensityMultiplier === undefined) {
+      target.emissiveIntensityMultiplier = 1.0;
+    }
+  };
 
-function validateLookConfig(config, label) {
-  if (!IS_DEV || !config) return;
+const validateLookConfig =
+  lookUtils.validateLookConfig ||
+  function validateLookConfigFallback(config, label, options = {}) {
+    const isDev = options.isDev ?? IS_DEV;
+    if (!isDev || !config) return;
 
-  const keys = Object.keys(config);
-  const unknownKeys = keys.filter((key) => !LOOK_ALLOWED_KEYS.includes(key));
-  const legacyKeys = keys.filter((key) => key in LEGACY_LOOK_KEY_MAP);
-  const overlapping = legacyKeys
-    .filter((legacy) => keys.includes(LEGACY_LOOK_KEY_MAP[legacy]))
-    .map((legacy) => `${legacy} → ${LEGACY_LOOK_KEY_MAP[legacy]}`);
+    const keys = Object.keys(config);
+    const unknownKeys = keys.filter((key) => !LOOK_ALLOWED_KEYS.includes(key));
+    const legacyKeys = keys.filter((key) => key in LEGACY_LOOK_KEY_MAP);
+    const overlapping = legacyKeys
+      .filter((legacy) => keys.includes(LEGACY_LOOK_KEY_MAP[legacy]))
+      .map((legacy) => `${legacy} → ${LEGACY_LOOK_KEY_MAP[legacy]}`);
 
-  if (!unknownKeys.length && !legacyKeys.length) return;
+    if (!unknownKeys.length && !legacyKeys.length) return;
 
-  const warning = [
-    `[LookControls] ${label} has unsupported look keys.`,
-    unknownKeys.length ? `Unknown: ${unknownKeys.join(", ")}` : null,
-    legacyKeys.length ? `Legacy: ${legacyKeys.join(", ")}` : null,
-    overlapping.length ? `Overlapping: ${overlapping.join(", ")}` : null
-  ]
-    .filter(Boolean)
-    .join(" ");
+    const warning = [
+      `[LookControls] ${label} has unsupported look keys.`,
+      unknownKeys.length ? `Unknown: ${unknownKeys.join(", ")}` : null,
+      legacyKeys.length ? `Legacy: ${legacyKeys.join(", ")}` : null,
+      overlapping.length ? `Overlapping: ${overlapping.join(", ")}` : null
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-  console.warn(warning, { unknownKeys, legacyKeys, overlapping });
-  if (typeof logLine === "function") {
-    logLine(warning, "warn");
-  }
-}
+    console.warn(warning, { unknownKeys, legacyKeys, overlapping });
+    const reporter = options.logLine || logLine;
+    if (typeof reporter === "function") {
+      reporter(warning, "warn");
+    }
+  };
 
 function getCanonicalLookSnapshot() {
-  normalizeLookControls();
+  if (lookUtils.getCanonicalLookSnapshot) {
+    return lookUtils.getCanonicalLookSnapshot(LOOK_CONTROLS);
+  }
+  normalizeLookControls(LOOK_CONTROLS);
   const snapshot = {};
   for (const key of LOOK_ALLOWED_KEYS) {
     if (key in LOOK_CONTROLS) {
@@ -400,7 +415,7 @@ function applyLookToMaterials(root) {
 }
 
 function applyLookControls() {
-  normalizeLookControls();
+  normalizeLookControls(LOOK_CONTROLS);
   renderer.toneMapping = resolveToneMapping(LOOK_CONTROLS.toneMapping);
   renderer.toneMappingExposure = LOOK_CONTROLS.toneMappingExposure;
 
@@ -416,7 +431,7 @@ function applyLookPreset(name) {
   const preset = LOOK_PRESETS[name];
   if (!preset) return;
   Object.assign(LOOK_CONTROLS, preset);
-  normalizeLookControls();
+  normalizeLookControls(LOOK_CONTROLS);
   applyLookControls();
   syncLookSliders();
   const msg = `🎨 Look preset applied: ${name}`;
@@ -613,7 +628,7 @@ function syncLookSliders() {
 
 function updateLookControl(key, value) {
   LOOK_CONTROLS[key] = value;
-  normalizeLookControls();
+  normalizeLookControls(LOOK_CONTROLS);
   applyLookControls();
   syncLookSliders();
 }
@@ -3576,10 +3591,11 @@ window.addEventListener("unhandledrejection", (event) => {
   scheduleIdleTimer();
   showOnboarding(false);
 
-  validateLookConfig(LOOK_CONTROLS, "LOOK_CONTROLS");
+  validateLookConfig(LOOK_CONTROLS, "LOOK_CONTROLS", { isDev: IS_DEV, logLine });
   validateLookConfig(
     LOOK_PRESETS[DEFAULT_LOOK_PRESET],
-    `Preset: ${DEFAULT_LOOK_PRESET}`
+    `Preset: ${DEFAULT_LOOK_PRESET}`,
+    { isDev: IS_DEV, logLine }
   );
   setStatus("loading pano/env…");
 
