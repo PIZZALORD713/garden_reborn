@@ -2630,6 +2630,47 @@ function updateResetCollectionVisibility() {
   resetCollectionBtn.setAttribute("aria-hidden", isFiltered ? "false" : "true");
 }
 
+function renderSearchMessage(message, { tone = "info", showReset = false, hint = "" } = {}) {
+  if (!searchResults) return;
+
+  searchResults.innerHTML = "";
+
+  const notice = document.createElement("div");
+  notice.className = `searchNotice searchNotice--${tone}`;
+  notice.setAttribute("role", "status");
+  notice.setAttribute("aria-live", "polite");
+
+  const msgEl = document.createElement("p");
+  msgEl.className = "searchNoticeMessage";
+  msgEl.textContent = String(message || "");
+  notice.appendChild(msgEl);
+
+  if (tone === "loading") {
+    const shimmer = document.createElement("div");
+    shimmer.className = "searchNoticeShimmer";
+    shimmer.setAttribute("aria-hidden", "true");
+    notice.appendChild(shimmer);
+  }
+
+  if (hint) {
+    const hintEl = document.createElement("p");
+    hintEl.className = "searchNoticeHint";
+    hintEl.textContent = String(hint);
+    notice.appendChild(hintEl);
+  }
+
+  if (showReset) {
+    const actionBtn = document.createElement("button");
+    actionBtn.className = "searchNoticeAction";
+    actionBtn.type = "button";
+    actionBtn.dataset.searchAction = "reset-collection";
+    actionBtn.textContent = "View full collection";
+    notice.appendChild(actionBtn);
+  }
+
+  searchResults.appendChild(notice);
+}
+
 function resetToFullCollection() {
   setCarouselTokenIds(DEFAULT_TOKEN_IDS);
   initCarousel(DEFAULT_TOKEN_ID);
@@ -2639,25 +2680,33 @@ function resetToFullCollection() {
 }
 
 async function navigateToWallet(owner) {
-  if (searchResults) searchResults.textContent = "Looking up tokens…";
+  renderSearchMessage("Looking up tokens…", {
+    tone: "loading",
+    hint: "Checking this wallet address or ENS name now."
+  });
   try {
     const walletData = await fetchWalletTokenIds(owner);
     if (!walletData.tokenIds.length) {
-      if (searchResults) {
-        searchResults.textContent = "No fRiENDSiES tokens found for this wallet address or ENS name yet.";
-      }
+      renderSearchMessage("No fRiENDSiES tokens found for this wallet address or ENS name yet.", {
+        tone: "warn",
+        showReset: true,
+        hint: "Try another wallet/ENS or jump to a token ID like 8448."
+      });
       return;
     }
     setCarouselTokenIds(walletData.tokenIds);
     initCarousel(walletData.tokenIds[0]);
+    if (searchResults) searchResults.innerHTML = "";
     const slug = walletData.ownerInput || owner;
     window.history.pushState({}, "", `/${encodeURIComponent(slug)}`);
     setMenuOpen(false);
     logLine(`🔍 Search: loaded ${walletData.tokenIds.length} tokens for ${slug}`);
   } catch (err) {
-    if (searchResults) {
-      searchResults.textContent = `Lookup failed: ${err?.message || "please try again"}`;
-    }
+    renderSearchMessage(`Lookup failed: ${err?.message || "please try again"}`, {
+      tone: "warn",
+      showReset: true,
+      hint: "Try again in a few seconds, or use a token ID directly."
+    });
   } finally {
     updateResetCollectionVisibility();
   }
@@ -2675,9 +2724,12 @@ async function handleSearch(query) {
     } else {
       // Token not in current carousel set (e.g. wallet filter active)
       const isFiltered = carouselTokenIds.length < DEFAULT_TOKEN_IDS.length;
-      if (isFiltered && searchResults) {
-        searchResults.textContent =
-          `Token #${asNum} is not in this wallet. Showing full collection.`;
+      if (isFiltered) {
+        renderSearchMessage(`Token #${asNum} is not in this wallet filter. Showing full collection.`, {
+          tone: "info",
+          showReset: true,
+          hint: "You can still load it from the full 1-10000 set."
+        });
       }
       resetToFullCollection();
       const fullIndex = carouselTokenIds.indexOf(asNum);
@@ -2703,10 +2755,11 @@ async function handleSearch(query) {
     return;
   }
 
-  if (searchResults) {
-    searchResults.textContent =
-      "Enter a valid token ID, wallet address, or ENS name.";
-  }
+  renderSearchMessage("Enter a valid token ID, wallet address, or ENS name.", {
+    tone: "warn",
+    showReset: true,
+    hint: "Examples: 8448, 0xabc...123, or pizzalord.eth"
+  });
 }
 
 function debounceTokenLoad(tokenId, { force = false } = {}) {
@@ -3023,6 +3076,14 @@ function bindCarouselListeners() {
   ui.slides.addEventListener("click", (event) => {
     // If this click was the end of a drag gesture, ignore it
     if (wasDragging || isDragging) return;
+
+    const carouselAction = event.target.closest("[data-carousel-action]");
+    if (carouselAction?.dataset.carouselAction === "reset-collection") {
+      event.preventDefault();
+      resetToFullCollection();
+      return;
+    }
+
     const slide = event.target.closest(".tokenSlide");
     if (!slide || !ui.slides.contains(slide)) return;
     const index = Number(slide.dataset.index || 0);
@@ -3165,16 +3226,31 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
 
   if (carouselTokenIds.length === 0) {
     const li = document.createElement("li");
-    li.className = "tokenSlide";
+    li.className = "tokenSlide tokenSlide--empty";
     li.dataset.index = "0";
     ui.slides.dataset.renderStart = "0";
     ui.slides.dataset.renderEnd = "0";
 
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "tokenCard";
-    card.textContent = "No tokens";
-    card.disabled = true;
+    const card = document.createElement("div");
+    card.className = "tokenCard tokenCard--empty";
+
+    const title = document.createElement("p");
+    title.className = "tokenEmptyTitle";
+    title.textContent = "No tokens in this filter";
+
+    const hint = document.createElement("p");
+    hint.className = "tokenEmptyHint";
+    hint.textContent = "Try another wallet/ENS or return to the full collection.";
+
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "tokenEmptyAction";
+    action.dataset.carouselAction = "reset-collection";
+    action.textContent = "View full collection";
+
+    card.appendChild(title);
+    card.appendChild(hint);
+    card.appendChild(action);
     li.appendChild(card);
     ui.slides.appendChild(li);
     updateSpacerWidths(0, 0);
@@ -3320,6 +3396,14 @@ searchInput?.addEventListener("keydown", (event) => {
 
 resetCollectionBtn?.addEventListener("click", () => {
   resetToFullCollection();
+  setMenuOpen(false);
+});
+
+searchResults?.addEventListener("click", (event) => {
+  const action = event.target.closest("[data-search-action]");
+  if (action?.dataset.searchAction !== "reset-collection") return;
+  resetToFullCollection();
+  searchResults.innerHTML = "";
   setMenuOpen(false);
 });
 
