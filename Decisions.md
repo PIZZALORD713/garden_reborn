@@ -434,3 +434,12 @@
   - `Get-ChildItem -File -Filter *.js | ForEach-Object { node --check $_.Name }` passes for all root runtime modules.
   - Static-host browser smoke succeeded (`python -m http.server 4177` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4177/index.html slice-049-smoke.png`).
 - **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API, or architecture changes.
+
+## 2026-02-18 - Slice 050 avatar-runtime state helpers
+- **Decision:** Extract avatar runtime state initialization/update helpers into `avatar-runtime-utils.js` and wire `main.js` to consume helper exports with local fallbacks.
+- **Why:** Continues app-state modularization by isolating avatar-load/playback state access paths from `main.js` while preserving runtime behavior.
+- **Implementation guard:** `main.js` now initializes avatar runtime state via `getInitialAvatarRuntimeState(...)` and routes avatar runtime field writes (`allFriendsies`, `currentLoadId`, `loadedParts*`, `body*`, `mixer/currentAction`, face/rig fields) through `setAvatarRuntimeField(...)`, which synchronizes `appState.avatarRuntime`.
+- **Validation evidence:**
+  - `Get-ChildItem -File -Filter *.js | ForEach-Object { node --check $_.Name }` passed for all root runtime modules, including `avatar-runtime-utils.js`.
+  - Static-host browser smoke succeeded (`python -m http.server 4178` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4178/index.html slice-050-smoke.png`).
+- **Scope guard:** Helper extraction + script wiring + validation only; no changes to token routing semantics, wallet/ENS lookup behavior, animation selection semantics, or export pipeline logic.

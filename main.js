@@ -116,6 +116,7 @@ const searchUiUtils = window.FrienemiesSearchUiUtils || {};
 const loadQueueUtils = window.FrienemiesLoadQueueUtils || {};
 const carouselQueryUtils = window.FrienemiesCarouselQueryUtils || {};
 const dragPhysicsUtils = window.FrienemiesDragPhysicsUtils || {};
+const avatarRuntimeUtils = window.FrienemiesAvatarRuntimeUtils || {};
 const mascotUtils = window.FrienemiesMascotUtils || {};
 const normalizeSearchInput =
   searchUtils.normalizeSearchInput ||
@@ -1195,26 +1196,103 @@ syncLookSliders();
 // ----------------------------
 const clock = new THREE.Clock();
 
-let allFriendsies = appState?.avatarRuntime?.allFriendsies ?? null;
-let currentLoadId = appState?.avatarRuntime?.currentLoadId ?? 0;
+const getInitialAvatarRuntimeState =
+  avatarRuntimeUtils.getInitialAvatarRuntimeState ||
+  function getInitialAvatarRuntimeStateFallback({ appState, defaults = {} } = {}) {
+    const avatarRuntime = appState?.avatarRuntime || {};
+    return {
+      allFriendsies: avatarRuntime.allFriendsies ?? defaults.allFriendsies ?? null,
+      currentLoadId:
+        Number.isFinite(avatarRuntime.currentLoadId)
+          ? avatarRuntime.currentLoadId
+          : Number(defaults.currentLoadId || 0),
+      loadedParts: Array.isArray(avatarRuntime.loadedParts)
+        ? avatarRuntime.loadedParts
+        : Array.isArray(defaults.loadedParts)
+          ? defaults.loadedParts
+          : [],
+      loadedPartsMeta: Array.isArray(avatarRuntime.loadedPartsMeta)
+        ? avatarRuntime.loadedPartsMeta
+        : Array.isArray(defaults.loadedPartsMeta)
+          ? defaults.loadedPartsMeta
+          : [],
+      lastTraits: avatarRuntime.lastTraits ?? defaults.lastTraits ?? null,
+      bodyRoot: avatarRuntime.bodyRoot ?? defaults.bodyRoot ?? null,
+      bodySkeleton: avatarRuntime.bodySkeleton ?? defaults.bodySkeleton ?? null,
+      bodySkinned: avatarRuntime.bodySkinned ?? defaults.bodySkinned ?? null,
+      mixer: avatarRuntime.mixer ?? defaults.mixer ?? null,
+      currentAction: avatarRuntime.currentAction ?? defaults.currentAction ?? null,
+      hipsRawName: avatarRuntime.hipsRawName ?? defaults.hipsRawName ?? null,
+      restPosByBone:
+        avatarRuntime.restPosByBone instanceof Map
+          ? avatarRuntime.restPosByBone
+          : defaults.restPosByBone instanceof Map
+            ? defaults.restPosByBone
+            : new Map(),
+      faceOverlayMeshes: Array.isArray(avatarRuntime.faceOverlayMeshes)
+        ? avatarRuntime.faceOverlayMeshes
+        : Array.isArray(defaults.faceOverlayMeshes)
+          ? defaults.faceOverlayMeshes
+          : [],
+      faceAnchor: avatarRuntime.faceAnchor ?? defaults.faceAnchor ?? null,
+      lastFaceTexture: avatarRuntime.lastFaceTexture ?? defaults.lastFaceTexture ?? null
+    };
+  };
 
-let loadedParts = appState?.avatarRuntime?.loadedParts ?? [];
-let loadedPartsMeta = appState?.avatarRuntime?.loadedPartsMeta ?? []; // parallel array of { trait_type, value }
-let lastTraits = appState?.avatarRuntime?.lastTraits ?? null;
+const updateAvatarRuntimeField =
+  avatarRuntimeUtils.updateAvatarRuntimeField ||
+  function updateAvatarRuntimeFieldFallback({ appState, key, value }) {
+    if (appState?.avatarRuntime && key && key in appState.avatarRuntime) {
+      appState.avatarRuntime[key] = value;
+    }
+    return value;
+  };
 
-let bodyRoot = appState?.avatarRuntime?.bodyRoot ?? null;
-let bodySkeleton = appState?.avatarRuntime?.bodySkeleton ?? null;
-let bodySkinned = appState?.avatarRuntime?.bodySkinned ?? null;
+function setAvatarRuntimeField(key, value) {
+  return updateAvatarRuntimeField({ appState, key, value });
+}
 
-let mixer = appState?.avatarRuntime?.mixer ?? null;
-let currentAction = appState?.avatarRuntime?.currentAction ?? null;
+const initialAvatarRuntimeState = getInitialAvatarRuntimeState({
+  appState,
+  defaults: {
+    allFriendsies: null,
+    currentLoadId: 0,
+    loadedParts: [],
+    loadedPartsMeta: [],
+    lastTraits: null,
+    bodyRoot: null,
+    bodySkeleton: null,
+    bodySkinned: null,
+    mixer: null,
+    currentAction: null,
+    hipsRawName: null,
+    restPosByBone: new Map(),
+    faceOverlayMeshes: [],
+    faceAnchor: null,
+    lastFaceTexture: null
+  }
+});
 
-let hipsRawName = appState?.avatarRuntime?.hipsRawName ?? null;
-let restPosByBone = appState?.avatarRuntime?.restPosByBone ?? new Map();
+let allFriendsies = initialAvatarRuntimeState.allFriendsies;
+let currentLoadId = initialAvatarRuntimeState.currentLoadId;
 
-let faceOverlayMeshes = appState?.avatarRuntime?.faceOverlayMeshes ?? [];
-let faceAnchor = appState?.avatarRuntime?.faceAnchor ?? null;
-let lastFaceTexture = appState?.avatarRuntime?.lastFaceTexture ?? null;
+let loadedParts = initialAvatarRuntimeState.loadedParts;
+let loadedPartsMeta = initialAvatarRuntimeState.loadedPartsMeta; // parallel array of { trait_type, value }
+let lastTraits = initialAvatarRuntimeState.lastTraits;
+
+let bodyRoot = initialAvatarRuntimeState.bodyRoot;
+let bodySkeleton = initialAvatarRuntimeState.bodySkeleton;
+let bodySkinned = initialAvatarRuntimeState.bodySkinned;
+
+let mixer = initialAvatarRuntimeState.mixer;
+let currentAction = initialAvatarRuntimeState.currentAction;
+
+let hipsRawName = initialAvatarRuntimeState.hipsRawName;
+let restPosByBone = initialAvatarRuntimeState.restPosByBone;
+
+let faceOverlayMeshes = initialAvatarRuntimeState.faceOverlayMeshes;
+let faceAnchor = initialAvatarRuntimeState.faceAnchor;
+let lastFaceTexture = initialAvatarRuntimeState.lastFaceTexture;
 
 // Stability defaults (no longer UI toggles)
 const SAFE_MODE = true;
@@ -1289,18 +1367,18 @@ const getBodyBoneByKey =
       });
 
 function collectRigInfo() {
-  hipsRawName = null;
-  restPosByBone = new Map();
+  hipsRawName = setAvatarRuntimeField("hipsRawName", null);
+  restPosByBone = setAvatarRuntimeField("restPosByBone", new Map());
   if (!bodySkeleton) return;
 
   for (const b of bodySkeleton.bones) {
-    if (!hipsRawName && keyForName(b.name) === "hips") hipsRawName = b.name;
+    if (!hipsRawName && keyForName(b.name) === "hips") hipsRawName = setAvatarRuntimeField("hipsRawName", b.name);
     restPosByBone.set(b.name, b.position.clone());
   }
 
   // Face anchor under BODY head bone
   if (faceAnchor?.parent) faceAnchor.parent.remove(faceAnchor);
-  faceAnchor = new THREE.Object3D();
+  faceAnchor = setAvatarRuntimeField("faceAnchor", new THREE.Object3D());
   faceAnchor.name = "FACE_ANCHOR";
 
   const headBone = getBodyBoneByKey("head") || getBodyBoneByKey("neck");
@@ -1461,7 +1539,7 @@ function clearFaceOverlay() {
   for (const m of faceOverlayMeshes) {
     if (m?.parent) m.parent.remove(m);
   }
-  faceOverlayMeshes = [];
+  faceOverlayMeshes = setAvatarRuntimeField("faceOverlayMeshes", []);
 }
 
 function createSkinnedFaceOverlayFromHead(headScene, faceTexture) {
@@ -1575,23 +1653,23 @@ function clearAvatar() {
   clearFaceOverlay();
 
   loadedParts.forEach((m) => avatarGroup.remove(m));
-  loadedParts = [];
-  loadedPartsMeta = [];
+  loadedParts = setAvatarRuntimeField("loadedParts", []);
+  loadedPartsMeta = setAvatarRuntimeField("loadedPartsMeta", []);
 
-  bodyRoot = null;
-  bodySkeleton = null;
-  bodySkinned = null;
+  bodyRoot = setAvatarRuntimeField("bodyRoot", null);
+  bodySkeleton = setAvatarRuntimeField("bodySkeleton", null);
+  bodySkinned = setAvatarRuntimeField("bodySkinned", null);
 
   if (mixer) mixer.stopAllAction();
-  mixer = null;
-  currentAction = null;
+  mixer = setAvatarRuntimeField("mixer", null);
+  currentAction = setAvatarRuntimeField("currentAction", null);
 
-  hipsRawName = null;
-  restPosByBone = new Map();
-  lastTraits = null;
+  hipsRawName = setAvatarRuntimeField("hipsRawName", null);
+  restPosByBone = setAvatarRuntimeField("restPosByBone", new Map());
+  lastTraits = setAvatarRuntimeField("lastTraits", null);
 
   if (faceAnchor?.parent) faceAnchor.parent.remove(faceAnchor);
-  faceAnchor = null;
+  faceAnchor = setAvatarRuntimeField("faceAnchor", null);
 }
 
 // ----------------------------
@@ -2779,7 +2857,8 @@ function getEntryById(id) {
 async function loadFriendsies(id) {
   if (!allFriendsies) return;
 
-  const loadId = ++currentLoadId;
+  const loadId = setAvatarRuntimeField("currentLoadId", currentLoadId + 1);
+  currentLoadId = loadId;
 
   // If a load fails, never leave the viewer blank. Always restore visibility.
   const restoreAvatarVisibility = () => {
@@ -2796,7 +2875,7 @@ async function loadFriendsies(id) {
   }
 
   const traits = entry.attributes || [];
-  lastTraits = traits;
+  lastTraits = setAvatarRuntimeField("lastTraits", traits);
 
   logSection(`Loaded fRiENDSiES #${id}`);
   logLine(`traits: ${traits.length}`);
@@ -2862,24 +2941,24 @@ async function loadFriendsies(id) {
   clearAvatar();
   avatarGroup.visible = false;
 
-  bodyRoot = nextBodyRoot;
+  bodyRoot = setAvatarRuntimeField("bodyRoot", nextBodyRoot);
   loadedParts.push(bodyRoot);
   loadedPartsMeta.push({ trait_type: "Body", value: "body" });
 
-  bodySkinned = nextBodySkinned;
-  bodySkeleton = bodySkinned.skeleton;
+  bodySkinned = setAvatarRuntimeField("bodySkinned", nextBodySkinned);
+  bodySkeleton = setAvatarRuntimeField("bodySkeleton", bodySkinned.skeleton);
   collectRigInfo();
 
   avatarGroup.add(bodyRoot);
   avatarGroup.updateMatrixWorld(true);
 
-  mixer = new THREE.AnimationMixer(bodyRoot);
+  mixer = setAvatarRuntimeField("mixer", new THREE.AnimationMixer(bodyRoot));
 
   // if body has built-in clip (idle), start it until we play external anim
   const bodyClips = bodyRes.gltf.animations || [];
   if (bodyClips.length) {
     const clip = sanitizeClip(bodyClips[0]);
-    currentAction = mixer.clipAction(clip);
+    currentAction = setAvatarRuntimeField("currentAction", mixer.clipAction(clip));
     currentAction.reset().play();
   }
 
@@ -2887,7 +2966,7 @@ async function loadFriendsies(id) {
 
   const headRes = results[1];
   const faceTexture = await faceTexturePromise;
-  lastFaceTexture = faceTexture;
+  lastFaceTexture = setAvatarRuntimeField("lastFaceTexture", faceTexture);
   if (loadId !== currentLoadId) {
     restoreAvatarVisibility();
     return;
@@ -2984,7 +3063,7 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
   const clip = sanitizeClip(clips[0]);
 
   mixer.stopAllAction();
-  currentAction = mixer.clipAction(clip);
+  currentAction = setAvatarRuntimeField("currentAction", mixer.clipAction(clip));
   currentAction.reset().play();
 
   setStatus(`playing anim ✅ ${clip.name || "unnamed"}`);
@@ -4683,7 +4762,7 @@ window.addEventListener("popstate", (event) => {
   fetch(METADATA_URL)
     .then((r) => r.json())
     .then((data) => {
-      allFriendsies = data;
+      allFriendsies = setAvatarRuntimeField("allFriendsies", data);
       setStatus("ready ✅");
 
       if (frenRouteActive && frenTokenValid) {
@@ -4770,6 +4849,7 @@ window.addEventListener("resize", () => {
     });
   }
 });
+
 
 
 

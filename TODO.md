@@ -72,3 +72,7 @@
 - [x] slice-047-post-slice-046-verification-pass - run syntax + browser smoke checks after drag-physics helper extraction to confirm carousel drag/fling surfaces still render without runtime errors.
 - [x] slice-048-interaction-shell-state-helpers - extract interaction-shell state selectors/updaters from `main.js` into a dedicated helper module while preserving behavior through fallback wiring.
 - [x] slice-049-post-slice-048-verification-pass - run syntax + browser smoke checks after interaction-shell helper extraction to confirm menu/hamburger/carousel interaction shells still render without runtime errors.
+- [x] slice-050-avatar-runtime-state-helpers - extract avatar runtime state initialization/update helpers into `avatar-runtime-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
+
+## Next queue candidates
+- [ ] slice-051-post-slice-050-verification-pass - run syntax + browser smoke checks after avatar-runtime helper extraction to confirm token load/animation/export surfaces still render without runtime errors.
