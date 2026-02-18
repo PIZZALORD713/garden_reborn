@@ -95,3 +95,10 @@
   - `npx vercel dev` exits immediately with `Error: No existing credentials found. Please run \`vercel login\` or pass "--token"`.
   - Without a booted API runtime, wallet/ENS flow cannot be verified end-to-end in this environment.
 - **Scope guard:** Blocker capture/docs only; no product behavior changes.
+
+## 2026-02-18 — Slice 014 blocker reconfirmation (API runtime access)
+- **Decision:** Re-attempt API-backed runtime startup before touching later slices; keep queue in-order.
+- **Why:** Wallet/ENS QA cannot be validated without `/api/friendsiesTokens` route running.
+- **Validation evidence:**
+  - `npx vercel dev --listen 127.0.0.1:4174` exits with `Error: No existing credentials found. Please run \`vercel login\` or pass "--token"`.
+- **Scope guard:** Docs-only blocker reconfirmation; no product behavior changes.
