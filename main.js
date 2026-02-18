@@ -99,6 +99,7 @@ const parseTokenIdInput =
   });
 
 const controlPanelUtils = window.FrienemiesControlPanelUtils || {};
+const consoleUtils = window.FrienemiesConsoleUtils || {};
 
 const rigUtils = window.FrienemiesRigUtils || {};
 const tokenUtils = window.FrienemiesTokenUtils || {};
@@ -656,12 +657,61 @@ function setControlTab(tab) {
   });
 }
 
-function renderConsoleViewer() {
-  if (!consoleViewer) return;
-  consoleViewer.textContent = logBuffer.join("\n");
-  consoleViewer.scrollTop = consoleViewer.scrollHeight;
-}
+const renderConsoleViewerFromUtils =
+  consoleUtils.renderConsoleViewer ||
+  function renderConsoleViewerFromUtilsFallback({ viewer, logBuffer: entries }) {
+    if (!viewer || !Array.isArray(entries)) return;
+    viewer.textContent = entries.join("\n");
+    viewer.scrollTop = viewer.scrollHeight;
+  };
 
+const appendLogEntryFromUtils =
+  consoleUtils.appendLogEntry ||
+  function appendLogEntryFromUtilsFallback({
+    text,
+    cls = "",
+    logBuffer: entries,
+    logBufferMax = 300,
+    viewer,
+    debugLog,
+    maxLines = 220
+  }) {
+    const entry = String(text);
+    if (Array.isArray(entries)) {
+      entries.push(entry);
+      while (entries.length > logBufferMax) entries.shift();
+    }
+
+    renderConsoleViewerFromUtils({ viewer, logBuffer: entries });
+
+    if (!debugLog) return;
+
+    const nearBottom =
+      debugLog.scrollTop + debugLog.clientHeight >= debugLog.scrollHeight - 30;
+
+    const div = document.createElement("div");
+    div.className = `logLine ${cls}`.trim();
+    div.textContent = entry;
+    debugLog.appendChild(div);
+
+    while (debugLog.childNodes.length > maxLines) {
+      debugLog.removeChild(debugLog.firstChild);
+    }
+
+    if (nearBottom) debugLog.scrollTop = debugLog.scrollHeight;
+  };
+
+const clearLogEntriesFromUtils =
+  consoleUtils.clearLogEntries ||
+  function clearLogEntriesFromUtilsFallback({ debugLog, logBuffer: entries, viewer }) {
+    if (debugLog) debugLog.innerHTML = "";
+    if (Array.isArray(entries)) entries.length = 0;
+    renderConsoleViewerFromUtils({ viewer, logBuffer: entries });
+  };
+
+function renderConsoleViewer() {
+  renderConsoleViewerFromUtils({ viewer: consoleViewer, logBuffer });
+}
 
 let statusText = "booting…";
 function setStatus(s) {
@@ -671,27 +721,15 @@ function setStatus(s) {
 
 // Transcript helpers
 function logLine(text, cls = "") {
-  const entry = String(text);
-  logBuffer.push(entry);
-  while (logBuffer.length > LOG_BUFFER_MAX) logBuffer.shift();
-  renderConsoleViewer();
-
-  if (!debugUi.log) return;
-
-  const nearBottom =
-    debugUi.log.scrollTop + debugUi.log.clientHeight >= debugUi.log.scrollHeight - 30;
-
-  const div = document.createElement("div");
-  div.className = `logLine ${cls}`.trim();
-  div.textContent = entry;
-  debugUi.log.appendChild(div);
-
-  const MAX_LINES = 220;
-  while (debugUi.log.childNodes.length > MAX_LINES) {
-    debugUi.log.removeChild(debugUi.log.firstChild);
-  }
-
-  if (nearBottom) debugUi.log.scrollTop = debugUi.log.scrollHeight;
+  appendLogEntryFromUtils({
+    text,
+    cls,
+    logBuffer,
+    logBufferMax: LOG_BUFFER_MAX,
+    viewer: consoleViewer,
+    debugLog: debugUi.log,
+    maxLines: 220
+  });
 }
 
 function logSection(title) {
@@ -700,9 +738,11 @@ function logSection(title) {
 }
 
 function clearLog() {
-  if (debugUi.log) debugUi.log.innerHTML = "";
-  logBuffer.length = 0;
-  renderConsoleViewer();
+  clearLogEntriesFromUtils({
+    debugLog: debugUi.log,
+    logBuffer,
+    viewer: consoleViewer
+  });
   logLine("Transcript cleared.");
 }
 

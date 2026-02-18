@@ -202,3 +202,10 @@
   - `node --check` passes for `main.js` and all extracted helper modules, including `control-panel-utils.js`.
   - Browser smoke on `http://127.0.0.1:4173/index.html` confirms control panel interaction states: closed→open (`aria-hidden: true→false`, `aria-expanded: false→true`), tab switching works (`animations`/`lighting`/`console`), then open→closed (`aria-hidden: false→true`) with no captured runtime errors.
 - **Scope guard:** Verification/docs only; no product behavior, UX, or architecture changes beyond validation artifacts.
+
+## 2026-02-18 — Slice 023 console utils module
+- **Decision:** Extract transcript/console rendering helpers into `console-utils.js` and load it before `main.js`.
+- **Why:** Continues Phase 2 modular decomposition with a contained logging UI seam while keeping behavior unchanged through fallback wiring.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesConsoleUtils` for console render/append/clear helpers with in-file fallback implementations for each helper.
+- **Validation evidence:** `node --check` passes for `main.js`, `console-utils.js`, and all previously extracted utility modules.
+- **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing, carousel behavior, animation playback, or export pipeline.
