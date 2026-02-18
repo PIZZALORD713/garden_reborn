@@ -8,4 +8,5 @@
 - [x] slice-005-onboarding-nonblocking — convert onboarding to a dismissible guide card that no longer blocks scene/menu interaction.
 
 ## Next up
-- Slice queue 001-005 is complete; run focused verification pass against core flows and mobile reachability.
+- [x] slice-006-verification-pass — local smoke checks completed for upgraded UI surfaces (command bar/onboarding) with no app runtime errors in local host context.
+- Prepare human QA sweep for full core flows (token load by ID, wallet/ENS lookup, animation playback, `.glb` export) in network-enabled environment.

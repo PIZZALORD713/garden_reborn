@@ -24,3 +24,9 @@
 - **Decision:** Reposition onboarding as a floating guide card and remove modal-style focus trapping/backdrop capture.
 - **Why:** Returning users can immediately interact with scene and controls while onboarding remains available as contextual help.
 - **Scope guard:** Onboarding presentation/interaction only; no changes to search resolution, token routing, animation playback, or export behavior.
+
+## 2026-02-18 — Slice 006 verification pass
+- **Decision:** Run a focused local smoke pass before starting any post-queue work.
+- **Why:** Confirms slices 001–005 landed coherently and avoids drifting into new scope before evidence-backed handoff.
+- **Validation evidence:** `node --check main.js` passes; local browser snapshot confirms command bar + non-blocking onboarding are present; onboarding-visible token-card click succeeds; no app runtime console errors observed (only environment/network resource misses like favicon/external image DNS).
+- **Scope guard:** Validation/docs only; no product behavior or architecture changes.
