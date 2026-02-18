@@ -2644,7 +2644,7 @@ async function navigateToWallet(owner) {
     const walletData = await fetchWalletTokenIds(owner);
     if (!walletData.tokenIds.length) {
       if (searchResults) {
-        searchResults.textContent = "No fRiENDSiES tokens found for this wallet/ENS yet.";
+        searchResults.textContent = "No fRiENDSiES tokens found for this wallet address or ENS name yet.";
       }
       return;
     }
