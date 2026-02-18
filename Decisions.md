@@ -451,3 +451,14 @@
   - `Get-ChildItem -File -Filter *.js | ForEach-Object { node --check $_.Name }` passes for all root runtime modules.
   - Static-host browser smoke succeeded (`python -m http.server 4179` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4179/index.html slice-051-smoke.png`).
 - **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API, or architecture changes.
+
+## 2026-02-18 - Slice 052 core-flow verification pass
+- **Decision:** Run an API-backed verification sweep after state-helper extraction through slice-050 before continuing new refactor slices.
+- **Why:** Confirms token/wallet entry routes, API token resolution, and upgraded desktop/mobile surfaces still boot cleanly after the helper modularization set.
+- **Validation evidence:**
+  - `node --check main.js` passes.
+  - API-backed runtime launched with `npx vercel dev --yes --token $VERCEL_TOKEN --listen 4175`.
+  - API route check succeeded: `GET /api/friendsiesTokens?owner=0x28af3356c6aaf449d20c59d2531941ddfb94d713&contract=0xe5af63234f93afd72a8b9114803e33f6d9766956` -> `200`, `tokenCount=62`.
+  - Route checks succeeded: `GET /fren/8448` and `GET /fren/vitalik.eth` both return `200` on the API-backed runtime.
+  - Desktop/mobile smoke captures succeeded via Playwright CLI (`slice-052-smoke-desktop.png`, `slice-052-smoke-mobile.png`).
+- **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API contract, or architecture changes.
