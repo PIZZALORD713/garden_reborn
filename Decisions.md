@@ -117,3 +117,10 @@
   - `npx vercel dev --listen 127.0.0.1:4174` still exits with `No existing credentials found. Please run \`vercel login\` or pass "--token"`.
   - Static-host fallback (`python -m http.server`) still cannot serve `/api/friendsiesTokens` (404), so wallet/ENS end-to-end remains blocked.
 - **Scope guard:** Blocker evidence only; no app code or UX behavior changes.
+
+## 2026-02-18 — Slice 014 blocker reconfirmation #4 (autopilot run @ ~06:45 CT)
+- **Decision:** Continue holding the upgrade queue at slice-014; no downstream slices started.
+- **Why:** Required core-flow gate (wallet/ENS lookup under API runtime) remains impossible in current environment.
+- **Validation evidence:**
+  - `npx vercel dev --listen 127.0.0.1:4174` exits with `No existing credentials found. Please run \`vercel login\` or pass "--token"`.
+- **Scope guard:** Docs/status update only; no app code, behavior, or UX changes.
