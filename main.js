@@ -598,9 +598,76 @@ const debugUi = {
   log: null
 };
 
-let bottomSurfaceMode = BOTTOM_SURFACE_MODE.CAROUSEL;
-let controlPanelOpen = false;
-let controlActiveTab = "animations";
+const appStateStoreUtils = window.FrienemiesAppStateStore || {};
+const createAppState =
+  appStateStoreUtils.createState ||
+  (() => ({
+    controlShell: {
+      bottomSurfaceMode: BOTTOM_SURFACE_MODE.CAROUSEL,
+      controlPanelOpen: false,
+      controlActiveTab: "animations",
+      statusText: "booting."
+    },
+    avatarRuntime: {
+      allFriendsies: null,
+      currentLoadId: 0,
+      loadedParts: [],
+      loadedPartsMeta: [],
+      lastTraits: null,
+      bodyRoot: null,
+      bodySkeleton: null,
+      bodySkinned: null,
+      mixer: null,
+      currentAction: null,
+      hipsRawName: null,
+      restPosByBone: new Map(),
+      faceOverlayMeshes: [],
+      faceAnchor: null,
+      lastFaceTexture: null
+    },
+    interactionShell: {
+      hamburgerTimer: null,
+      carouselHideTimer: null,
+      idleTimer: null,
+      idleActive: false,
+      activePanel: null,
+      menuOpen: false,
+      orbitReleaseTimer: null,
+      carouselHovered: false,
+      carouselScrolling: false,
+      hamburgerHovered: false,
+      carouselPinned: false,
+      carouselDismissed: false,
+      toggleHideTimer: null
+    },
+    carouselQuery: {
+      carouselTokenIds: [...DEFAULT_TOKEN_IDS],
+      carouselTokenIdSet: new Set(DEFAULT_TOKEN_IDS),
+      activeCarouselIndex: null,
+      pendingTokenId: null,
+      lastLoadedTokenId: null,
+      loadDebounceTimer: null,
+      imageObserver: null,
+      carouselListenersBound: false,
+      scrollRafPending: false,
+      suppressScrollHandler: false
+    },
+    dragPhysics: {
+      isDragging: false,
+      wasDragging: false,
+      dragStartX: 0,
+      dragStartScroll: 0,
+      dragVelocity: 0,
+      dragLastX: 0,
+      dragLastTime: 0,
+      momentumRaf: null
+    }
+  }));
+const appState = createAppState();
+
+let bottomSurfaceMode = appState?.controlShell?.bottomSurfaceMode ?? BOTTOM_SURFACE_MODE.CAROUSEL;
+let controlPanelOpen = appState?.controlShell?.controlPanelOpen ?? false;
+let controlActiveTab = appState?.controlShell?.controlActiveTab ?? "animations";
 const logBuffer = [];
 const LOG_BUFFER_MAX = 300;
 
@@ -800,9 +867,10 @@ function renderConsoleViewer() {
   renderConsoleViewerFromUtils({ viewer: consoleViewer, logBuffer });
 }
 
-let statusText = "booting…";
+let statusText = appState?.controlShell?.statusText ?? "booting…";
 function setStatus(s) {
   statusText = String(s || "");
+  if (appState?.controlShell) appState.controlShell.statusText = statusText;
   logLine(`• ${statusText}`, "dim");
 }
 
@@ -958,26 +1026,26 @@ syncLookSliders();
 // ----------------------------
 const clock = new THREE.Clock();
 
-let allFriendsies = null;
-let currentLoadId = 0;
+let allFriendsies = appState?.avatarRuntime?.allFriendsies ?? null;
+let currentLoadId = appState?.avatarRuntime?.currentLoadId ?? 0;
 
-let loadedParts = [];
-let loadedPartsMeta = []; // parallel array of { trait_type, value }
-let lastTraits = null;
+let loadedParts = appState?.avatarRuntime?.loadedParts ?? [];
+let loadedPartsMeta = appState?.avatarRuntime?.loadedPartsMeta ?? []; // parallel array of { trait_type, value }
+let lastTraits = appState?.avatarRuntime?.lastTraits ?? null;
 
-let bodyRoot = null;
-let bodySkeleton = null;
-let bodySkinned = null;
+let bodyRoot = appState?.avatarRuntime?.bodyRoot ?? null;
+let bodySkeleton = appState?.avatarRuntime?.bodySkeleton ?? null;
+let bodySkinned = appState?.avatarRuntime?.bodySkinned ?? null;
 
-let mixer = null;
-let currentAction = null;
+let mixer = appState?.avatarRuntime?.mixer ?? null;
+let currentAction = appState?.avatarRuntime?.currentAction ?? null;
 
-let hipsRawName = null;
-let restPosByBone = new Map();
+let hipsRawName = appState?.avatarRuntime?.hipsRawName ?? null;
+let restPosByBone = appState?.avatarRuntime?.restPosByBone ?? new Map();
 
-let faceOverlayMeshes = [];
-let faceAnchor = null;
-let lastFaceTexture = null;
+let faceOverlayMeshes = appState?.avatarRuntime?.faceOverlayMeshes ?? [];
+let faceAnchor = appState?.avatarRuntime?.faceAnchor ?? null;
+let lastFaceTexture = appState?.avatarRuntime?.lastFaceTexture ?? null;
 
 // Stability defaults (no longer UI toggles)
 const SAFE_MODE = true;
@@ -2692,40 +2760,40 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
 const HAMBURGER_HIDE_MS = 1000;
 const CAROUSEL_HIDE_MS = 1000;
 const IDLE_TIMEOUT_MS = 10000;
-let hamburgerTimer = null;
-let carouselHideTimer = null;
-let idleTimer = null;
-let idleActive = false;
-let activePanel = null;
-let menuOpen = false;
-let orbitReleaseTimer = null;
-let carouselHovered = false;
-let carouselScrolling = false;
-let hamburgerHovered = false;
-let carouselPinned = false;
-let carouselDismissed = false;
-let toggleHideTimer = null;
+let hamburgerTimer = appState?.interactionShell?.hamburgerTimer ?? null;
+let carouselHideTimer = appState?.interactionShell?.carouselHideTimer ?? null;
+let idleTimer = appState?.interactionShell?.idleTimer ?? null;
+let idleActive = appState?.interactionShell?.idleActive ?? false;
+let activePanel = appState?.interactionShell?.activePanel ?? null;
+let menuOpen = appState?.interactionShell?.menuOpen ?? false;
+let orbitReleaseTimer = appState?.interactionShell?.orbitReleaseTimer ?? null;
+let carouselHovered = appState?.interactionShell?.carouselHovered ?? false;
+let carouselScrolling = appState?.interactionShell?.carouselScrolling ?? false;
+let hamburgerHovered = appState?.interactionShell?.hamburgerHovered ?? false;
+let carouselPinned = appState?.interactionShell?.carouselPinned ?? false;
+let carouselDismissed = appState?.interactionShell?.carouselDismissed ?? false;
+let toggleHideTimer = appState?.interactionShell?.toggleHideTimer ?? null;
 
-let carouselTokenIds = [...DEFAULT_TOKEN_IDS];
-let carouselTokenIdSet = new Set(carouselTokenIds);
-let activeCarouselIndex = null;
-let pendingTokenId = null;
-let lastLoadedTokenId = null;
-let loadDebounceTimer = null;
-let imageObserver = null;
-let carouselListenersBound = false;
-let scrollRafPending = false;
-let suppressScrollHandler = false;
+let carouselTokenIds = appState?.carouselQuery?.carouselTokenIds ?? [...DEFAULT_TOKEN_IDS];
+let carouselTokenIdSet = appState?.carouselQuery?.carouselTokenIdSet ?? new Set(carouselTokenIds);
+let activeCarouselIndex = appState?.carouselQuery?.activeCarouselIndex ?? null;
+let pendingTokenId = appState?.carouselQuery?.pendingTokenId ?? null;
+let lastLoadedTokenId = appState?.carouselQuery?.lastLoadedTokenId ?? null;
+let loadDebounceTimer = appState?.carouselQuery?.loadDebounceTimer ?? null;
+let imageObserver = appState?.carouselQuery?.imageObserver ?? null;
+let carouselListenersBound = appState?.carouselQuery?.carouselListenersBound ?? false;
+let scrollRafPending = appState?.carouselQuery?.scrollRafPending ?? false;
+let suppressScrollHandler = appState?.carouselQuery?.suppressScrollHandler ?? false;
 
 /* ── Pointer-drag momentum state ── */
-let isDragging = false;
-let wasDragging = false;  // persists through the click event after drag ends
-let dragStartX = 0;
-let dragStartScroll = 0;
-let dragVelocity = 0;
-let dragLastX = 0;
-let dragLastTime = 0;
-let momentumRaf = null;
+let isDragging = appState?.dragPhysics?.isDragging ?? false;
+let wasDragging = appState?.dragPhysics?.wasDragging ?? false;  // persists through the click event after drag ends
+let dragStartX = appState?.dragPhysics?.dragStartX ?? 0;
+let dragStartScroll = appState?.dragPhysics?.dragStartScroll ?? 0;
+let dragVelocity = appState?.dragPhysics?.dragVelocity ?? 0;
+let dragLastX = appState?.dragPhysics?.dragLastX ?? 0;
+let dragLastTime = appState?.dragPhysics?.dragLastTime ?? 0;
+let momentumRaf = appState?.dragPhysics?.momentumRaf ?? null;
 const DRAG_THRESHOLD = 6;       // px - below this, treat as click
 const MOMENTUM_FRICTION = 0.94; // per-frame multiplier (lower = more friction)
 const MOMENTUM_MIN_VEL = 0.5;   // px/frame - stop momentum below this
