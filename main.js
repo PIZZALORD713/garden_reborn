@@ -82,24 +82,127 @@ function isFrenRoute(pathname) {
   return /^\/fren\//.test(pathname);
 }
 
-function isHexAddress(value) {
-  return typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value.trim());
-}
+const MASCOT_CONFIG = {
+  mascotTokenId: 8521,
+  mascotName: "Sauce-0x",
+  mascotOpenSeaImage:
+    "https://i.seadn.io/s/raw/files/e1ed6c4df4dfe488f3cd8045f741f3eb.png"
+};
 
-function isEnsName(value) {
-  return typeof value === "string" && value.trim().toLowerCase().endsWith(".eth");
-}
+const identifierUtils = window.FrienemiesIdentifierUtils || {};
+const routingUtils = window.FrienemiesRoutingUtils || {};
+const isHexAddress = identifierUtils.isHexAddress || ((value) => typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value.trim()));
+const isEnsName = identifierUtils.isEnsName || ((value) => typeof value === "string" && value.trim().toLowerCase().endsWith(".eth"));
+const getWalletOwnerFromUrl =
+  routingUtils.getWalletOwnerFromUrl ||
+  identifierUtils.getWalletOwnerFromUrl ||
+  (() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryOwner = params.get("owner");
+    const rawPath = decodeURIComponent(window.location.pathname || "/");
+    const pathOwner = rawPath.replace(/^\/+/, "").split("/").filter(Boolean)[0] || "";
+    const candidate = (queryOwner || pathOwner || "").trim();
+    if (!candidate) return null;
+    if (isHexAddress(candidate) || isEnsName(candidate)) return candidate;
+    return null;
+  });
+const buildCollectionPath = routingUtils.buildCollectionPath || (() => "/");
+const buildOwnerPath =
+  routingUtils.buildOwnerPath ||
+  ((ownerSlug) => `/${encodeURIComponent(String(ownerSlug ?? "").trim())}`);
 
-function getWalletOwnerFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  const queryOwner = params.get("owner");
-  const rawPath = decodeURIComponent(window.location.pathname || "/");
-  const pathOwner = rawPath.replace(/^\/+/, "").split("/").filter(Boolean)[0] || "";
-  const candidate = (queryOwner || pathOwner || "").trim();
-  if (!candidate) return null;
-  if (isHexAddress(candidate) || isEnsName(candidate)) return candidate;
-  return null;
-}
+const searchUtils = window.FrienemiesSearchUtils || {};
+const searchUiUtils = window.FrienemiesSearchUiUtils || {};
+const loadQueueUtils = window.FrienemiesLoadQueueUtils || {};
+const mascotUtils = window.FrienemiesMascotUtils || {};
+const normalizeSearchInput =
+  searchUtils.normalizeSearchInput ||
+  ((value) => String(value ?? "").trim());
+const parseTokenIdInput =
+  searchUtils.parseTokenIdInput ||
+  ((value, options = {}) => {
+    const min = Number.isInteger(options.min) ? options.min : 1;
+    const max = Number.isInteger(options.max) ? options.max : 10000;
+    const normalized = normalizeSearchInput(value).replace(/^#/, "");
+    if (!normalized) return null;
+    const tokenId = Number(normalized);
+    if (!Number.isInteger(tokenId)) return null;
+    if (tokenId < min || tokenId > max) return null;
+    return tokenId;
+  });
+const updateResetCollectionVisibilityFromUtils =
+  searchUiUtils.updateResetCollectionVisibility ||
+  ((button, tokenIds, defaultTokenIds) => {
+    if (!button) return;
+    const isFiltered = tokenIds.length < defaultTokenIds.length;
+    button.classList.toggle("is-visible", isFiltered);
+    button.setAttribute("aria-hidden", isFiltered ? "false" : "true");
+  });
+const normalizeRequestedTokenId =
+  loadQueueUtils.normalizeRequestedTokenId ||
+  ((tokenId) => {
+    const id = Number(tokenId);
+    return Number.isFinite(id) ? id : null;
+  });
+const canRequestTokenLoad =
+  loadQueueUtils.canRequestTokenLoad ||
+  ((tokenIdSet, tokenId) => Number.isFinite(tokenId) && tokenIdSet instanceof Set && tokenIdSet.has(tokenId));
+const shouldSkipQueuedTokenLoad =
+  loadQueueUtils.shouldSkipQueuedTokenLoad ||
+  (({ id, tokenIdSet, lastLoadedTokenId, force = false }) => {
+    if (!Number.isFinite(id)) return true;
+    if (!(tokenIdSet instanceof Set) || !tokenIdSet.has(id)) return true;
+    return !force && id === lastLoadedTokenId;
+  });
+const renderSearchMessageFromUtils =
+  searchUiUtils.renderSearchMessage ||
+  ((container, message, { tone = "info", showReset = false, hint = "" } = {}) => {
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    const notice = document.createElement("div");
+    notice.className = `searchNotice searchNotice--${tone}`;
+    notice.setAttribute("role", "status");
+    notice.setAttribute("aria-live", "polite");
+
+    const msgEl = document.createElement("p");
+    msgEl.className = "searchNoticeMessage";
+    msgEl.textContent = String(message || "");
+    notice.appendChild(msgEl);
+
+    if (tone === "loading") {
+      const shimmer = document.createElement("div");
+      shimmer.className = "searchNoticeShimmer";
+      shimmer.setAttribute("aria-hidden", "true");
+      notice.appendChild(shimmer);
+    }
+
+    if (hint) {
+      const hintEl = document.createElement("p");
+      hintEl.className = "searchNoticeHint";
+      hintEl.textContent = String(hint);
+      notice.appendChild(hintEl);
+    }
+
+    if (showReset) {
+      const actionBtn = document.createElement("button");
+      actionBtn.className = "searchNoticeAction";
+      actionBtn.type = "button";
+      actionBtn.dataset.searchAction = "reset-collection";
+      actionBtn.textContent = "View full collection";
+      notice.appendChild(actionBtn);
+    }
+
+    container.appendChild(notice);
+  });
+
+const controlPanelUtils = window.FrienemiesControlPanelUtils || {};
+const consoleUtils = window.FrienemiesConsoleUtils || {};
+
+const rigUtils = window.FrienemiesRigUtils || {};
+const tokenUtils = window.FrienemiesTokenUtils || {};
+const imageLoadUtils = window.FrienemiesImageLoadUtils || {};
 
 async function fetchWalletTokenIds(owner) {
   const params = new URLSearchParams({
@@ -124,58 +227,63 @@ async function fetchWalletTokenIds(owner) {
 // ----------------------------
 // Scene bootstrap
 // ----------------------------
-function initScene() {
-  const scene = new THREE.Scene();
+const sceneBootstrapUtils = window.FrienemiesSceneBootstrap || {};
+const initScene =
+  sceneBootstrapUtils.initScene ||
+  function initSceneFallback() {
+    const scene = new THREE.Scene();
 
-  const camera = new THREE.PerspectiveCamera(
-    60,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    2000
-  );
-  // Initial framing: a bit further back + slightly lower so full body fits better on mobile
-  camera.position.set(0, 1.05, 6.6);
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      2000
+    );
+    // Initial framing: a bit further back + slightly lower so full body fits better on mobile
+    camera.position.set(0, 1.05, 6.6);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setClearColor(0xffffff);
-  renderer.outputEncoding = THREE.sRGBEncoding;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
-  renderer.physicallyCorrectLights = true;
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setClearColor(0xffffff);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    renderer.physicallyCorrectLights = true;
 
-  document.body.appendChild(renderer.domElement);
+    document.body.appendChild(renderer.domElement);
 
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.06;
-  controls.minDistance = 2;
-  controls.maxDistance = 14;
-  controls.target.set(0, 0.92, 0);
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 2;
+    controls.maxDistance = 14;
+    controls.target.set(0, 0.92, 0);
 
-  return { scene, camera, renderer, controls };
-}
+    return { scene, camera, renderer, controls };
+  };
 
-function initLighting(scene) {
-  const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35);
-  scene.add(hemisphereLight);
+const initLighting =
+  sceneBootstrapUtils.initLighting ||
+  function initLightingFallback(scene) {
+    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35);
+    scene.add(hemisphereLight);
 
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
-  scene.add(ambientLight);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+    scene.add(ambientLight);
 
-  const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
-  keyLight.position.set(-0.5, 2.5, 5);
-  scene.add(keyLight);
-  scene.add(keyLight.target);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
+    keyLight.position.set(-0.5, 2.5, 5);
+    scene.add(keyLight);
+    scene.add(keyLight.target);
 
-  const rim = new THREE.DirectionalLight(0xffffff, 0.25);
-  rim.position.set(2.5, 1.5, -3.5);
-  scene.add(rim);
-  scene.add(rim.target);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.25);
+    rim.position.set(2.5, 1.5, -3.5);
+    scene.add(rim);
+    scene.add(rim.target);
 
-  return { hemisphereLight, ambientLight, keyLight, rim };
-}
+    return { hemisphereLight, ambientLight, keyLight, rim };
+  };
 
 function initCharacterLoader() {
   const dracoLoader = new THREE.DRACOLoader();
@@ -190,11 +298,13 @@ function initCharacterLoader() {
   return { dracoLoader, gltfLoader, textureLoader };
 }
 
-function initEnvironment(scene) {
-  const panoGroup = new THREE.Group();
-  scene.add(panoGroup);
-  return { panoGroup };
-}
+const initEnvironment =
+  sceneBootstrapUtils.initEnvironment ||
+  function initEnvironmentFallback(scene) {
+    const panoGroup = new THREE.Group();
+    scene.add(panoGroup);
+    return { panoGroup };
+  };
 
 const sceneBoot = initScene();
 const scene = sceneBoot.scene;
@@ -280,38 +390,43 @@ function isMobileLike() {
   }
   return false;
 }
-const LOOK_ALLOWED_KEYS = [
-  "toneMapping",
-  "toneMappingExposure",
-  "ambientIntensity",
-  "hemiIntensity",
-  "keyLightIntensity",
-  "rimLightIntensity",
-  "envIntensityMultiplier",
-  "emissiveIntensityMultiplier"
-];
-const LEGACY_LOOK_KEY_MAP = {
-  keyIntensity: "keyLightIntensity",
-  rimIntensity: "rimLightIntensity",
-  envMapIntensity: "envIntensityMultiplier",
-  emissiveIntensity: "emissiveIntensityMultiplier"
-};
+const lookUtils = window.FrienemiesLookUtils || {};
+const LOOK_ALLOWED_KEYS =
+  lookUtils.LOOK_ALLOWED_KEYS || [
+    "toneMapping",
+    "toneMappingExposure",
+    "ambientIntensity",
+    "hemiIntensity",
+    "keyLightIntensity",
+    "rimLightIntensity",
+    "envIntensityMultiplier",
+    "emissiveIntensityMultiplier"
+  ];
+const LEGACY_LOOK_KEY_MAP =
+  lookUtils.LEGACY_LOOK_KEY_MAP || {
+    keyIntensity: "keyLightIntensity",
+    rimIntensity: "rimLightIntensity",
+    envMapIntensity: "envIntensityMultiplier",
+    emissiveIntensity: "emissiveIntensityMultiplier"
+  };
 const IS_DEV =
   location.hostname === "localhost" ||
   location.hostname === "127.0.0.1" ||
   location.hostname.endsWith(".local") ||
   location.hostname === "";
 
-function resolveToneMapping(name) {
-  switch (String(name).toLowerCase()) {
-    case "reinhard":
-      return THREE.ReinhardToneMapping;
-    case "aces":
-    case "acesfilmic":
-    default:
-      return THREE.ACESFilmicToneMapping;
-  }
-}
+const resolveToneMapping =
+  lookUtils.resolveToneMapping ||
+  function resolveToneMappingFallback(name) {
+    switch (String(name).toLowerCase()) {
+      case "reinhard":
+        return THREE.ReinhardToneMapping;
+      case "aces":
+      case "acesfilmic":
+      default:
+        return THREE.ACESFilmicToneMapping;
+    }
+  };
 
 function registerMaterialDefaults(m) {
   if (!m) return;
@@ -330,59 +445,69 @@ function registerMaterialDefaults(m) {
   }
 }
 
-function normalizeLookControls() {
-  for (const [legacyKey, canonicalKey] of Object.entries(LEGACY_LOOK_KEY_MAP)) {
-    if (legacyKey in LOOK_CONTROLS) {
-      if (LOOK_CONTROLS[canonicalKey] === undefined) {
-        LOOK_CONTROLS[canonicalKey] = LOOK_CONTROLS[legacyKey];
+const normalizeLookControls =
+  lookUtils.normalizeLookControls ||
+  function normalizeLookControlsFallback(controls) {
+    const target = controls || LOOK_CONTROLS;
+    for (const [legacyKey, canonicalKey] of Object.entries(LEGACY_LOOK_KEY_MAP)) {
+      if (legacyKey in target) {
+        if (target[canonicalKey] === undefined) {
+          target[canonicalKey] = target[legacyKey];
+        }
+        delete target[legacyKey];
       }
-      delete LOOK_CONTROLS[legacyKey];
     }
-  }
 
-  if (LOOK_CONTROLS.keyLightIntensity === undefined) {
-    LOOK_CONTROLS.keyLightIntensity = 0.75;
-  }
-  if (LOOK_CONTROLS.rimLightIntensity === undefined) {
-    LOOK_CONTROLS.rimLightIntensity = 0.35;
-  }
-  if (LOOK_CONTROLS.envIntensityMultiplier === undefined) {
-    LOOK_CONTROLS.envIntensityMultiplier = 1.0;
-  }
-  if (LOOK_CONTROLS.emissiveIntensityMultiplier === undefined) {
-    LOOK_CONTROLS.emissiveIntensityMultiplier = 1.0;
-  }
-}
+    if (target.keyLightIntensity === undefined) {
+      target.keyLightIntensity = 0.75;
+    }
+    if (target.rimLightIntensity === undefined) {
+      target.rimLightIntensity = 0.35;
+    }
+    if (target.envIntensityMultiplier === undefined) {
+      target.envIntensityMultiplier = 1.0;
+    }
+    if (target.emissiveIntensityMultiplier === undefined) {
+      target.emissiveIntensityMultiplier = 1.0;
+    }
+  };
 
-function validateLookConfig(config, label) {
-  if (!IS_DEV || !config) return;
+const validateLookConfig =
+  lookUtils.validateLookConfig ||
+  function validateLookConfigFallback(config, label, options = {}) {
+    const isDev = options.isDev ?? IS_DEV;
+    if (!isDev || !config) return;
 
-  const keys = Object.keys(config);
-  const unknownKeys = keys.filter((key) => !LOOK_ALLOWED_KEYS.includes(key));
-  const legacyKeys = keys.filter((key) => key in LEGACY_LOOK_KEY_MAP);
-  const overlapping = legacyKeys
-    .filter((legacy) => keys.includes(LEGACY_LOOK_KEY_MAP[legacy]))
-    .map((legacy) => `${legacy} → ${LEGACY_LOOK_KEY_MAP[legacy]}`);
+    const keys = Object.keys(config);
+    const unknownKeys = keys.filter((key) => !LOOK_ALLOWED_KEYS.includes(key));
+    const legacyKeys = keys.filter((key) => key in LEGACY_LOOK_KEY_MAP);
+    const overlapping = legacyKeys
+      .filter((legacy) => keys.includes(LEGACY_LOOK_KEY_MAP[legacy]))
+      .map((legacy) => `${legacy} → ${LEGACY_LOOK_KEY_MAP[legacy]}`);
 
-  if (!unknownKeys.length && !legacyKeys.length) return;
+    if (!unknownKeys.length && !legacyKeys.length) return;
 
-  const warning = [
-    `[LookControls] ${label} has unsupported look keys.`,
-    unknownKeys.length ? `Unknown: ${unknownKeys.join(", ")}` : null,
-    legacyKeys.length ? `Legacy: ${legacyKeys.join(", ")}` : null,
-    overlapping.length ? `Overlapping: ${overlapping.join(", ")}` : null
-  ]
-    .filter(Boolean)
-    .join(" ");
+    const warning = [
+      `[LookControls] ${label} has unsupported look keys.`,
+      unknownKeys.length ? `Unknown: ${unknownKeys.join(", ")}` : null,
+      legacyKeys.length ? `Legacy: ${legacyKeys.join(", ")}` : null,
+      overlapping.length ? `Overlapping: ${overlapping.join(", ")}` : null
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-  console.warn(warning, { unknownKeys, legacyKeys, overlapping });
-  if (typeof logLine === "function") {
-    logLine(warning, "warn");
-  }
-}
+    console.warn(warning, { unknownKeys, legacyKeys, overlapping });
+    const reporter = options.logLine || logLine;
+    if (typeof reporter === "function") {
+      reporter(warning, "warn");
+    }
+  };
 
 function getCanonicalLookSnapshot() {
-  normalizeLookControls();
+  if (lookUtils.getCanonicalLookSnapshot) {
+    return lookUtils.getCanonicalLookSnapshot(LOOK_CONTROLS);
+  }
+  normalizeLookControls(LOOK_CONTROLS);
   const snapshot = {};
   for (const key of LOOK_ALLOWED_KEYS) {
     if (key in LOOK_CONTROLS) {
@@ -419,7 +544,7 @@ function applyLookToMaterials(root) {
 }
 
 function applyLookControls() {
-  normalizeLookControls();
+  normalizeLookControls(LOOK_CONTROLS);
   renderer.toneMapping = resolveToneMapping(LOOK_CONTROLS.toneMapping);
   renderer.toneMappingExposure = LOOK_CONTROLS.toneMappingExposure;
 
@@ -435,7 +560,7 @@ function applyLookPreset(name) {
   const preset = LOOK_PRESETS[name];
   if (!preset) return;
   Object.assign(LOOK_CONTROLS, preset);
-  normalizeLookControls();
+  normalizeLookControls(LOOK_CONTROLS);
   applyLookControls();
   syncLookSliders();
   const msg = `🎨 Look preset applied: ${name}`;
@@ -464,10 +589,14 @@ const ui = {
 };
 
 const searchInput = document.getElementById("searchInput");
+const commandBar = document.getElementById("commandBar");
+const commandInput = document.getElementById("commandInput");
 const searchResults = document.getElementById("searchResults");
 const resetCollectionBtn = document.getElementById("resetCollectionBtn");
 const copyLinkBtn = document.getElementById("copyLinkBtn");
 const downloadGlbBtn = document.getElementById("downloadGlbBtn");
+const exportStatus = document.getElementById("exportStatus");
+const exportFallbackLink = document.getElementById("exportFallbackLink");
 const controlGear = document.getElementById("controlGear");
 const controlPanel = document.getElementById("controlPanel");
 const controlAnimSelect = document.getElementById("controlAnimSelect");
@@ -486,108 +615,442 @@ const onboardingDemoBtn = document.getElementById("onboardingDemo");
 const onboardingSkipBtn = document.getElementById("onboardingSkip");
 const onboardingDismissBtn = document.getElementById("onboardingDismiss");
 const showOnboardingBtn = document.getElementById("showOnboardingBtn");
+const mascotPanel = document.getElementById("mascotPanel");
+const mascotToggle = document.getElementById("mascotToggle");
+const mascotBody = document.getElementById("mascotBody");
+const mascotSprite = document.getElementById("mascotSprite");
+const ENABLE_MASCOT_PANEL = false;
+const BOTTOM_SURFACE_MODE = Object.freeze({
+  CAROUSEL: "carousel",
+  SETTINGS: "settings"
+});
 const ONBOARDING_SEEN_KEY = "frenemies.onboarding.seen.v2";
 
 const debugUi = {
   log: null
 };
 
-let controlPanelOpen = false;
-let controlActiveTab = "animations";
+const exportUiState = {
+  lastBlobUrl: null,
+  lastFilename: "",
+  warningSuppressedCount: 0,
+  pending: false
+};
+
+function setExportStatus(message, tone = "") {
+  if (!exportStatus) return;
+  exportStatus.textContent = String(message || "");
+  exportStatus.classList.toggle("is-warn", tone === "warn");
+  exportStatus.classList.toggle("is-ok", tone === "ok");
+}
+
+function setExportFallbackLink(url, filename) {
+  if (!exportFallbackLink) return;
+  const hasLink = !!url;
+  exportFallbackLink.setAttribute("aria-hidden", hasLink ? "false" : "true");
+  exportFallbackLink.href = hasLink ? url : "#";
+  exportFallbackLink.download = hasLink && filename ? filename : "";
+}
+
+function releaseLastExportBlobUrl() {
+  if (!exportUiState.lastBlobUrl) return;
+  URL.revokeObjectURL(exportUiState.lastBlobUrl);
+  exportUiState.lastBlobUrl = null;
+}
+
+function defocusIfInside(container, fallbackTarget) {
+  if (!container) return;
+  const active = document.activeElement;
+  if (!active || !container.contains(active)) return;
+  if (typeof active.blur === "function") active.blur();
+  if (fallbackTarget && typeof fallbackTarget.focus === "function") {
+    fallbackTarget.focus({ preventScroll: true });
+  }
+}
+
+window.addEventListener("beforeunload", () => {
+  releaseLastExportBlobUrl();
+});
+
+const appStateStoreUtils = window.FrienemiesAppStateStore || {};
+const controlShellUtils = window.FrienemiesControlShellUtils || {};
+const createAppState =
+  appStateStoreUtils.createState ||
+  (() => ({
+    controlShell: {
+      bottomSurfaceMode: BOTTOM_SURFACE_MODE.CAROUSEL,
+      controlPanelOpen: false,
+      controlActiveTab: "animations",
+      statusText: "booting."
+    },
+    avatarRuntime: {
+      allFriendsies: null,
+      currentLoadId: 0,
+      loadedParts: [],
+      loadedPartsMeta: [],
+      lastTraits: null,
+      bodyRoot: null,
+      bodySkeleton: null,
+      bodySkinned: null,
+      mixer: null,
+      currentAction: null,
+      hipsRawName: null,
+      restPosByBone: new Map(),
+      faceOverlayMeshes: [],
+      faceAnchor: null,
+      lastFaceTexture: null
+    },
+    interactionShell: {
+      hamburgerTimer: null,
+      carouselHideTimer: null,
+      idleTimer: null,
+      idleActive: false,
+      activePanel: null,
+      menuOpen: false,
+      orbitReleaseTimer: null,
+      carouselHovered: false,
+      carouselScrolling: false,
+      hamburgerHovered: false,
+      carouselPinned: false,
+      carouselDismissed: false,
+      toggleHideTimer: null
+    },
+    carouselQuery: {
+      carouselTokenIds: [...DEFAULT_TOKEN_IDS],
+      carouselTokenIdSet: new Set(DEFAULT_TOKEN_IDS),
+      activeCarouselIndex: null,
+      pendingTokenId: null,
+      lastLoadedTokenId: null,
+      loadDebounceTimer: null,
+      imageObserver: null,
+      carouselListenersBound: false,
+      scrollRafPending: false,
+      suppressScrollHandler: false
+    },
+    dragPhysics: {
+      isDragging: false,
+      wasDragging: false,
+      dragStartX: 0,
+      dragStartScroll: 0,
+      dragVelocity: 0,
+      dragLastX: 0,
+      dragLastTime: 0,
+      momentumRaf: null
+    }
+  }));
+const appState = createAppState();
+
+const getInitialControlShellState =
+  controlShellUtils.getInitialControlShellState ||
+  ((options = {}) => {
+    const defaults = options.defaults || {};
+    const modeMap = options.modeMap || BOTTOM_SURFACE_MODE;
+    const shell = options.appState?.controlShell || {};
+    return {
+      bottomSurfaceMode:
+        shell.bottomSurfaceMode === modeMap.SETTINGS
+          ? modeMap.SETTINGS
+          : modeMap.CAROUSEL,
+      controlPanelOpen:
+        typeof shell.controlPanelOpen === "boolean"
+          ? shell.controlPanelOpen
+          : !!defaults.controlPanelOpen,
+      controlActiveTab:
+        typeof shell.controlActiveTab === "string" && shell.controlActiveTab.trim()
+          ? shell.controlActiveTab
+          : defaults.controlActiveTab || "animations",
+      statusText:
+        typeof shell.statusText === "string"
+          ? shell.statusText
+          : defaults.statusText || "booting…"
+    };
+  });
+
+const updateBottomSurfaceModeStateFromUtils =
+  controlShellUtils.updateBottomSurfaceModeState ||
+  ((options = {}) => {
+    const modeMap = options.modeMap || BOTTOM_SURFACE_MODE;
+    const nextMode = options.mode === modeMap.SETTINGS
+      ? modeMap.SETTINGS
+      : modeMap.CAROUSEL;
+    if (options.appState?.controlShell) {
+      options.appState.controlShell.bottomSurfaceMode = nextMode;
+    }
+    return nextMode;
+  });
+
+const updateControlPanelOpenStateFromUtils =
+  controlShellUtils.updateControlPanelOpenState ||
+  ((options = {}) => {
+    const nextOpen = !!options.open;
+    if (options.appState?.controlShell) {
+      options.appState.controlShell.controlPanelOpen = nextOpen;
+    }
+    return nextOpen;
+  });
+
+const updateControlActiveTabStateFromUtils =
+  controlShellUtils.updateControlActiveTabState ||
+  ((options = {}) => {
+    const rawTab = typeof options.tab === "string" ? options.tab.trim() : "";
+    const nextTab = rawTab || options.fallbackTab || "animations";
+    if (options.appState?.controlShell) {
+      options.appState.controlShell.controlActiveTab = nextTab;
+    }
+    return nextTab;
+  });
+
+const updateStatusTextStateFromUtils =
+  controlShellUtils.updateStatusTextState ||
+  ((options = {}) => {
+    const nextStatus = String(options.statusText || "");
+    if (options.appState?.controlShell) {
+      options.appState.controlShell.statusText = nextStatus;
+    }
+    return nextStatus;
+  });
+
+const initialControlShellState = getInitialControlShellState({
+  appState,
+  modeMap: BOTTOM_SURFACE_MODE,
+  defaults: {
+    bottomSurfaceMode: BOTTOM_SURFACE_MODE.CAROUSEL,
+    controlPanelOpen: false,
+    controlActiveTab: "animations",
+    statusText: "booting…"
+  }
+});
+
+let bottomSurfaceMode = initialControlShellState.bottomSurfaceMode;
+let controlPanelOpen = initialControlShellState.controlPanelOpen;
+let controlActiveTab = initialControlShellState.controlActiveTab;
 const logBuffer = [];
 const LOG_BUFFER_MAX = 300;
 
+const setControlPanelOpenState =
+  controlPanelUtils.setControlPanelOpenState ||
+  function setControlPanelOpenStateFallback({
+    open,
+    panel,
+    gear
+  }) {
+    panel?.classList.toggle("is-open", !!open);
+    panel?.setAttribute("aria-hidden", open ? "false" : "true");
+    gear?.setAttribute("aria-expanded", open ? "true" : "false");
+  };
+
+const computeControlAnchorStyles =
+  controlPanelUtils.computeControlAnchorStyles ||
+  function computeControlAnchorStylesFallback({
+    windowWidth,
+    windowHeight,
+    carouselRect,
+    hasPanel
+  }) {
+    const bottomGap = Math.max(12, windowHeight - carouselRect.bottom + 12);
+
+    if (windowWidth <= 780) {
+      return {
+        gearStyle: {
+          left: "",
+          right: "12px",
+          bottom: `${bottomGap}px`
+        },
+        panelStyle: hasPanel
+          ? {
+              left: "",
+              right: "",
+              bottom: ""
+            }
+          : null
+      };
+    }
+
+    const gearLeft = Math.min(windowWidth - 54, carouselRect.right + 10);
+    const panelWidth = Math.min(360, windowWidth - 96);
+    const preferredLeft = gearLeft + 50;
+    const maxLeft = windowWidth - panelWidth - 12;
+
+    return {
+      gearStyle: {
+        left: `${gearLeft}px`,
+        right: "auto",
+        bottom: `${bottomGap}px`
+      },
+      panelStyle: hasPanel
+        ? {
+            left: `${Math.min(preferredLeft, maxLeft)}px`,
+            right: "auto",
+            bottom: `${Math.max(20, bottomGap - 6)}px`
+          }
+        : null
+    };
+  };
+
+const computeControlVisibility =
+  controlPanelUtils.computeControlVisibility ||
+  function computeControlVisibilityFallback({
+    isCarouselHidden,
+    carouselDismissed: isCarouselDismissed
+  }) {
+    return !isCarouselHidden && !isCarouselDismissed;
+  };
+
+const applyControlTabState =
+  controlPanelUtils.applyControlTabState ||
+  function applyControlTabStateFallback({
+    tab,
+    tabButtons,
+    sections
+  }) {
+    tabButtons.forEach((btn) => {
+      btn.classList.toggle("is-active", btn.dataset.controlTab === tab);
+    });
+    sections.forEach((el) => {
+      el.classList.toggle("is-active", el.dataset.controlSection === tab);
+    });
+  };
+
+function setBottomSurfaceMode(mode) {
+  bottomSurfaceMode = updateBottomSurfaceModeStateFromUtils({
+    mode,
+    appState,
+    modeMap: BOTTOM_SURFACE_MODE
+  });
+  ui.carouselRegion?.setAttribute("data-bottom-surface-mode", bottomSurfaceMode);
+  ui.carouselRegion?.classList.toggle("is-settings", bottomSurfaceMode === BOTTOM_SURFACE_MODE.SETTINGS);
+}
+
 function setControlPanelOpen(open) {
-  controlPanelOpen = !!open;
-  controlPanel?.classList.toggle("is-open", controlPanelOpen);
-  controlPanel?.setAttribute("aria-hidden", controlPanelOpen ? "false" : "true");
-  controlGear?.setAttribute("aria-expanded", controlPanelOpen ? "true" : "false");
+  controlPanelOpen = updateControlPanelOpenStateFromUtils({
+    open,
+    appState
+  });
+  setBottomSurfaceMode(controlPanelOpen ? BOTTOM_SURFACE_MODE.SETTINGS : BOTTOM_SURFACE_MODE.CAROUSEL);
+  setControlPanelOpenState({
+    open: controlPanelOpen,
+    panel: controlPanel,
+    gear: controlGear
+  });
 }
 
 function syncControlAnchor() {
   if (!controlGear || !ui.carouselRegion) return;
   const rect = ui.carouselRegion.getBoundingClientRect();
-  const bottomGap = Math.max(12, window.innerHeight - rect.bottom + 12);
+  const nextStyles = computeControlAnchorStyles({
+    windowWidth: window.innerWidth,
+    windowHeight: window.innerHeight,
+    carouselRect: rect,
+    hasPanel: !!controlPanel
+  });
 
-  if (window.innerWidth <= 780) {
-    controlGear.style.left = "";
-    controlGear.style.right = "12px";
-    controlGear.style.bottom = `${bottomGap}px`;
-    if (controlPanel) {
-      controlPanel.style.left = "";
-      controlPanel.style.right = "";
-      controlPanel.style.bottom = "";
-    }
-    return;
+  if (!nextStyles?.gearStyle) return;
+  Object.assign(controlGear.style, nextStyles.gearStyle);
+  if (controlPanel && nextStyles.panelStyle) {
+    Object.assign(controlPanel.style, nextStyles.panelStyle);
   }
-
-  const gearLeft = Math.min(window.innerWidth - 54, rect.right + 10);
-  controlGear.style.left = `${gearLeft}px`;
-  controlGear.style.right = "auto";
-  controlGear.style.bottom = `${bottomGap}px`;
-
-  if (!controlPanel) return;
-  const panelWidth = Math.min(360, window.innerWidth - 96);
-  const preferredLeft = gearLeft + 50;
-  const maxLeft = window.innerWidth - panelWidth - 12;
-  controlPanel.style.left = `${Math.min(preferredLeft, maxLeft)}px`;
-  controlPanel.style.right = "auto";
-  controlPanel.style.bottom = `${Math.max(20, bottomGap - 6)}px`;
 }
 
 function syncControlVisibility() {
   if (!controlGear || !ui.carousel) return;
-  const carouselVisible = !ui.carousel.classList.contains("is-hidden") && !carouselDismissed;
-  controlGear.classList.toggle("is-hidden", !carouselVisible);
-  if (!carouselVisible) setControlPanelOpen(false);
+  const carouselVisible = computeControlVisibility({
+    isCarouselHidden: ui.carousel.classList.contains("is-hidden"),
+    carouselDismissed
+  });
+  const gearVisible = bottomSurfaceMode === BOTTOM_SURFACE_MODE.SETTINGS ? true : carouselVisible;
+  controlGear.classList.toggle("is-hidden", !gearVisible);
+  if (!gearVisible && controlPanelOpen) setControlPanelOpen(false);
 }
 
 function setControlTab(tab) {
-  controlActiveTab = tab;
-  document.querySelectorAll(".controlTab").forEach((btn) => {
-    btn.classList.toggle("is-active", btn.dataset.controlTab === tab);
+  controlActiveTab = updateControlActiveTabStateFromUtils({
+    tab,
+    appState,
+    fallbackTab: "animations"
   });
-  document.querySelectorAll(".controlSection").forEach((el) => {
-    el.classList.toggle("is-active", el.dataset.controlSection === tab);
+  applyControlTabState({
+    tab: controlActiveTab,
+    tabButtons: document.querySelectorAll(".controlTab"),
+    sections: document.querySelectorAll(".controlSection")
   });
 }
+
+const renderConsoleViewerFromUtils =
+  consoleUtils.renderConsoleViewer ||
+  function renderConsoleViewerFromUtilsFallback({ viewer, logBuffer: entries }) {
+    if (!viewer || !Array.isArray(entries)) return;
+    viewer.textContent = entries.join("\n");
+    viewer.scrollTop = viewer.scrollHeight;
+  };
+
+const appendLogEntryFromUtils =
+  consoleUtils.appendLogEntry ||
+  function appendLogEntryFromUtilsFallback({
+    text,
+    cls = "",
+    logBuffer: entries,
+    logBufferMax = 300,
+    viewer,
+    debugLog,
+    maxLines = 220
+  }) {
+    const entry = String(text);
+    if (Array.isArray(entries)) {
+      entries.push(entry);
+      while (entries.length > logBufferMax) entries.shift();
+    }
+
+    renderConsoleViewerFromUtils({ viewer, logBuffer: entries });
+
+    if (!debugLog) return;
+
+    const nearBottom =
+      debugLog.scrollTop + debugLog.clientHeight >= debugLog.scrollHeight - 30;
+
+    const div = document.createElement("div");
+    div.className = `logLine ${cls}`.trim();
+    div.textContent = entry;
+    debugLog.appendChild(div);
+
+    while (debugLog.childNodes.length > maxLines) {
+      debugLog.removeChild(debugLog.firstChild);
+    }
+
+    if (nearBottom) debugLog.scrollTop = debugLog.scrollHeight;
+  };
+
+const clearLogEntriesFromUtils =
+  consoleUtils.clearLogEntries ||
+  function clearLogEntriesFromUtilsFallback({ debugLog, logBuffer: entries, viewer }) {
+    if (debugLog) debugLog.innerHTML = "";
+    if (Array.isArray(entries)) entries.length = 0;
+    renderConsoleViewerFromUtils({ viewer, logBuffer: entries });
+  };
 
 function renderConsoleViewer() {
-  if (!consoleViewer) return;
-  consoleViewer.textContent = logBuffer.join("\n");
-  consoleViewer.scrollTop = consoleViewer.scrollHeight;
+  renderConsoleViewerFromUtils({ viewer: consoleViewer, logBuffer });
 }
 
-
-let statusText = "booting…";
+let statusText = initialControlShellState.statusText;
 function setStatus(s) {
-  statusText = String(s || "");
+  statusText = updateStatusTextStateFromUtils({
+    statusText: s,
+    appState
+  });
   logLine(`• ${statusText}`, "dim");
 }
 
 // Transcript helpers
 function logLine(text, cls = "") {
-  const entry = String(text);
-  logBuffer.push(entry);
-  while (logBuffer.length > LOG_BUFFER_MAX) logBuffer.shift();
-  renderConsoleViewer();
-
-  if (!debugUi.log) return;
-
-  const nearBottom =
-    debugUi.log.scrollTop + debugUi.log.clientHeight >= debugUi.log.scrollHeight - 30;
-
-  const div = document.createElement("div");
-  div.className = `logLine ${cls}`.trim();
-  div.textContent = entry;
-  debugUi.log.appendChild(div);
-
-  const MAX_LINES = 220;
-  while (debugUi.log.childNodes.length > MAX_LINES) {
-    debugUi.log.removeChild(debugUi.log.firstChild);
-  }
-
-  if (nearBottom) debugUi.log.scrollTop = debugUi.log.scrollHeight;
+  appendLogEntryFromUtils({
+    text,
+    cls,
+    logBuffer,
+    logBufferMax: LOG_BUFFER_MAX,
+    viewer: consoleViewer,
+    debugLog: debugUi.log,
+    maxLines: 220
+  });
 }
 
 function logSection(title) {
@@ -596,9 +1059,11 @@ function logSection(title) {
 }
 
 function clearLog() {
-  if (debugUi.log) debugUi.log.innerHTML = "";
-  logBuffer.length = 0;
-  renderConsoleViewer();
+  clearLogEntriesFromUtils({
+    debugLog: debugUi.log,
+    logBuffer,
+    viewer: consoleViewer
+  });
   logLine("Transcript cleared.");
 }
 
@@ -626,7 +1091,7 @@ function syncLookSliders() {
 
 function updateLookControl(key, value) {
   LOOK_CONTROLS[key] = value;
-  normalizeLookControls();
+  normalizeLookControls(LOOK_CONTROLS);
   applyLookControls();
   syncLookSliders();
 }
@@ -727,26 +1192,26 @@ syncLookSliders();
 // ----------------------------
 const clock = new THREE.Clock();
 
-let allFriendsies = null;
-let currentLoadId = 0;
+let allFriendsies = appState?.avatarRuntime?.allFriendsies ?? null;
+let currentLoadId = appState?.avatarRuntime?.currentLoadId ?? 0;
 
-let loadedParts = [];
-let loadedPartsMeta = []; // parallel array of { trait_type, value }
-let lastTraits = null;
+let loadedParts = appState?.avatarRuntime?.loadedParts ?? [];
+let loadedPartsMeta = appState?.avatarRuntime?.loadedPartsMeta ?? []; // parallel array of { trait_type, value }
+let lastTraits = appState?.avatarRuntime?.lastTraits ?? null;
 
-let bodyRoot = null;
-let bodySkeleton = null;
-let bodySkinned = null;
+let bodyRoot = appState?.avatarRuntime?.bodyRoot ?? null;
+let bodySkeleton = appState?.avatarRuntime?.bodySkeleton ?? null;
+let bodySkinned = appState?.avatarRuntime?.bodySkinned ?? null;
 
-let mixer = null;
-let currentAction = null;
+let mixer = appState?.avatarRuntime?.mixer ?? null;
+let currentAction = appState?.avatarRuntime?.currentAction ?? null;
 
-let hipsRawName = null;
-let restPosByBone = new Map();
+let hipsRawName = appState?.avatarRuntime?.hipsRawName ?? null;
+let restPosByBone = appState?.avatarRuntime?.restPosByBone ?? new Map();
 
-let faceOverlayMeshes = [];
-let faceAnchor = null;
-let lastFaceTexture = null;
+let faceOverlayMeshes = appState?.avatarRuntime?.faceOverlayMeshes ?? [];
+let faceAnchor = appState?.avatarRuntime?.faceAnchor ?? null;
+let lastFaceTexture = appState?.avatarRuntime?.lastFaceTexture ?? null;
 
 // Stability defaults (no longer UI toggles)
 const SAFE_MODE = true;
@@ -786,31 +1251,39 @@ function findFirstSkinnedMesh(root) {
   return found;
 }
 
-function baseKey(name) {
-  let s = (name || "").toLowerCase();
-  s = s.replace(/^armature[|:]/g, "");
-  s = s.replace(/^mixamorig[:]?/g, "");
-  s = s.replace(/\s+/g, "");
-  s = s.replace(/[^a-z0-9]+/g, "");
-  s = s.replace(/end$/g, "");
-  return s;
-}
+const baseKey =
+  rigUtils.baseKey ||
+  ((name) => {
+    let s = (name || "").toLowerCase();
+    s = s.replace(/^armature[|:]/g, "");
+    s = s.replace(/^mixamorig[:]?/g, "");
+    s = s.replace(/\s+/g, "");
+    s = s.replace(/[^a-z0-9]+/g, "");
+    s = s.replace(/end$/g, "");
+    return s;
+  });
 
-function aliasKey(key) {
-  key = key.replace(/^spine0+(\d+)$/, "spine$1");
-  if (key === "pelvis" || key === "hip") return "hips";
-  return key;
-}
+const aliasKey =
+  rigUtils.aliasKey ||
+  ((key) => {
+    const normalized = String(key || "").toLowerCase();
+    const spineKey = normalized.replace(/^spine0+(\d+)$/, "spine$1");
+    if (spineKey === "pelvis" || spineKey === "hip") return "hips";
+    return spineKey;
+  });
 
-function keyForName(name) {
-  return aliasKey(baseKey(name));
-}
+const keyForName =
+  rigUtils.keyForName ||
+  ((name) => aliasKey(baseKey(name)));
 
-function getBodyBoneByKey(key) {
-  if (!bodySkeleton) return null;
-  const target = aliasKey(key.toLowerCase());
-  return bodySkeleton.bones.find((b) => keyForName(b.name) === target) || null;
-}
+const getBodyBoneByKey =
+  rigUtils.getBoneByKey
+    ? (key) => rigUtils.getBoneByKey(bodySkeleton, key)
+    : ((key) => {
+        if (!bodySkeleton) return null;
+        const target = aliasKey(String(key || "").toLowerCase());
+        return bodySkeleton.bones.find((b) => keyForName(b.name) === target) || null;
+      });
 
 function collectRigInfo() {
   hipsRawName = null;
@@ -869,11 +1342,14 @@ function attachPartToBodySkeleton(partScene) {
 }
 
 // ---- rigid reparent fix ----
-function buildBodyBoneMap() {
-  const map = new Map();
-  for (const b of bodySkeleton?.bones || []) map.set(keyForName(b.name), b);
-  return map;
-}
+const buildBodyBoneMap =
+  rigUtils.buildBoneMap
+    ? () => rigUtils.buildBoneMap(bodySkeleton)
+    : (() => {
+        const map = new Map();
+        for (const b of bodySkeleton?.bones || []) map.set(keyForName(b.name), b);
+        return map;
+      });
 
 function findBoneAncestor(obj) {
   let p = obj.parent;
@@ -1144,13 +1620,21 @@ function printRigBones() {
 // ----------------------------
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  let clickError = null;
+
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (err) {
+    clickError = err;
+  }
+
+  return { url, clickError };
 }
 
 function drawTextureToCanvas(ctx, tex, w, h) {
@@ -1346,6 +1830,8 @@ function pruneExportHelpers(exportRoot) {
 // Goal: Improve Windows 3D Viewer compatibility without breaking Blender.
 // This is intentionally conservative: if anything looks off, we fall back to raw GLB.
 // ----------------------------
+const exportUtils = window.FrienemiesExportUtils || {};
+
 function parseGlb(arrayBuffer) {
   const u8 = new Uint8Array(arrayBuffer);
   const dv = new DataView(arrayBuffer);
@@ -1845,14 +2331,27 @@ function optimizeGlbForWindows(rawGlb) {
   return { glb: buildGlb(json, binChunk), report };
 }
 
+if (exportUtils.parseGlb) parseGlb = exportUtils.parseGlb;
+if (exportUtils.buildGlb) buildGlb = exportUtils.buildGlb;
+if (exportUtils.deepEqualJson) deepEqualJson = exportUtils.deepEqualJson;
+if (exportUtils.dedupeSamplers) dedupeSamplers = exportUtils.dedupeSamplers;
+if (exportUtils.dedupeSkins) dedupeSkins = exportUtils.dedupeSkins;
+if (exportUtils.bakeAndRemoveKHRTextureTransform_FlipYOnly) {
+  bakeAndRemoveKHRTextureTransform_FlipYOnly = exportUtils.bakeAndRemoveKHRTextureTransform_FlipYOnly;
+}
+if (exportUtils.sanitizeMaterialsForWindows) {
+  sanitizeMaterialsForWindows = exportUtils.sanitizeMaterialsForWindows;
+}
+if (exportUtils.optimizeGlbForWindows) optimizeGlbForWindows = exportUtils.optimizeGlbForWindows;
+
 function downloadRigGlb() {
   if (!loadedParts?.length || !bodyRoot) {
     logLine("Nothing loaded yet — load a fRiENDSiES asset first.", "warn");
-    return;
+    return false;
   }
   if (!THREE?.GLTFExporter) {
     logLine("GLTFExporter missing (script tag not loaded).", "warn");
-    return;
+    return false;
   }
 
   // We want option A: rigged + T-pose only.
@@ -1981,9 +2480,23 @@ function downloadRigGlb() {
   const exporter = new THREE.GLTFExporter();
   const filename = `friendsies_${id || "export"}_rig_tpose.glb`;
 
+  exportUiState.pending = true;
+  setExportStatus(`Preparing ${filename}…`);
   logLine(`Exporting ${filename}…`, "dim");
 
   // (faceAnchor already detached only for cloning; it is not part of exportRoot)
+
+  exportUiState.warningSuppressedCount = 0;
+  const originalConsoleWarn = console.warn;
+  const suppressedWarningNeedle = "THREE.GLTFExporter: Normal scale components are different";
+  console.warn = function patchedExportWarn(...args) {
+    const first = String(args?.[0] || "");
+    if (first.includes(suppressedWarningNeedle)) {
+      exportUiState.warningSuppressedCount += 1;
+      return;
+    }
+    return originalConsoleWarn.apply(console, args);
+  };
 
   try {
     // NOTE: In Three r128 GLTFExporter.parse signature is:
@@ -1991,12 +2504,16 @@ function downloadRigGlb() {
     exporter.parse(
       exportRoot,
       (result) => {
+        console.warn = originalConsoleWarn;
+        exportUiState.pending = false;
+
         avatarGroup.scale.copy(oldScale);
         avatarGroup.position.copy(oldPos);
         avatarGroup.updateMatrixWorld(true);
 
         const glb = result instanceof ArrayBuffer ? result : null;
         if (!glb) {
+          setExportStatus("Export failed before download. Open Console for details.", "warn");
           logLine(
             `Export failed: expected ArrayBuffer (.glb) but got ${typeof result}.`,
             "warn"
@@ -2024,8 +2541,31 @@ function downloadRigGlb() {
           outGlb = glb;
         }
 
-        downloadBlob(new Blob([outGlb], { type: "model/gltf-binary" }), filename);
-        logLine(`✅ Download started: ${filename}`);
+        releaseLastExportBlobUrl();
+        const blob = new Blob([outGlb], { type: "model/gltf-binary" });
+        const { url, clickError } = downloadBlob(blob, filename);
+        exportUiState.lastBlobUrl = url;
+        exportUiState.lastFilename = filename;
+        setExportFallbackLink(url, filename);
+
+        if (clickError) {
+          setExportStatus(
+            "Download was blocked by browser. Use “Open saved export link” to save manually.",
+            "warn"
+          );
+          logLine(`⚠️ Download click failed: ${clickError?.message || clickError}`, "warn");
+        } else {
+          setExportStatus("Download started. If no file appears, use “Open saved export link”.", "ok");
+          logLine(`✅ Download started: ${filename}`);
+        }
+
+        if (exportUiState.warningSuppressedCount > 0) {
+          logLine(
+            `ℹ️ Export note: suppressed ${exportUiState.warningSuppressedCount} known GLTFExporter normalScale warnings (visual-only).`,
+            "dim"
+          );
+          exportUiState.warningSuppressedCount = 0;
+        }
       },
       {
         binary: true,
@@ -2035,13 +2575,20 @@ function downloadRigGlb() {
       }
     );
   } catch (err) {
+    console.warn = originalConsoleWarn;
+    exportUiState.pending = false;
+
     // restore on error
     avatarGroup.scale.copy(oldScale);
     avatarGroup.position.copy(oldPos);
     avatarGroup.updateMatrixWorld(true);
 
+    setExportStatus("Export failed before download. Open Console for details.", "warn");
     logLine(`Export error: ${err?.message || err}`, "warn");
+    return false;
   }
+
+  return true;
 }
 
 // ----------------------------
@@ -2057,17 +2604,21 @@ let ANIM_PRESETS = [
 const ANIM_MANIFEST_URL =
   "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/animations.json";
 
-function normalizeAnimManifestItem(item) {
-  if (Array.isArray(item) && item.length >= 2) {
-    return [String(item[0]), String(item[1])];
-  }
-  if (item && typeof item === "object" && item.url) {
-    const url = String(item.url);
-    const fallbackName = url.split("/").pop()?.replace(/\.glb$/i, "") || "Animation";
-    return [String(item.name || fallbackName), url];
-  }
-  return null;
-}
+const animUtils = window.FrienemiesAnimUtils || {};
+const animSelectUtils = window.FrienemiesAnimSelectUtils || {};
+const normalizeAnimManifestItem =
+  animUtils.normalizeAnimManifestItem ||
+  function normalizeAnimManifestItemFallback(item) {
+    if (Array.isArray(item) && item.length >= 2) {
+      return [String(item[0]), String(item[1])];
+    }
+    if (item && typeof item === "object" && item.url) {
+      const url = String(item.url);
+      const fallbackName = url.split("/").pop()?.replace(/\.glb$/i, "") || "Animation";
+      return [String(item.name || fallbackName), url];
+    }
+    return null;
+  };
 
 async function loadAnimationManifest() {
   try {
@@ -2085,39 +2636,141 @@ async function loadAnimationManifest() {
   }
 }
 
+const populateAnimationSelectWithPresets =
+  animUtils.populateAnimationSelect ||
+  function populateAnimationSelectWithPresetsFallback(selectEl, presets = []) {
+    if (!selectEl) return;
+    selectEl.innerHTML = "";
+    presets.forEach(([name, url], idx) => {
+      const opt = document.createElement("option");
+      opt.value = url;
+      opt.textContent = name;
+      if (idx === 0) opt.selected = true;
+      selectEl.appendChild(opt);
+    });
+  };
+
 function populateAnimationSelect(selectEl) {
-  if (!selectEl) return;
-  selectEl.innerHTML = "";
-  ANIM_PRESETS.forEach(([name, url], idx) => {
-    const opt = document.createElement("option");
-    opt.value = url;
-    opt.textContent = name;
-    if (idx === 0) opt.selected = true;
-    selectEl.appendChild(opt);
-  });
+  populateAnimationSelectWithPresets(selectEl, ANIM_PRESETS);
 }
+
+const populateOnboardingAnimationSelects =
+  animSelectUtils.populateOnboardingAnimationSelects ||
+  function populateOnboardingAnimationSelectsFallback(
+    onboardingSelectEl,
+    controlSelectEl,
+    populateFn,
+    presets = []
+  ) {
+    if (typeof populateFn !== "function") return;
+    populateFn(onboardingSelectEl, presets);
+    populateFn(controlSelectEl, presets);
+  };
 
 function populateOnboardingAnimSelect() {
-  populateAnimationSelect(onboardingAnimSelect);
-  populateAnimationSelect(controlAnimSelect);
+  populateOnboardingAnimationSelects(
+    onboardingAnimSelect,
+    controlAnimSelect,
+    populateAnimationSelectWithPresets,
+    ANIM_PRESETS
+  );
 }
 
+const getSelectedAnimUrlFromInputs =
+  animSelectUtils.getSelectedAnimUrl ||
+  function getSelectedAnimUrlFromInputsFallback(controlSelectEl, onboardingSelectEl, presets = []) {
+    return controlSelectEl?.value || onboardingSelectEl?.value || presets?.[0]?.[1] || "";
+  };
+
 function getSelectedAnimUrl() {
-  return controlAnimSelect?.value || onboardingAnimSelect?.value || ANIM_PRESETS[0]?.[1] || "";
+  return getSelectedAnimUrlFromInputs(controlAnimSelect, onboardingAnimSelect, ANIM_PRESETS);
+}
+
+const getAnimUrlByNameFromPresets =
+  animUtils.getAnimUrlByName ||
+  function getAnimUrlByNameFromPresetsFallback(name, presets = []) {
+    const target = String(name || "").toLowerCase();
+    const hit = presets.find(([animName]) => String(animName).toLowerCase() === target);
+    return hit?.[1] || "";
+  };
+
+function getAnimUrlByName(name) {
+  return getAnimUrlByNameFromPresets(name, ANIM_PRESETS);
+}
+
+const initMascotHookFromUtils =
+  mascotUtils.initMascotHook ||
+  function initMascotHookFromUtilsFallback({
+    mascotToggle: mascotToggleEl,
+    mascotSprite: mascotSpriteEl,
+    mascotBody: mascotBodyEl,
+    mascotPanel: mascotPanelEl,
+    mascotConfig,
+    getAnimUrlByName: getAnimUrlByNameFn,
+    playAnimUrl: playAnimUrlFn,
+    logLine: logLineFn
+  } = {}) {
+    if (mascotToggleEl) mascotToggleEl.textContent = mascotConfig?.mascotName || "Mascot";
+    if (mascotSpriteEl) {
+      mascotSpriteEl.src = mascotConfig?.mascotOpenSeaImage || "";
+      mascotSpriteEl.loading = "lazy";
+    }
+
+    mascotToggleEl?.addEventListener("click", () => {
+      const collapsed = mascotBodyEl?.classList.toggle("is-collapsed");
+      mascotToggleEl.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    });
+
+    mascotPanelEl?.addEventListener("click", async (event) => {
+      const btn = event.target.closest("[data-mascot-emote]");
+      if (!btn) return;
+      const emoteName = btn.dataset.mascotEmote;
+      const animUrl = getAnimUrlByNameFn?.(emoteName);
+      if (!animUrl) {
+        logLineFn?.(`Mascot emote missing in manifest: ${emoteName}`, "warn");
+        return;
+      }
+      await playAnimUrlFn?.(animUrl);
+    });
+  };
+
+function initMascotHook() {
+  mascotPanel?.classList.toggle("is-disabled", !ENABLE_MASCOT_PANEL);
+  mascotPanel?.setAttribute("aria-hidden", ENABLE_MASCOT_PANEL ? "false" : "true");
+  if (!ENABLE_MASCOT_PANEL) return;
+
+  initMascotHookFromUtils({
+    mascotToggle,
+    mascotSprite,
+    mascotBody,
+    mascotPanel,
+    mascotConfig: MASCOT_CONFIG,
+    getAnimUrlByName,
+    playAnimUrl,
+    logLine
+  });
 }
 
 // ----------------------------
 // Load + build character
 // ----------------------------
+const resolveFriendsieEntry =
+  tokenUtils.resolveFriendsieEntry ||
+  ((allFriendsiesSource, id) => {
+    if (!allFriendsiesSource) return null;
+    const tokenId = Number(id);
+    if (!Number.isFinite(tokenId)) return null;
+    return (
+      allFriendsiesSource[tokenId] ||
+      allFriendsiesSource[tokenId - 1] ||
+      allFriendsiesSource.find?.((x) => Number(x?.token_id) === tokenId) ||
+      allFriendsiesSource.find?.((x) => Number(x?.id) === tokenId) ||
+      null
+    );
+  });
+
 function getEntryById(id) {
-  if (!allFriendsies) return null;
-  return (
-    allFriendsies[id] ||
-    allFriendsies[id - 1] ||
-    allFriendsies.find?.((x) => Number(x?.token_id) === id) ||
-    allFriendsies.find?.((x) => Number(x?.id) === id) ||
-    null
-  );
+  return resolveFriendsieEntry(allFriendsies, id);
 }
 
 async function loadFriendsies(id) {
@@ -2341,40 +2994,40 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
 const HAMBURGER_HIDE_MS = 1000;
 const CAROUSEL_HIDE_MS = 1000;
 const IDLE_TIMEOUT_MS = 10000;
-let hamburgerTimer = null;
-let carouselHideTimer = null;
-let idleTimer = null;
-let idleActive = false;
-let activePanel = null;
-let menuOpen = false;
-let orbitReleaseTimer = null;
-let carouselHovered = false;
-let carouselScrolling = false;
-let hamburgerHovered = false;
-let carouselPinned = false;
-let carouselDismissed = false;
-let toggleHideTimer = null;
+let hamburgerTimer = appState?.interactionShell?.hamburgerTimer ?? null;
+let carouselHideTimer = appState?.interactionShell?.carouselHideTimer ?? null;
+let idleTimer = appState?.interactionShell?.idleTimer ?? null;
+let idleActive = appState?.interactionShell?.idleActive ?? false;
+let activePanel = appState?.interactionShell?.activePanel ?? null;
+let menuOpen = appState?.interactionShell?.menuOpen ?? false;
+let orbitReleaseTimer = appState?.interactionShell?.orbitReleaseTimer ?? null;
+let carouselHovered = appState?.interactionShell?.carouselHovered ?? false;
+let carouselScrolling = appState?.interactionShell?.carouselScrolling ?? false;
+let hamburgerHovered = appState?.interactionShell?.hamburgerHovered ?? false;
+let carouselPinned = appState?.interactionShell?.carouselPinned ?? false;
+let carouselDismissed = appState?.interactionShell?.carouselDismissed ?? false;
+let toggleHideTimer = appState?.interactionShell?.toggleHideTimer ?? null;
 
-let carouselTokenIds = [...DEFAULT_TOKEN_IDS];
-let carouselTokenIdSet = new Set(carouselTokenIds);
-let activeCarouselIndex = null;
-let pendingTokenId = null;
-let lastLoadedTokenId = null;
-let loadDebounceTimer = null;
-let imageObserver = null;
-let carouselListenersBound = false;
-let scrollRafPending = false;
-let suppressScrollHandler = false;
+let carouselTokenIds = appState?.carouselQuery?.carouselTokenIds ?? [...DEFAULT_TOKEN_IDS];
+let carouselTokenIdSet = appState?.carouselQuery?.carouselTokenIdSet ?? new Set(carouselTokenIds);
+let activeCarouselIndex = appState?.carouselQuery?.activeCarouselIndex ?? null;
+let pendingTokenId = appState?.carouselQuery?.pendingTokenId ?? null;
+let lastLoadedTokenId = appState?.carouselQuery?.lastLoadedTokenId ?? null;
+let loadDebounceTimer = appState?.carouselQuery?.loadDebounceTimer ?? null;
+let imageObserver = appState?.carouselQuery?.imageObserver ?? null;
+let carouselListenersBound = appState?.carouselQuery?.carouselListenersBound ?? false;
+let scrollRafPending = appState?.carouselQuery?.scrollRafPending ?? false;
+let suppressScrollHandler = appState?.carouselQuery?.suppressScrollHandler ?? false;
 
 /* ── Pointer-drag momentum state ── */
-let isDragging = false;
-let wasDragging = false;  // persists through the click event after drag ends
-let dragStartX = 0;
-let dragStartScroll = 0;
-let dragVelocity = 0;
-let dragLastX = 0;
-let dragLastTime = 0;
-let momentumRaf = null;
+let isDragging = appState?.dragPhysics?.isDragging ?? false;
+let wasDragging = appState?.dragPhysics?.wasDragging ?? false;  // persists through the click event after drag ends
+let dragStartX = appState?.dragPhysics?.dragStartX ?? 0;
+let dragStartScroll = appState?.dragPhysics?.dragStartScroll ?? 0;
+let dragVelocity = appState?.dragPhysics?.dragVelocity ?? 0;
+let dragLastX = appState?.dragPhysics?.dragLastX ?? 0;
+let dragLastTime = appState?.dragPhysics?.dragLastTime ?? 0;
+let momentumRaf = appState?.dragPhysics?.momentumRaf ?? null;
 const DRAG_THRESHOLD = 6;       // px - below this, treat as click
 const MOMENTUM_FRICTION = 0.94; // per-frame multiplier (lower = more friction)
 const MOMENTUM_MIN_VEL = 0.5;   // px/frame - stop momentum below this
@@ -2389,57 +3042,98 @@ const SNAP_BUFFER = 5;
 // ---------------------
 // Carousel geometry helpers
 // ---------------------
+const carouselUtils = window.FrienemiesCarouselUtils || {};
 
-function getCardMetrics() {
-  const style = getComputedStyle(document.documentElement);
-  const cardWidth = parseFloat(style.getPropertyValue("--card-width")) || 120;
-  const cardGap = parseFloat(style.getPropertyValue("--card-gap")) || 14;
-  return { cardWidth, cardGap, step: cardWidth + cardGap };
-}
+const getCardMetrics =
+  carouselUtils.getCardMetrics ||
+  function getCardMetricsFallback() {
+    const style = getComputedStyle(document.documentElement);
+    const cardWidth = parseFloat(style.getPropertyValue("--card-width")) || 120;
+    const cardGap = parseFloat(style.getPropertyValue("--card-gap")) || 14;
+    return { cardWidth, cardGap, step: cardWidth + cardGap };
+  };
 
-function getViewportMetrics() {
-  const vp = ui.carouselViewport;
-  if (!vp) return { vpWidth: 0, visibleCount: 5 };
-  const vpWidth = vp.clientWidth;
-  const { step } = getCardMetrics();
-  const visibleCount = Math.max(1, Math.floor(vpWidth / step));
-  return { vpWidth, visibleCount };
-}
+const getViewportMetrics =
+  carouselUtils.getViewportMetrics ||
+  function getViewportMetricsFallback(viewport, step) {
+    const vpWidth = viewport?.clientWidth || 0;
+    const visibleCount = Math.max(1, Math.floor(vpWidth / (step || 1)));
+    return { vpWidth, visibleCount };
+  };
+
+const indexToScrollLeftByMetrics =
+  carouselUtils.indexToScrollLeft ||
+  function indexToScrollLeftByMetricsFallback(index, metrics) {
+    const { vpWidth = 0, step = 1, cardWidth = 0 } = metrics || {};
+    const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
+    return edgePad + index * step + cardWidth / 2 - vpWidth / 2;
+  };
+
+const scrollLeftToIndexByMetrics =
+  carouselUtils.scrollLeftToIndex ||
+  function scrollLeftToIndexByMetricsFallback(scrollLeft, metrics) {
+    const { vpWidth = 0, step = 1, cardWidth = 0, totalCount = 0 } = metrics || {};
+    if (!totalCount) return 0;
+    const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
+    const centerPixel = scrollLeft + vpWidth / 2;
+    const index = Math.round((centerPixel - edgePad - cardWidth / 2) / step);
+    return Math.max(0, Math.min(totalCount - 1, index));
+  };
+
+const getSpacerWidths =
+  carouselUtils.getSpacerWidths ||
+  function getSpacerWidthsFallback(params) {
+    const {
+      renderStart = 0,
+      renderEnd = 0,
+      totalCount = 0,
+      vpWidth = 0,
+      step = 1,
+      cardWidth = 0
+    } = params || {};
+
+    const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
+    const leftWidth = edgePad + renderStart * step;
+    const rightTokens = totalCount - renderEnd;
+    const rightWidth = rightTokens * step + edgePad;
+
+    return {
+      leftWidth: Math.max(0, leftWidth),
+      rightWidth: Math.max(0, rightWidth)
+    };
+  };
 
 function indexToScrollLeft(index) {
   const { step, cardWidth } = getCardMetrics();
-  const { vpWidth } = getViewportMetrics();
-  // edgePad is the left spacer's minimum width (centering padding for the first card).
-  // Token i's center in the scroll content is at: edgePad + i * step + cardWidth / 2.
-  // To center that in the viewport: scrollLeft = tokenCenter - vpWidth / 2.
-  const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
-  return edgePad + index * step + cardWidth / 2 - vpWidth / 2;
+  const { vpWidth } = getViewportMetrics(ui.carouselViewport, step);
+  return indexToScrollLeftByMetrics(index, { step, cardWidth, vpWidth });
 }
 
 function scrollLeftToIndex(scrollLeft) {
   const { step, cardWidth } = getCardMetrics();
-  const { vpWidth } = getViewportMetrics();
-  const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
-  // Inverse of indexToScrollLeft: solve for index
-  const centerPixel = scrollLeft + vpWidth / 2;
-  const index = Math.round((centerPixel - edgePad - cardWidth / 2) / step);
-  return Math.max(0, Math.min(carouselTokenIds.length - 1, index));
+  const { vpWidth } = getViewportMetrics(ui.carouselViewport, step);
+  return scrollLeftToIndexByMetrics(scrollLeft, {
+    step,
+    cardWidth,
+    vpWidth,
+    totalCount: carouselTokenIds.length
+  });
 }
 
 function updateSpacerWidths(renderStart, renderEnd) {
   const { step, cardWidth } = getCardMetrics();
-  const { vpWidth } = getViewportMetrics();
-  const n = carouselTokenIds.length;
+  const { vpWidth } = getViewportMetrics(ui.carouselViewport, step);
+  const widths = getSpacerWidths({
+    renderStart,
+    renderEnd,
+    totalCount: carouselTokenIds.length,
+    vpWidth,
+    step,
+    cardWidth
+  });
 
-  // Edge padding so first/last card can center in the viewport
-  const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
-
-  const leftWidth = edgePad + renderStart * step;
-  const rightTokens = n - renderEnd;
-  const rightWidth = rightTokens * step + edgePad;
-
-  if (ui.spacerLeft) ui.spacerLeft.style.width = Math.max(0, leftWidth) + "px";
-  if (ui.spacerRight) ui.spacerRight.style.width = Math.max(0, rightWidth) + "px";
+  if (ui.spacerLeft) ui.spacerLeft.style.width = `${widths.leftWidth}px`;
+  if (ui.spacerRight) ui.spacerRight.style.width = `${widths.rightWidth}px`;
 }
 
 function onCarouselScroll() {
@@ -2573,6 +3267,9 @@ function handleUserActivity() {
 
 function setMenuOpen(open) {
   menuOpen = !!open;
+  if (!menuOpen) {
+    defocusIfInside(ui.menu, ui.hamburger);
+  }
   if (ui.hamburger) {
     ui.hamburger.classList.toggle("is-open", menuOpen);
   }
@@ -2589,6 +3286,7 @@ function setActivePanel(name) {
   Object.entries(ui.panels).forEach(([key, el]) => {
     if (!el) return;
     const isOpen = key === activePanel;
+    if (!isOpen) defocusIfInside(el, ui.hamburger);
     el.classList.toggle("is-open", isOpen);
     el.setAttribute("aria-hidden", isOpen ? "false" : "true");
   });
@@ -2604,16 +3302,28 @@ function showOnboarding(force = false) {
   if (!force && seen) return;
   onboardingEl.classList.add("is-open");
   onboardingEl.setAttribute("aria-hidden", "false");
-  if (onboardingInput) onboardingInput.value = "";
-  setTimeout(() => { onboardingInput?.focus(); }, 420);
+
+  if (commandInput?.value && onboardingInput && !onboardingInput.value) {
+    onboardingInput.value = commandInput.value;
+  }
+}
+
+function submitPrimarySearch(raw) {
+  const value = normalizeSearchInput(raw);
+  if (!value) return false;
+
+  if (searchInput && searchInput.value !== value) searchInput.value = value;
+  if (onboardingInput && onboardingInput.value !== value) onboardingInput.value = value;
+  if (commandInput && commandInput.value !== value) commandInput.value = value;
+
+  handleSearch(value);
+  return true;
 }
 
 function submitOnboardingInput() {
   if (!onboardingInput) return false;
-  const raw = onboardingInput.value.trim();
-  if (!raw) return false;
-  handleSearch(raw);
-  return true;
+  const raw = normalizeSearchInput(onboardingInput.value);
+  return submitPrimarySearch(raw);
 }
 
 function hideOnboarding(markSeen = true) {
@@ -2624,44 +3334,55 @@ function hideOnboarding(markSeen = true) {
 }
 
 function updateResetCollectionVisibility() {
-  if (!resetCollectionBtn) return;
-  const isFiltered = carouselTokenIds.length < DEFAULT_TOKEN_IDS.length;
-  resetCollectionBtn.classList.toggle("is-visible", isFiltered);
-  resetCollectionBtn.setAttribute("aria-hidden", isFiltered ? "false" : "true");
+  updateResetCollectionVisibilityFromUtils(
+    resetCollectionBtn,
+    carouselTokenIds,
+    DEFAULT_TOKEN_IDS
+  );
+}
+
+function renderSearchMessage(message, options = {}) {
+  renderSearchMessageFromUtils(searchResults, message, options);
 }
 
 function resetToFullCollection() {
   setCarouselTokenIds(DEFAULT_TOKEN_IDS);
   initCarousel(DEFAULT_TOKEN_ID);
-  frenRouteActive = false;
-  updateFrenMeta(null);
-  window.history.pushState({}, "", "/");
+  frenRouteActive = false`r`n  updateFrenMeta(null);`r`n  window.history.pushState({}, "", buildCollectionPath());
   logLine("🔄 Reset to full collection");
   updateResetCollectionVisibility();
 }
 
 async function navigateToWallet(owner) {
-  if (searchResults) searchResults.textContent = "Looking up tokens…";
+  renderSearchMessage("Looking up tokens…", {
+    tone: "loading",
+    hint: "Checking this wallet address or ENS name now."
+  });
   try {
     const walletData = await fetchWalletTokenIds(owner);
     if (!walletData.tokenIds.length) {
-      if (searchResults) {
-        searchResults.textContent = "No fRiENDSiES tokens found for this wallet/ENS yet.";
-      }
+      renderSearchMessage("No fRiENDSiES tokens found for this wallet address or ENS name yet.", {
+        tone: "warn",
+        showReset: true,
+        hint: "Try another wallet/ENS or jump to a token ID like 8448."
+      });
       return;
     }
     frenRouteActive = false;
     updateFrenMeta(null);
     setCarouselTokenIds(walletData.tokenIds);
     initCarousel(walletData.tokenIds[0]);
+    if (searchResults) searchResults.innerHTML = "";
     const slug = walletData.ownerInput || owner;
-    window.history.pushState({}, "", `/${encodeURIComponent(slug)}`);
+    window.history.pushState({}, "", buildOwnerPath(slug));
     setMenuOpen(false);
     logLine(`🔍 Search: loaded ${walletData.tokenIds.length} tokens for ${slug}`);
   } catch (err) {
-    if (searchResults) {
-      searchResults.textContent = `Lookup failed: ${err?.message || "please try again"}`;
-    }
+    renderSearchMessage(`Lookup failed: ${err?.message || "please try again"}`, {
+      tone: "warn",
+      showReset: true,
+      hint: "Try again in a few seconds, or use a token ID directly."
+    });
   } finally {
     updateResetCollectionVisibility();
   }
@@ -2670,8 +3391,8 @@ async function navigateToWallet(owner) {
 async function handleSearch(query) {
   if (searchResults) searchResults.innerHTML = "";
 
-  const asNum = Number(String(query).replace(/^#/, ""));
-  if (Number.isInteger(asNum) && asNum >= 1 && asNum <= 10000) {
+  const asNum = parseTokenIdInput(query, { min: 1, max: 10000 });
+  if (asNum !== null) {
     const index = carouselTokenIds.indexOf(asNum);
     if (index >= 0) {
       scrollToCarouselIndex(index);
@@ -2679,9 +3400,12 @@ async function handleSearch(query) {
     } else {
       // Token not in current carousel set (e.g. wallet filter active)
       const isFiltered = carouselTokenIds.length < DEFAULT_TOKEN_IDS.length;
-      if (isFiltered && searchResults) {
-        searchResults.textContent =
-          `Token #${asNum} is not in this wallet. Showing full collection.`;
+      if (isFiltered) {
+        renderSearchMessage(`Token #${asNum} is not in this wallet filter. Showing full collection.`, {
+          tone: "info",
+          showReset: true,
+          hint: "You can still load it from the full 1-10000 set."
+        });
       }
       resetToFullCollection();
       const fullIndex = carouselTokenIds.indexOf(asNum);
@@ -2707,10 +3431,11 @@ async function handleSearch(query) {
     return;
   }
 
-  if (searchResults) {
-    searchResults.textContent =
-      "Enter a valid token ID, wallet address, or ENS name.";
-  }
+  renderSearchMessage("Enter a valid token ID, wallet address, or ENS name.", {
+    tone: "warn",
+    showReset: true,
+    hint: "Examples: 8448, 0xabc...123, or pizzalord.eth"
+  });
 }
 
 function debounceTokenLoad(tokenId, { force = false } = {}) {
@@ -2721,10 +3446,7 @@ function debounceTokenLoad(tokenId, { force = false } = {}) {
     if (!allFriendsies) return;
     const id = pendingTokenId;
     pendingTokenId = null;
-    if (!Number.isFinite(id) || !carouselTokenIdSet.has(id)) return;
-
-    // Avoid redundant loads while scrolling, but allow explicit re-loads.
-    if (!force && id === lastLoadedTokenId) return;
+    if (shouldSkipQueuedTokenLoad({ id, tokenIdSet: carouselTokenIdSet, lastLoadedTokenId, force })) return;
 
     lastLoadedTokenId = id;
     loadToken(id);
@@ -2732,49 +3454,70 @@ function debounceTokenLoad(tokenId, { force = false } = {}) {
 }
 
 function requestTokenLoad(tokenId, { force = false } = {}) {
-  const id = Number(tokenId);
-  if (!Number.isFinite(id) || !carouselTokenIdSet.has(id)) return;
+  const id = normalizeRequestedTokenId(tokenId);
+  if (!canRequestTokenLoad(carouselTokenIdSet, id)) return;
   pendingTokenId = id;
   if (!allFriendsies) return;
   debounceTokenLoad(id, { force });
 }
 
+const buildPreviewUrl =
+  tokenUtils.buildPreviewUrl ||
+  ((baseUrl, tokenId) => `${String(baseUrl || "").replace(/\/$/, "")}/${tokenId}/friendsie.jpg`);
+const hydrateImageFromDataset =
+  imageLoadUtils.hydrateImageFromDataset ||
+  ((img, { markLoaded = true, clearDataset = true } = {}) => {
+    if (!img) return false;
+    const src = img.dataset?.src;
+    if (!src) return false;
+    img.src = src;
+    if (markLoaded && img.dataset) img.dataset.loaded = "true";
+    if (clearDataset) img.removeAttribute("data-src");
+    return true;
+  });
+const createTokenImageObserver =
+  imageLoadUtils.createTokenImageObserver ||
+  (({ existingObserver = null, canObserve = true, root = null, rootMargin = "60px" } = {}) => {
+    if (existingObserver || !canObserve || !("IntersectionObserver" in window)) {
+      return existingObserver || null;
+    }
+    return new IntersectionObserver(
+      (entries, observer) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          hydrateImageFromDataset(entry.target);
+          observer?.unobserve(entry.target);
+        });
+      },
+      { root, rootMargin }
+    );
+  });
+const observeImageWithFallback =
+  imageLoadUtils.observeTokenImage ||
+  (({ img, observer }) => {
+    if (!img) return false;
+    if (!observer) return hydrateImageFromDataset(img, { markLoaded: false, clearDataset: false });
+    observer.observe(img);
+    return true;
+  });
+
 function getPreviewUrl(tokenId) {
-  return `${PREVIEW_BASE_URL}/${tokenId}/friendsie.jpg`;
+  return buildPreviewUrl(PREVIEW_BASE_URL, tokenId);
 }
 
 function ensureImageObserver() {
-  if (imageObserver || !("IntersectionObserver" in window)) return;
-  imageObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        const img = entry.target;
-        const src = img.dataset.src;
-        if (src && !img.dataset.loaded) {
-          img.src = src;
-          img.dataset.loaded = "true";
-          img.removeAttribute("data-src");
-        }
-        imageObserver?.unobserve(img);
-      });
-    },
-    {
-      root: ui.carouselViewport || null,
-      rootMargin: "60px"
-    }
-  );
+  imageObserver = createTokenImageObserver({
+    existingObserver: imageObserver,
+    canObserve: "IntersectionObserver" in window,
+    root: ui.carouselViewport || null,
+    rootMargin: "60px"
+  });
 }
 
 function observeTokenImage(img) {
   if (!img) return;
   ensureImageObserver();
-  if (!imageObserver) {
-    const src = img.dataset.src;
-    if (src) img.src = src;
-    return;
-  }
-  imageObserver.observe(img);
+  observeImageWithFallback({ img, observer: imageObserver });
 }
 
 function createTokenSlide(id, index) {
@@ -3027,6 +3770,14 @@ function bindCarouselListeners() {
   ui.slides.addEventListener("click", (event) => {
     // If this click was the end of a drag gesture, ignore it
     if (wasDragging || isDragging) return;
+
+    const carouselAction = event.target.closest("[data-carousel-action]");
+    if (carouselAction?.dataset.carouselAction === "reset-collection") {
+      event.preventDefault();
+      resetToFullCollection();
+      return;
+    }
+
     const slide = event.target.closest(".tokenSlide");
     if (!slide || !ui.slides.contains(slide)) return;
     const index = Number(slide.dataset.index || 0);
@@ -3169,16 +3920,31 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
 
   if (carouselTokenIds.length === 0) {
     const li = document.createElement("li");
-    li.className = "tokenSlide";
+    li.className = "tokenSlide tokenSlide--empty";
     li.dataset.index = "0";
     ui.slides.dataset.renderStart = "0";
     ui.slides.dataset.renderEnd = "0";
 
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "tokenCard";
-    card.textContent = "No tokens";
-    card.disabled = true;
+    const card = document.createElement("div");
+    card.className = "tokenCard tokenCard--empty";
+
+    const title = document.createElement("p");
+    title.className = "tokenEmptyTitle";
+    title.textContent = "No tokens in this filter";
+
+    const hint = document.createElement("p");
+    hint.className = "tokenEmptyHint";
+    hint.textContent = "Try another wallet/ENS or return to the full collection.";
+
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "tokenEmptyAction";
+    action.dataset.carouselAction = "reset-collection";
+    action.textContent = "View full collection";
+
+    card.appendChild(title);
+    card.appendChild(hint);
+    card.appendChild(action);
     li.appendChild(card);
     ui.slides.appendChild(li);
     updateSpacerWidths(0, 0);
@@ -3220,6 +3986,7 @@ ui.hamburger?.addEventListener("click", () => {
 
 controlGear?.addEventListener("click", () => {
   setControlPanelOpen(!controlPanelOpen);
+  syncControlVisibility();
 });
 
 document.querySelectorAll(".controlTab").forEach((btn) => {
@@ -3317,13 +4084,24 @@ ui.menu?.addEventListener("click", (event) => {
 
 searchInput?.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
-  const raw = searchInput.value.trim();
-  if (!raw) return;
-  handleSearch(raw);
+  submitPrimarySearch(searchInput.value);
+});
+
+commandBar?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  submitPrimarySearch(commandInput?.value);
 });
 
 resetCollectionBtn?.addEventListener("click", () => {
   resetToFullCollection();
+  setMenuOpen(false);
+});
+
+searchResults?.addEventListener("click", (event) => {
+  const action = event.target.closest("[data-search-action]");
+  if (action?.dataset.searchAction !== "reset-collection") return;
+  resetToFullCollection();
+  searchResults.innerHTML = "";
   setMenuOpen(false);
 });
 
@@ -3339,13 +4117,17 @@ copyLinkBtn?.addEventListener("click", () => {
 });
 
 downloadGlbBtn?.addEventListener("click", () => {
-  downloadRigGlb();
-  if (downloadGlbBtn) {
-    downloadGlbBtn.textContent = "Export started — your .glb is downloading.";
-    setTimeout(() => {
-      if (downloadGlbBtn) downloadGlbBtn.textContent = "Download .glb";
-    }, 1800);
+  if (exportUiState.pending) {
+    setExportStatus("Export is already running…", "warn");
+    return;
   }
+
+  const started = downloadRigGlb();
+  if (!started) {
+    setExportStatus("Export did not start. Open Console for details.", "warn");
+    return;
+  }
+
   setMenuOpen(false);
 });
 
@@ -3364,7 +4146,7 @@ onboardingEnterBtn?.addEventListener("click", () => {
 // "Try a Demo" — loads pizzalord.eth
 onboardingDemoBtn?.addEventListener("click", () => {
   hideOnboarding(true);
-  handleSearch("pizzalord.eth");
+  submitPrimarySearch("pizzalord.eth");
 });
 
 // "Skip for now" — simple dismiss
@@ -3377,10 +4159,6 @@ showOnboardingBtn?.addEventListener("click", () => {
   setMenuOpen(false);
 });
 
-onboardingEl?.addEventListener("click", (event) => {
-  if (event.target === onboardingEl) hideOnboarding(true);
-});
-
 // Enter key on onboarding input submits
 onboardingInput?.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
@@ -3388,28 +4166,11 @@ onboardingInput?.addEventListener("keydown", (event) => {
   if (hadInput) hideOnboarding(true);
 });
 
-// Focus trap + Escape key for onboarding dialog
+// Escape dismisses onboarding guide if it is open.
 document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
   if (!onboardingEl?.classList.contains("is-open")) return;
-  if (event.key === "Escape") {
-    hideOnboarding(true);
-    event.preventDefault();
-    return;
-  }
-  if (event.key !== "Tab") return;
-  const focusable = onboardingEl.querySelectorAll(
-    'input, button, [tabindex]:not([tabindex="-1"])'
-  );
-  if (!focusable.length) return;
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  }
+  hideOnboarding(true);
 });
 
 document.querySelectorAll("[data-preset]").forEach((btn) => {
@@ -3648,7 +4409,9 @@ window.addEventListener("popstate", (event) => {
 
   await loadAnimationManifest();
   populateOnboardingAnimSelect();
+  initMascotHook();
   setControlTab("animations");
+  setBottomSurfaceMode(BOTTOM_SURFACE_MODE.CAROUSEL);
   setControlPanelOpen(false);
   initCarousel(carouselStartTokenId);
   syncControlAnchor();
@@ -3662,10 +4425,11 @@ window.addEventListener("popstate", (event) => {
     hideOnboarding(true);
   }
 
-  validateLookConfig(LOOK_CONTROLS, "LOOK_CONTROLS");
+  validateLookConfig(LOOK_CONTROLS, "LOOK_CONTROLS", { isDev: IS_DEV, logLine });
   validateLookConfig(
     LOOK_PRESETS[DEFAULT_LOOK_PRESET],
-    `Preset: ${DEFAULT_LOOK_PRESET}`
+    `Preset: ${DEFAULT_LOOK_PRESET}`,
+    { isDev: IS_DEV, logLine }
   );
   setStatus("loading pano/env…");
 
@@ -3759,4 +4523,7 @@ window.addEventListener("resize", () => {
     suppressScrollHandler = false;
   }
 });
+
+
+
 

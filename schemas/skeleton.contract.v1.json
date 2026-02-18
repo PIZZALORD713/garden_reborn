@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frienemies.studio/schemas/skeleton.contract.v1.json",
+  "title": "fRiENEMiES Skeleton Contract v1",
+  "type": "object",
+  "required": ["version", "canonicalBones", "aliases", "requiredBones"],
+  "properties": {
+    "version": { "type": "string", "const": "v1" },
+    "canonicalBones": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "requiredBones": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "aliases": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "notes": { "type": "string" }
+  },
+  "examples": [
+    {
+      "version": "v1",
+      "canonicalBones": ["hips", "spine", "neck", "head", "leftarm", "rightarm", "leftleg", "rightleg"],
+      "requiredBones": ["hips", "head"],
+      "aliases": { "pelvis": "hips", "hip": "hips", "mixamorig:hips": "hips" },
+      "notes": "Body skeleton is source of truth for all bound parts."
+    }
+  ]
+}
