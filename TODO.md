@@ -76,4 +76,4 @@
 
 ## Next queue candidates
 - [x] slice-051-post-slice-050-verification-pass - run syntax + browser smoke checks after avatar-runtime helper extraction to confirm token load/animation/export surfaces still render without runtime errors.
-- [ ] slice-052-core-flow-verification-pass - run full API-backed core-flow checks (token ID load, wallet/ENS search, animation play, `.glb` export, mobile sanity) after state-helper extraction set through slice-050.
+- [x] slice-052-core-flow-verification-pass - rerun API-backed verification after state-helper extraction set through slice-050 (`node --check`, API route checks incl. wallet token count, desktop/mobile Playwright smoke captures) with no runtime startup errors.
