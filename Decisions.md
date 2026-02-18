@@ -55,3 +55,10 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesLookUtils` but keeps local fallback implementations if helper script fails to load.
 - **Validation evidence:** `node --check` passes for `main.js`, `look-utils.js`, `identifier-utils.js`, and `scene-bootstrap.js`.
 - **Scope guard:** Utility extraction + script wiring only; no changes to token loading/routing, carousel behavior, animation playback, or export logic.
+
+## 2026-02-18 — Slice 011 animation utils module
+- **Decision:** Extract animation manifest/selector helper primitives (`normalizeAnimManifestItem`, select population, manifest name lookup) into `anim-utils.js` and load it before `main.js`.
+- **Why:** Keeps the Phase 2 modular split moving by peeling another cohesive helper cluster out of `main.js` with minimal behavioral risk.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesAnimUtils` while preserving local fallback implementations if helper script fails to load.
+- **Validation evidence:** `node --check` passes for `main.js`, `anim-utils.js`, `look-utils.js`, `identifier-utils.js`, and `scene-bootstrap.js`.
+- **Scope guard:** Utility extraction + script wiring only; no changes to token loading/routing, carousel behavior, animation playback semantics, or export logic.
