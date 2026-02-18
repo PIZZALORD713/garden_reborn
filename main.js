@@ -75,6 +75,23 @@ const getWalletOwnerFromUrl =
     return null;
   });
 
+const searchUtils = window.FrienemiesSearchUtils || {};
+const normalizeSearchInput =
+  searchUtils.normalizeSearchInput ||
+  ((value) => String(value ?? "").trim());
+const parseTokenIdInput =
+  searchUtils.parseTokenIdInput ||
+  ((value, options = {}) => {
+    const min = Number.isInteger(options.min) ? options.min : 1;
+    const max = Number.isInteger(options.max) ? options.max : 10000;
+    const normalized = normalizeSearchInput(value).replace(/^#/, "");
+    if (!normalized) return null;
+    const tokenId = Number(normalized);
+    if (!Number.isInteger(tokenId)) return null;
+    if (tokenId < min || tokenId > max) return null;
+    return tokenId;
+  });
+
 async function fetchWalletTokenIds(owner) {
   const params = new URLSearchParams({
     owner,
@@ -2703,7 +2720,7 @@ function showOnboarding(force = false) {
 }
 
 function submitPrimarySearch(raw) {
-  const value = String(raw || "").trim();
+  const value = normalizeSearchInput(raw);
   if (!value) return false;
 
   if (searchInput && searchInput.value !== value) searchInput.value = value;
@@ -2716,7 +2733,7 @@ function submitPrimarySearch(raw) {
 
 function submitOnboardingInput() {
   if (!onboardingInput) return false;
-  const raw = onboardingInput.value.trim();
+  const raw = normalizeSearchInput(onboardingInput.value);
   return submitPrimarySearch(raw);
 }
 
@@ -2819,8 +2836,8 @@ async function navigateToWallet(owner) {
 async function handleSearch(query) {
   if (searchResults) searchResults.innerHTML = "";
 
-  const asNum = Number(String(query).replace(/^#/, ""));
-  if (Number.isInteger(asNum) && asNum >= 1 && asNum <= 10000) {
+  const asNum = parseTokenIdInput(query, { min: 1, max: 10000 });
+  if (asNum !== null) {
     const index = carouselTokenIds.indexOf(asNum);
     if (index >= 0) {
       scrollToCarouselIndex(index);

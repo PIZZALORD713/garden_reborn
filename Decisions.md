@@ -144,3 +144,10 @@
   - Browser console check showed no runtime errors (only existing `THREE.GLTFExporter` warnings).
   - Mobile sanity pass at `390x844` retained reachable primary search + load controls.
 - **Scope guard:** QA/docs-only completion step; no app code, behavior, or UX changes.
+
+## 2026-02-18 — Slice 015 search utils module
+- **Decision:** Extract primary-search normalization and token-ID parsing primitives into `search-utils.js`, loaded before `main.js`.
+- **Why:** Continues the Phase 2 modular split on a low-risk seam shared by command bar + onboarding + Find entry points.
+- **Implementation guard:** `main.js` consumes `window.FrienemiesSearchUtils` with local fallback implementations to preserve runtime behavior if helper loading fails.
+- **Validation evidence:** `node --check` passes for `main.js`, `search-utils.js`, and previously extracted helper modules.
+- **Scope guard:** Helper extraction + wiring only; no changes to token-routing rules, wallet/ENS lookup behavior, animation playback, carousel mechanics, or export pipeline.
