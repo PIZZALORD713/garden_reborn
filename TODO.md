@@ -49,3 +49,7 @@
 - [x] slice-034-app-state-boundary-plan — document current global mutable state boundaries in `ARCHITECTURE.md` and define a no-behavior-change extraction seam (`app-state-store.js`) for centralized app-state follow-up.
 - [x] slice-035-app-state-store-module — add `app-state-store.js` grouped state factory and wire `main.js` to consume it with local fallback, no behavior changes.
 - [x] slice-036-bottom-surface-mode-fix — add explicit bottom-surface mode state (`carousel`/`settings`) so gear toggles a single shared bottom container (carousel vs settings), and disable Sauce-0x mascot panel by default to remove bottom overlap risk while preserving reversible code paths.
+- [x] slice-037-post-slice-036-verification-pass — run syntax + browser smoke checks after bottom-surface/state-store changes to confirm command bar/carousel/settings surfaces still render without runtime errors.
+
+## Next queue candidates
+- [ ] slice-038-control-shell-state-helpers — extract control-shell state selectors/updaters from `main.js` into a dedicated helper module while preserving behavior through fallback wiring.

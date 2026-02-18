@@ -313,3 +313,11 @@
 - **Implementation guard:** Existing top-level mutable variables remain in `main.js`, but now hydrate from grouped store buckets (`controlShell`, `avatarRuntime`, `interactionShell`, `carouselQuery`, `dragPhysics`) so follow-up selector extraction can proceed with low drift.
 - **Validation evidence:** `node --check` passes for `app-state-store.js` and `main.js`; script is loaded in `index.html` before `main.js`.
 - **Scope guard:** State-factory seam + wiring only; no token search/load/routing, animation playback, carousel behavior, or export logic changes.
+
+## 2026-02-18 — Slice 037 post-slice-036 verification pass
+- **Decision:** Run an immediate verification-only slice after the app-state-store seam + bottom-surface mode fix before taking additional extraction work.
+- **Why:** Confirms the latest state/layout orchestration changes did not regress high-traffic UI entry surfaces.
+- **Validation evidence:**
+  - `Get-ChildItem -Name *.js | ForEach-Object { node --check $_ }` passes for all root runtime modules.
+  - Browser smoke capture succeeds against `http://127.0.0.1:4173/index.html` via `npx playwright screenshot --device="Desktop Chrome" ... slice-037-smoke.png`.
+- **Scope guard:** Verification/docs only; no runtime behavior, UX, or architecture changes.
