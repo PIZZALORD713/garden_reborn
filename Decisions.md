@@ -426,3 +426,11 @@
   - `Get-ChildItem -File -Filter *.js | ForEach-Object { node --check $_.Name }` passes for all root runtime modules including `interaction-shell-utils.js`.
   - Static-host browser smoke succeeded (`python -m http.server 4176` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4176/index.html slice-048-smoke.png`).
 - **Scope guard:** Helper extraction + script wiring + validation only; no changes to token search/load/routing, animation playback, carousel virtual-window math, or export pipeline behavior.
+
+## 2026-02-18 - Slice 049 post-slice-048 verification pass
+- **Decision:** Run an immediate verification-only slice after interaction-shell helper extraction before starting the next state-helper/module seam.
+- **Why:** Confirms menu/hamburger/carousel interaction shells still boot and render cleanly after slice-048 while keeping queue drift low.
+- **Validation evidence:**
+  - `Get-ChildItem -File -Filter *.js | ForEach-Object { node --check $_.Name }` passes for all root runtime modules.
+  - Static-host browser smoke succeeded (`python -m http.server 4177` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4177/index.html slice-049-smoke.png`).
+- **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API, or architecture changes.
