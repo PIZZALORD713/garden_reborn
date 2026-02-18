@@ -179,3 +179,11 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesTokenUtils` (`resolveFriendsieEntry`, `buildPreviewUrl`) with local fallback implementations if helper loading fails.
 - **Validation evidence:** `node --check` passes for `main.js`, `token-utils.js`, and all previously extracted helper modules.
 - **Scope guard:** Helper extraction + script wiring only; no changes to token search semantics, wallet/ENS lookup behavior, animation playback, carousel mechanics, or export pipeline.
+
+## 2026-02-18 — Slice 020 post-extraction verification pass
+- **Decision:** Run a dedicated verification slice immediately after the 015–019 helper extraction run before starting any new module split.
+- **Why:** Keeps drift low by proving recent modularization work remains stable before adding more surface area.
+- **Validation evidence:**
+  - `node --check` passes for `main.js` plus all extracted helper modules (`identifier-utils.js`, `scene-bootstrap.js`, `look-utils.js`, `anim-utils.js`, `carousel-utils.js`, `export-utils.js`, `search-utils.js`, `routing-utils.js`, `anim-select-utils.js`, `rig-utils.js`, `token-utils.js`).
+  - Local browser smoke capture succeeds via `python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-020-smoke.png`.
+- **Scope guard:** Verification/docs only; no product behavior, UX, or architecture changes in runtime code paths.

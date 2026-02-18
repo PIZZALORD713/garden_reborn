@@ -24,3 +24,7 @@
 - [x] slice-017-anim-select-utils-module — extract animation select orchestration helpers into `anim-select-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
 - [x] slice-018-rig-utils-module — extract rig bone-key normalization/map helpers into `rig-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
 - [x] slice-019-token-utils-module — extract Friendsies entry resolution + preview URL builder helpers into `token-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
+- [x] slice-020-post-extraction-verification-pass — run syntax + browser smoke checks after slices 015–019 extraction set to confirm command-bar/onboarding UI still renders without runtime errors.
+
+## Next queue candidates
+- [ ] slice-021-control-panel-utils-module — extract control panel tab/anchor/visibility helpers into a dedicated utility module with `main.js` fallback wiring.
