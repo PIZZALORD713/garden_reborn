@@ -239,3 +239,11 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesLoadQueueUtils` (`normalizeRequestedTokenId`, `canRequestTokenLoad`, `shouldSkipQueuedTokenLoad`) with in-file fallback implementations.
 - **Validation evidence:** `node --check` passes for `main.js`, `load-queue-utils.js`, and all previously extracted utility modules.
 - **Scope guard:** Helper extraction + script wiring only; no changes to token-routing semantics, wallet/ENS behavior, carousel mechanics, animation playback, or export pipeline.
+
+## 2026-02-18 — Slice 028 post-slice-027 verification pass
+- **Decision:** Run a verification-only slice immediately after load-queue helper extraction before continuing modularization.
+- **Why:** Maintains low drift by proving the search/load surfaces still boot and render cleanly after request-guard extraction.
+- **Validation evidence:**
+  - `node --check` passes for `main.js` plus all extracted utility modules (`identifier/scene/look/anim/carousel/export/search/routing/anim-select/rig/token/control-panel/console/search-ui/load-queue`).
+  - Browser smoke capture succeeds via `python -m http.server 4173` + `npx playwright screenshot --device="Desktop Chrome" http://127.0.0.1:4173/index.html slice-028-smoke.png`.
+- **Scope guard:** Verification/docs only; no runtime behavior or architecture changes.
