@@ -19,3 +19,8 @@
 - **Decision:** Add a persistent top command bar as the primary search surface and route onboarding/find submissions through one `submitPrimarySearch()` helper.
 - **Why:** Creates one obvious place to load token/wallet/ENS while preserving existing Find sheet and onboarding entry points as secondary mirrors.
 - **Scope guard:** UI + submission wiring only; no token-loading logic, routing behavior, or carousel mechanics changes.
+
+## 2026-02-17 — Slice 005 onboarding non-blocking
+- **Decision:** Reposition onboarding as a floating guide card and remove modal-style focus trapping/backdrop capture.
+- **Why:** Returning users can immediately interact with scene and controls while onboarding remains available as contextual help.
+- **Scope guard:** Onboarding presentation/interaction only; no changes to search resolution, token routing, animation playback, or export behavior.

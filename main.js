@@ -2606,8 +2606,10 @@ function showOnboarding(force = false) {
   if (!force && seen) return;
   onboardingEl.classList.add("is-open");
   onboardingEl.setAttribute("aria-hidden", "false");
-  if (onboardingInput) onboardingInput.value = "";
-  setTimeout(() => { onboardingInput?.focus(); }, 420);
+
+  if (commandInput?.value && onboardingInput && !onboardingInput.value) {
+    onboardingInput.value = commandInput.value;
+  }
 }
 
 function submitPrimarySearch(raw) {
@@ -3472,10 +3474,6 @@ showOnboardingBtn?.addEventListener("click", () => {
   setMenuOpen(false);
 });
 
-onboardingEl?.addEventListener("click", (event) => {
-  if (event.target === onboardingEl) hideOnboarding(true);
-});
-
 // Enter key on onboarding input submits
 onboardingInput?.addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
@@ -3483,28 +3481,11 @@ onboardingInput?.addEventListener("keydown", (event) => {
   if (hadInput) hideOnboarding(true);
 });
 
-// Focus trap + Escape key for onboarding dialog
+// Escape dismisses onboarding guide if it is open.
 document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
   if (!onboardingEl?.classList.contains("is-open")) return;
-  if (event.key === "Escape") {
-    hideOnboarding(true);
-    event.preventDefault();
-    return;
-  }
-  if (event.key !== "Tab") return;
-  const focusable = onboardingEl.querySelectorAll(
-    'input, button, [tabindex]:not([tabindex="-1"])'
-  );
-  if (!focusable.length) return;
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  }
+  hideOnboarding(true);
 });
 
 document.querySelectorAll("[data-preset]").forEach((btn) => {
