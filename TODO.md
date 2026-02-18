@@ -23,3 +23,4 @@
 - [x] slice-016-routing-utils-module — extract URL owner parsing + history path builders into `routing-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
 - [x] slice-017-anim-select-utils-module — extract animation select orchestration helpers into `anim-select-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
 - [x] slice-018-rig-utils-module — extract rig bone-key normalization/map helpers into `rig-utils.js` and wire `main.js` to consume helper exports with fallback behavior.
+- [x] slice-019-token-utils-module — extract Friendsies entry resolution + preview URL builder helpers into `token-utils.js` and wire `main.js` to consume helper exports with fallback behavior.

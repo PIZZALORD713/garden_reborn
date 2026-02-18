@@ -172,3 +172,10 @@
 - **Implementation guard:** `main.js` now consumes `window.FrienemiesRigUtils` (`baseKey`, `aliasKey`, `keyForName`, `getBoneByKey`, `buildBoneMap`) with local fallback implementations if helper script fails to load.
 - **Validation evidence:** `node --check` passes for `main.js`, `rig-utils.js`, and all previously extracted helper modules.
 - **Scope guard:** Helper extraction + script wiring only; no changes to token search/load/routing, carousel behavior, animation playback, onboarding UX, or export pipeline.
+
+## 2026-02-18 — Slice 019 token utils module
+- **Decision:** Extract Friendsies metadata entry resolution and preview-image URL builder helpers into `token-utils.js` and load it before `main.js`.
+- **Why:** Continues Phase 2 modularization by moving token-data helper logic out of `main.js` while preserving behavior through fallback wiring.
+- **Implementation guard:** `main.js` now consumes `window.FrienemiesTokenUtils` (`resolveFriendsieEntry`, `buildPreviewUrl`) with local fallback implementations if helper loading fails.
+- **Validation evidence:** `node --check` passes for `main.js`, `token-utils.js`, and all previously extracted helper modules.
+- **Scope guard:** Helper extraction + script wiring only; no changes to token search semantics, wallet/ENS lookup behavior, animation playback, carousel mechanics, or export pipeline.

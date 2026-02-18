@@ -99,6 +99,7 @@ const parseTokenIdInput =
   });
 
 const rigUtils = window.FrienemiesRigUtils || {};
+const tokenUtils = window.FrienemiesTokenUtils || {};
 
 async function fetchWalletTokenIds(owner) {
   const params = new URLSearchParams({
@@ -2232,15 +2233,23 @@ function initMascotHook() {
 // ----------------------------
 // Load + build character
 // ----------------------------
+const resolveFriendsieEntry =
+  tokenUtils.resolveFriendsieEntry ||
+  ((allFriendsiesSource, id) => {
+    if (!allFriendsiesSource) return null;
+    const tokenId = Number(id);
+    if (!Number.isFinite(tokenId)) return null;
+    return (
+      allFriendsiesSource[tokenId] ||
+      allFriendsiesSource[tokenId - 1] ||
+      allFriendsiesSource.find?.((x) => Number(x?.token_id) === tokenId) ||
+      allFriendsiesSource.find?.((x) => Number(x?.id) === tokenId) ||
+      null
+    );
+  });
+
 function getEntryById(id) {
-  if (!allFriendsies) return null;
-  return (
-    allFriendsies[id] ||
-    allFriendsies[id - 1] ||
-    allFriendsies.find?.((x) => Number(x?.token_id) === id) ||
-    allFriendsies.find?.((x) => Number(x?.id) === id) ||
-    null
-  );
+  return resolveFriendsieEntry(allFriendsies, id);
 }
 
 async function loadFriendsies(id) {
@@ -2952,8 +2961,12 @@ function requestTokenLoad(tokenId, { force = false } = {}) {
   debounceTokenLoad(id, { force });
 }
 
+const buildPreviewUrl =
+  tokenUtils.buildPreviewUrl ||
+  ((baseUrl, tokenId) => `${String(baseUrl || "").replace(/\/$/, "")}/${tokenId}/friendsie.jpg`);
+
 function getPreviewUrl(tokenId) {
-  return `${PREVIEW_BASE_URL}/${tokenId}/friendsie.jpg`;
+  return buildPreviewUrl(PREVIEW_BASE_URL, tokenId);
 }
 
 function ensureImageObserver() {
