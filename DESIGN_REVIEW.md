@@ -66,70 +66,52 @@ backdrop-filter: var(--glass-blur);
 
 **Fix:** Added a unified `:focus-visible` rule for all buttons/interactive elements with a subtle dark outline, and a custom focus ring for `.searchInput` matching the onboarding input's existing focus shadow pattern.
 
+### 5. Consolidated backdrop-filter blur values (P0)
+
+**Problem:** Five different hardcoded blur levels used ad-hoc across components (`.fab` blur(20px), `.carouselToggle` blur(16px), `.controlGear` blur(14px), `.mascotPanel` blur(10px), everything else `var(--glass-blur)` blur(12px)).
+
+**Fix:** Defined a two-tier blur system:
+```css
+--glass-blur: blur(12px) saturate(1.2);        /* default — carousel, menu, sheets, gear, mascot */
+--glass-blur-strong: blur(18px) saturate(1.3);  /* elevated — FAB, onboarding card */
+```
+All five hardcoded `backdrop-filter` declarations migrated to `var(--glass-blur)` or `var(--glass-blur-strong)`. Mobile `blur(8px)` left as a performance-specific override inside the `@media (max-width: 720px)` rule.
+
+### 6. Standardized animation timing tokens (P0)
+
+**Problem:** Transitions used 10+ different durations (150ms, 160ms, 180ms, 200ms, 220ms, 250ms, 260ms, 300ms, 350ms, 400ms), creating subtle visual discord when multiple elements animate together.
+
+**Fix:** Defined three duration tokens:
+```css
+--duration-fast: 150ms;   /* micro-interactions: hover, focus, bg changes */
+--duration-md: 250ms;     /* reveals: menus, panels, cards, onboarding */
+--duration-slow: 400ms;   /* major transitions: carousel region, glassCarousel, toggle fade */
+```
+All transition/animation durations migrated. Menu icon stagger delays (40ms/100ms/160ms) left as-is since they are choreographic offsets, not transition durations.
+
+### 7. Created z-index layer map (P0)
+
+**Problem:** Z-indices scattered as magic numbers with no documented layering system.
+
+**Fix:** Defined named z-index tokens in `:root`:
+```css
+--z-base: 1;        /* .ui */
+--z-carousel: 5;    /* .carouselRegion, .studioBadge */
+--z-menu: 6;        /* .menuStack */
+--z-sheet: 7;       /* .sheet */
+--z-command: 8;     /* .commandBar */
+--z-overlay: 14;    /* .onboarding */
+--z-gear: 16;       /* .controlGear */
+--z-mascot: 18;     /* .mascotPanel */
+--z-modal: 24;      /* .consoleModal */
+```
+All global z-index values migrated. `z-index: 0` (`.ui::before`) and local stacking contexts within the onboarding card (z-index: -1, 1, 2) left as raw numbers since they are component-scoped.
+
 ---
 
-## Most Important Next Action Points
+## Remaining Action Points
 
 Ranked by impact (visual consistency x user experience):
-
-### P0 — Fix Now
-
-#### 1. Consolidate backdrop-filter blur values
-Currently **five different blur levels** are used ad-hoc:
-
-| Component | Blur Value |
-|---|---|
-| `.fab` | `blur(20px) saturate(1.3)` |
-| `.carouselToggle` | `blur(16px) saturate(1.2)` |
-| `.controlGear` | `blur(14px) saturate(1.15)` |
-| `.mascotPanel` | `blur(10px) saturate(1.15)` |
-| Everything else | `var(--glass-blur)` = `blur(12px) saturate(1.2)` |
-
-**Recommendation:** Define 2-3 blur tiers as CSS variables:
-```css
---glass-blur: blur(12px) saturate(1.2);       /* default */
---glass-blur-strong: blur(18px) saturate(1.3); /* elevated elements: FAB, onboarding */
-```
-Migrate all hardcoded values to one of these tiers.
-
-#### 2. Standardize animation timing tokens
-Transitions use 7+ different durations: `150ms`, `160ms`, `180ms`, `200ms`, `220ms`, `250ms`, `260ms`, `300ms`, `350ms`, `400ms`. This creates subtle visual discord when multiple elements animate together.
-
-**Recommendation:** Reduce to 3 tokens:
-```css
---duration-fast: 150ms;   /* micro-interactions: hover, focus */
---duration-md: 250ms;     /* reveals: menus, panels, cards */
---duration-slow: 400ms;   /* major transitions: carousel region, modals */
-```
-
-#### 3. Create a z-index map
-Z-indices are scattered with no documented layering:
-
-| Layer | z-index | Element |
-|---|---|---|
-| Scene overlay | 0 | `.ui::before` |
-| UI base | 1 | `.ui` |
-| Carousel / badge | 5 | `.carouselRegion`, `.studioBadge` |
-| Menu stack | 6 | `.menuStack` |
-| Sheets | 7 | `.sheet` |
-| Command bar | 8 | `.commandBar` |
-| Onboarding | 14 | `.onboarding` |
-| Control gear | 16 | `.controlGear` |
-| Mascot | 18 | `.mascotPanel` |
-| Console modal | 24 | `.consoleModal` |
-
-**Recommendation:** Define as named CSS variables:
-```css
---z-base: 1;
---z-carousel: 5;
---z-menu: 6;
---z-sheet: 7;
---z-command: 8;
---z-overlay: 14;
---z-gear: 16;
---z-mascot: 18;
---z-modal: 24;
-```
 
 ### P1 — Improve Next
 
@@ -259,16 +241,16 @@ Status messages (`.is-warn`, `.is-ok`) snap instantly between colors. A subtle `
 | Spacing | 7/10 | Consistent patterns but not tokenized into a scale |
 | Border radius | 8/10 | Tokens defined and mostly used; a few hardcoded values remain |
 | Shadows | 6/10 | 3 tokens defined but 7+ inline overrides |
-| Animation/Motion | 7/10 | Great easing tokens; too many duration variants |
-| Backdrop blur | 6/10 | 5 different values; only 1 tokenized |
+| Animation/Motion | 9/10 | Easing + duration tokens; 3-tier system covers all transitions |
+| Backdrop blur | 9/10 | 2-tier token system; only mobile perf override remains hardcoded |
 | Accessibility | 8/10 | ARIA coverage is strong; focus-visible now added; keyboard nav could improve |
 | Responsive | 8/10 | Clean mobile breakpoint; safe-area support; dual breakpoint minor issue |
 | Component consistency | 7/10 | Strong patterns; a few outliers (emoji toggle, select styling, mascot) |
-| **Overall** | **7.4/10** | Solid premium foundation with clear path to 9+ |
+| **Overall** | **8.0/10** | Strong design system; P1 shadow + select work will push toward 9+ |
 
 ---
 
 ## Files Changed
 
-- `style.css` — Fixed undefined CSS variables, added focus-visible states, improved control tab interactivity, tokenized console card radius
+- `style.css` — Fixed undefined CSS variables, added focus-visible states, improved control tab interactivity, tokenized console card radius, consolidated blur to 2-tier system, standardized durations to 3 tokens, created z-index layer map
 - `DESIGN_REVIEW.md` — This file (new)
