@@ -117,6 +117,7 @@ const loadQueueUtils = window.FrienemiesLoadQueueUtils || {};
 const carouselQueryUtils = window.FrienemiesCarouselQueryUtils || {};
 const dragPhysicsUtils = window.FrienemiesDragPhysicsUtils || {};
 const avatarRuntimeUtils = window.FrienemiesAvatarRuntimeUtils || {};
+const avatarCleanupUtils = window.FrienemiesAvatarCleanupUtils || {};
 const mascotUtils = window.FrienemiesMascotUtils || {};
 const normalizeSearchInput =
   searchUtils.normalizeSearchInput ||
@@ -1535,9 +1536,23 @@ function sanitizeClip(clip) {
 }
 
 // ---- face overlay ----
-function clearFaceOverlay() {
+function clearFaceOverlay({
+  protectedTextures = new Set(),
+  disposeStats = null,
+  disposedGeometries = new Set(),
+  disposedMaterials = new Set(),
+  disposedTextures = new Set()
+} = {}) {
   for (const m of faceOverlayMeshes) {
-    if (m?.parent) m.parent.remove(m);
+    if (!m) continue;
+    if (m.parent) m.parent.remove(m);
+    disposeObjectTreeFromUtils(m, {
+      preserveTextures: protectedTextures,
+      disposedGeometries,
+      disposedMaterials,
+      disposedTextures,
+      stats: disposeStats
+    });
   }
   faceOverlayMeshes = setAvatarRuntimeField("faceOverlayMeshes", []);
 }
@@ -1649,18 +1664,79 @@ function boostMaterialsForPop(root) {
 // ----------------------------
 // Cleanup
 // ----------------------------
-function clearAvatar() {
-  clearFaceOverlay();
+const disposeObjectTreeFromUtils =
+  avatarCleanupUtils.disposeObjectTree ||
+  ((root) => {
+    root?.traverse?.((node) => {
+      if (!node) return;
+      if ((node.isMesh || node.isLine || node.isPoints) && node.geometry) {
+        node.geometry.dispose?.();
+      }
+      if ((node.isMesh || node.isLine || node.isPoints) && node.material) {
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach((mat) => mat?.dispose?.());
+      }
+    });
+    return { nodes: 0, geometries: 0, materials: 0, textures: 0 };
+  });
 
-  loadedParts.forEach((m) => avatarGroup.remove(m));
+function getProtectedTextureSet() {
+  const protectedTextures = new Set();
+
+  if (scene?.environment?.isTexture) protectedTextures.add(scene.environment);
+  if (scene?.background?.isTexture) protectedTextures.add(scene.background);
+
+  panoGroup?.traverse?.((node) => {
+    if (!node?.material) return;
+    const mats = Array.isArray(node.material) ? node.material : [node.material];
+    mats.forEach((mat) => {
+      if (mat?.map?.isTexture) protectedTextures.add(mat.map);
+      if (mat?.envMap?.isTexture) protectedTextures.add(mat.envMap);
+    });
+  });
+
+  return protectedTextures;
+}
+
+function clearAvatar() {
+  const protectedTextures = getProtectedTextureSet();
+  const disposeStats = { nodes: 0, geometries: 0, materials: 0, textures: 0 };
+  const disposedGeometries = new Set();
+  const disposedMaterials = new Set();
+  const disposedTextures = new Set();
+
+  clearFaceOverlay({ protectedTextures, disposeStats, disposedGeometries, disposedMaterials, disposedTextures });
+
+  loadedParts.forEach((part) => {
+    if (!part) return;
+    if (part.parent) part.parent.remove(part);
+    disposeObjectTreeFromUtils(part, {
+      preserveTextures: protectedTextures,
+      disposedGeometries,
+      disposedMaterials,
+      disposedTextures,
+      stats: disposeStats
+    });
+  });
   loadedParts = setAvatarRuntimeField("loadedParts", []);
   loadedPartsMeta = setAvatarRuntimeField("loadedPartsMeta", []);
+
+  if (lastFaceTexture && !protectedTextures.has(lastFaceTexture) && !disposedTextures.has(lastFaceTexture)) {
+    lastFaceTexture.dispose?.();
+    disposedTextures.add(lastFaceTexture);
+    disposeStats.textures += 1;
+  }
+  lastFaceTexture = setAvatarRuntimeField("lastFaceTexture", null);
+
+  if (mixer) {
+    mixer.stopAllAction();
+    if (bodyRoot) mixer.uncacheRoot?.(bodyRoot);
+  }
 
   bodyRoot = setAvatarRuntimeField("bodyRoot", null);
   bodySkeleton = setAvatarRuntimeField("bodySkeleton", null);
   bodySkinned = setAvatarRuntimeField("bodySkinned", null);
 
-  if (mixer) mixer.stopAllAction();
   mixer = setAvatarRuntimeField("mixer", null);
   currentAction = setAvatarRuntimeField("currentAction", null);
 
@@ -1670,6 +1746,13 @@ function clearAvatar() {
 
   if (faceAnchor?.parent) faceAnchor.parent.remove(faceAnchor);
   faceAnchor = setAvatarRuntimeField("faceAnchor", null);
+
+  if (disposeStats.geometries || disposeStats.materials || disposeStats.textures) {
+    logLine(
+      `🧹 Avatar cleanup — geom:${disposeStats.geometries} mat:${disposeStats.materials} tex:${disposeStats.textures}`,
+      "dim"
+    );
+  }
 }
 
 // ----------------------------

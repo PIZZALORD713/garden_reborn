@@ -1,5 +1,12 @@
 # Decisions
 
+## 2026-02-20 — Slice 056 GPU disposal and cleanup
+- **Decision:** Introduce dedicated avatar cleanup utilities and wire deterministic disposal into avatar replacement flow.
+- **Why:** Repeated token switching previously removed nodes but did not reliably dispose GPU resources, risking memory growth in long sessions.
+- **Implementation:** Added `avatar-cleanup-utils.js` (`disposeObjectTree`, material/texture collectors), loaded it before `main.js`, and updated `clearAvatar()` + `clearFaceOverlay()` to dispose geometries/materials/textures while protecting shared scene textures (environment/background/panorama).
+- **Observability:** `clearAvatar()` now logs one compact cleanup summary (`geom/mat/tex`) per swap when resources are reclaimed.
+- **Scope guard:** Runtime cleanup only; no changes to token routing, animation selection semantics, export pipeline behavior, or UI layout.
+
 ## 2026-02-17 — Slice 001 copy unification
 - **Decision:** Standardize search wording everywhere user enters identifiers to: "token ID, wallet address, or ENS name."
 - **Why:** Removes mixed phrasing ("wallet/ENS", "Wallet / ENS", etc.) and makes onboarding/find language consistent.

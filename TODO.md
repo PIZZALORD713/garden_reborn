@@ -1,5 +1,9 @@
 # TODO
 
+## Active
+- [x] slice-056-gpu-disposal-and-cleanup - added `avatar-cleanup-utils.js`, wired safe geometry/material/texture disposal into avatar replacement lifecycle, protected scene/global textures from accidental disposal, and added cleanup stats logging.
+- [ ] slice-057-post-slice-056-verification-pass - run full browser smoke loop (rapid token switching + animation + export + mobile sanity) in API-backed runtime to validate no regressions and confirm improved memory trend.
+
 ## UI Upgrade Slice Queue
 - [x] slice-001-copy-unification - unify identifier copy across onboarding + Find surfaces.
 - [x] slice-002-empty-loading-states - actionable search empty states + loading shimmer + reset CTAs.
