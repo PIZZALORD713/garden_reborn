@@ -1289,16 +1289,17 @@ canvas {
   width: 100%;
   border-radius: var(--radius-lg);
   border: 1px solid var(--glass-border);
-  background: var(--glass-surface-strong);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
+  background: var(--glass-bg-elevated);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-shadow);
   padding: 10px;
   display: none;
 }
 .controlPanel.is-open { display: block; }
 .controlTabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
-.controlTab { border: 1px solid var(--glass-border); border-radius: 8px; background: rgba(255,255,255,.6); font-size: var(--text-xs); padding: 6px; }
+.controlTab { border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: rgba(255,255,255,.6); font-size: var(--text-xs); font-weight: 500; padding: 6px; cursor: pointer; transition: background 150ms ease; }
+.controlTab:hover { background: rgba(255,255,255,.75); }
 .controlTab.is-active { background: rgba(255,255,255,.9); font-weight: 600; }
 .controlSection { display: none; gap: 8px; }
 .controlSection.is-active { display: grid; }
@@ -1320,7 +1321,7 @@ canvas {
   background: rgba(18, 22, 28, 0.95);
   color: #d7deea;
   border: 1px solid rgba(255,255,255,.16);
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   display: grid;
   grid-template-rows: auto 1fr;
   overflow: hidden;
@@ -1382,6 +1383,25 @@ canvas {
 .mascotMeta { font-size: 10px; color: var(--text-secondary); margin: 6px 0; }
 .mascotActions { display: grid; gap: 6px; }
 .mascotAction { text-align: center; padding: 8px 10px; font-size: var(--text-sm); }
+
+/* ── Focus-visible states (keyboard navigation) ───────────── */
+.fab:focus-visible,
+.menuIcon:focus-visible,
+.carouselToggle:focus-visible,
+.sheetAction:focus-visible,
+.onboardingBtn:focus-visible,
+.controlTab:focus-visible,
+.controlGear:focus-visible,
+.tokenCard:focus-visible {
+  outline: 2px solid rgba(22, 26, 40, 0.35);
+  outline-offset: 2px;
+}
+
+.searchInput:focus-visible {
+  outline: none;
+  border-color: rgba(22, 26, 40, 0.2);
+  box-shadow: 0 0 0 3px rgba(200, 180, 240, 0.18);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .tokenSlide,
