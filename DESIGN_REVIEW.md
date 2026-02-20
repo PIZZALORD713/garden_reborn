@@ -107,58 +107,45 @@ All transition/animation durations migrated. Menu icon stagger delays (40ms/100m
 ```
 All global z-index values migrated. `z-index: 0` (`.ui::before`) and local stacking contexts within the onboarding card (z-index: -1, 1, 2) left as raw numbers since they are component-scoped.
 
+### 8. Unified `<select>` element styling (P1)
+
+**Problem:** `<select>` elements using `.searchInput` class showed native browser dropdown styling, breaking the glass aesthetic across different OS/browsers.
+
+**Fix:** Added `select.searchInput` override with:
+- `appearance: none` / `-webkit-appearance: none` to remove native styling
+- Custom SVG chevron via `background-image` (data URI, `currentColor`-matching)
+- Right padding (`32px`) to accommodate the chevron
+- Consistent padding/radius matching text inputs
+
+### 9. Replaced carousel toggle emoji with SVG icon (P1)
+
+**Problem:** The carousel toggle used `&#9729;` (cloud emoji), which renders differently across OS/browser and can't be styled with `currentColor`. Every other interactive element used inline SVGs.
+
+**Fix:** Replaced with an inline SVG cloud icon matching the `.menuIcon` pattern:
+- `viewBox="0 0 24 24"`, `stroke="currentColor"`, `stroke-width="2"`, `fill="none"`
+- Added `.carouselToggle svg` sizing rules (18px desktop, 16px mobile)
+- Removed `font-size` and `line-height` from `.carouselToggle` (no longer needed)
+
+### 10. Normalized box-shadow tiers (P1)
+
+**Problem:** 7+ unique ad-hoc shadow values despite 3 shadow tokens being defined.
+
+**Fix:** Migrated all component shadows to the existing 3-tier system:
+- `--glass-shadow` (resting): `.menuIcon`, `.carouselToggle`, `.controlGear`, `.tokenCard`, `.mascotPanel`
+- `--glass-shadow-elevated` (hover/active): `.carouselToggle:hover`, `.tokenSlide.is-active .tokenCard`
+- `--glass-shadow-wide` (modal): already used by `.onboardingCard`
+
+Intentionally kept raw values for: pinned toggle glow (unique rgba(255,255,255) effect), inset token image border, focus ring shadows, and dark onboarding button shadows (different color base).
+
+### 11. Added mascot toggle hover state (P1)
+
+**Problem:** `.mascotToggle` was the only toggle-style button without a hover transition.
+
+**Fix:** Added `transition: background var(--duration-fast) ease` and `:hover` state with `background: rgba(255,255,255,.85)`.
+
 ---
 
 ## Remaining Action Points
-
-Ranked by impact (visual consistency x user experience):
-
-### P1 — Improve Next
-
-#### 4. Unify the `<select>` element styling
-The `<select>` elements (`.searchInput` class on `<select>`) inherit text input styling but lack custom appearance treatment. On different browsers/OS this creates visual inconsistency — native dropdowns break the glass aesthetic.
-
-**Recommendation:** Add a `select.searchInput` override with:
-- `appearance: none` + custom chevron via `background-image`
-- Matching padding/radius to text inputs
-- Consistent font size (currently `--text-xl` for search, `--text-sm` for onboarding anim select)
-
-#### 5. Replace carousel toggle emoji with SVG icon
-The carousel toggle uses `&#9729;` (cloud emoji), which renders differently across OS/browser and can't be styled. Every other interactive element uses inline SVGs with `currentColor`.
-
-**Recommendation:** Replace with an inline SVG chevron or grid icon, matching the `.menuIcon` pattern.
-
-#### 6. Normalize box-shadow tiers
-Three shadow variables are defined but only `--glass-shadow` is widely used. Many components use ad-hoc shadows:
-
-```css
-/* Inconsistent: 7+ unique shadow values */
-0 4px 16px rgba(14, 20, 42, 0.08)   /* menuIcon, default */
-0 4px 18px rgba(14, 20, 42, 0.10)   /* carouselToggle */
-0 4px 18px rgba(14, 20, 42, 0.12)   /* controlGear */
-0 6px 22px rgba(14, 20, 42, 0.08)   /* tokenCard */
-0 6px 22px rgba(14, 20, 42, 0.14)   /* carouselToggle hover */
-0 10px 24px rgba(14, 20, 42, 0.12)  /* mascotPanel */
-0 10px 28px rgba(14, 20, 42, 0.15)  /* tokenCard active */
-```
-
-**Recommendation:** Consolidate to the 3 existing tiers:
-- `--glass-shadow` (resting)
-- `--glass-shadow-elevated` (hover/active)
-- `--glass-shadow-wide` (modal/onboarding)
-
-#### 7. Add hover/active to mascot action buttons
-`.mascotAction` buttons extend `.sheetAction` but the mascot panel itself has no hover state on `.mascotToggle`. This is the only toggle-style button without a hover transition.
-
-**Recommendation:** Add:
-```css
-.mascotToggle {
-  transition: background 150ms ease;
-}
-.mascotToggle:hover {
-  background: rgba(255, 255, 255, 0.85);
-}
-```
 
 ### P2 — Polish
 
@@ -240,17 +227,18 @@ Status messages (`.is-warn`, `.is-ok`) snap instantly between colors. A subtle `
 | Typography | 9/10 | Well-tokenized; one off-system size (`22px` onboarding title, `15px` onboarding input) |
 | Spacing | 7/10 | Consistent patterns but not tokenized into a scale |
 | Border radius | 8/10 | Tokens defined and mostly used; a few hardcoded values remain |
-| Shadows | 6/10 | 3 tokens defined but 7+ inline overrides |
+| Shadows | 9/10 | 3-tier token system; only intentional special-case shadows remain |
 | Animation/Motion | 9/10 | Easing + duration tokens; 3-tier system covers all transitions |
 | Backdrop blur | 9/10 | 2-tier token system; only mobile perf override remains hardcoded |
 | Accessibility | 8/10 | ARIA coverage is strong; focus-visible now added; keyboard nav could improve |
 | Responsive | 8/10 | Clean mobile breakpoint; safe-area support; dual breakpoint minor issue |
-| Component consistency | 7/10 | Strong patterns; a few outliers (emoji toggle, select styling, mascot) |
-| **Overall** | **8.0/10** | Strong design system; P1 shadow + select work will push toward 9+ |
+| Component consistency | 9/10 | SVG icon system unified; select styled; mascot toggle complete |
+| **Overall** | **8.6/10** | Cohesive design system; P2 polish items remain for 9+ |
 
 ---
 
 ## Files Changed
 
-- `style.css` — Fixed undefined CSS variables, added focus-visible states, improved control tab interactivity, tokenized console card radius, consolidated blur to 2-tier system, standardized durations to 3 tokens, created z-index layer map
+- `style.css` — Fixed undefined CSS variables, added focus-visible states, improved control tab interactivity, tokenized console card radius, consolidated blur to 2-tier system, standardized durations to 3 tokens, created z-index layer map, unified select styling, normalized shadows to 3 tiers, added mascot toggle hover, added carousel toggle SVG sizing
+- `index.html` — Replaced carousel toggle cloud emoji with inline SVG icon
 - `DESIGN_REVIEW.md` — This file (new)
