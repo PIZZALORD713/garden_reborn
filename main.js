@@ -269,18 +269,20 @@ const initScene =
 const initLighting =
   sceneBootstrapUtils.initLighting ||
   function initLightingFallback(scene) {
-    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35);
+    // r175 lighting pipeline is ~PI brighter; scale to match r128 look
+    const S = 1 / Math.PI;
+    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35 * S);
     scene.add(hemisphereLight);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2 * S);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.65 * S);
     keyLight.position.set(-0.5, 2.5, 5);
     scene.add(keyLight);
     scene.add(keyLight.target);
 
-    const rim = new THREE.DirectionalLight(0xffffff, 0.25);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.25 * S);
     rim.position.set(2.5, 1.5, -3.5);
     scene.add(rim);
     scene.add(rim.target);
@@ -551,10 +553,13 @@ function applyLookControls() {
   renderer.toneMapping = resolveToneMapping(LOOK_CONTROLS.toneMapping);
   renderer.toneMappingExposure = LOOK_CONTROLS.toneMappingExposure;
 
-  hemisphereLight.intensity = LOOK_CONTROLS.hemiIntensity;
-  ambientLight.intensity = LOOK_CONTROLS.ambientIntensity;
-  keyLight.intensity = LOOK_CONTROLS.keyLightIntensity;
-  rim.intensity = LOOK_CONTROLS.rimLightIntensity;
+  // r175 lighting pipeline produces ~PI brighter output than r128 for
+  // the same intensity values. Scale down to preserve the original look.
+  const R175_LIGHT_SCALE = 1 / Math.PI;
+  hemisphereLight.intensity = LOOK_CONTROLS.hemiIntensity * R175_LIGHT_SCALE;
+  ambientLight.intensity = LOOK_CONTROLS.ambientIntensity * R175_LIGHT_SCALE;
+  keyLight.intensity = LOOK_CONTROLS.keyLightIntensity * R175_LIGHT_SCALE;
+  rim.intensity = LOOK_CONTROLS.rimLightIntensity * R175_LIGHT_SCALE;
 
   applyLookToMaterials(avatarGroup);
 }
@@ -1167,6 +1172,7 @@ async function loadExrEnvironment() {
         const envMap = envRT.texture;
 
         scene.environment = envMap;
+        scene.environmentIntensity = 1 / Math.PI; // compensate for r175 PMREM intensity change
 
         tex.dispose();
         pmrem.dispose();
