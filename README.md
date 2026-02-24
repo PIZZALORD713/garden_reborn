@@ -39,7 +39,7 @@ If the official studio went quiet, the community studio didn’t.
 
 | Layer | Technology |
 |-------|-----------|
-| 3D engine | Three.js r128 (CDN, no bundler) |
+| 3D engine | Three.js r175 (CDN via import map, no bundler) |
 | Frontend | Vanilla HTML / CSS / JS -- `index.html`, `main.js`, `style.css` |
 | API | Vercel serverless function (`api/friendsiesTokens.js`) |
 | NFT data | Moralis API (wallet-to-token lookup) |
@@ -219,7 +219,6 @@ Designed for **Vercel** (static hosting + serverless API).
 ## Known Limitations
 
 - **Wallet lookup requires the API** -- local dev without `MORALIS_API_KEY` limits you to token ID browsing
-- **Three.js r128** -- current stable is r169+; missing recent performance and feature improvements
 - **No GPU resource disposal** -- switching tokens many times may accumulate GPU memory
 - **Large assets in repo** -- the EXR environment map (7.6 MB) and panorama PNG (3.9 MB) are committed directly
 - **Single-file JS** -- `main.js` at ~3,500 lines works but is approaching the maintainability threshold

@@ -17,10 +17,9 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setClearColor(0xffffff);
-    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
-    renderer.physicallyCorrectLights = true;
 
     document.body.appendChild(renderer.domElement);
 
@@ -35,18 +34,20 @@
   }
 
   function initLighting(scene) {
-    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35);
+    // r175 lighting pipeline is ~PI brighter; scale initial intensities to match r128 look
+    const S = 1 / Math.PI;
+    const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.35 * S);
     scene.add(hemisphereLight);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2 * S);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.65 * S);
     keyLight.position.set(-0.5, 2.5, 5);
     scene.add(keyLight);
     scene.add(keyLight.target);
 
-    const rim = new THREE.DirectionalLight(0xffffff, 0.25);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.25 * S);
     rim.position.set(2.5, 1.5, -3.5);
     scene.add(rim);
     scene.add(rim.target);
