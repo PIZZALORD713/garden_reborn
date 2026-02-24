@@ -250,10 +250,9 @@ const initScene =
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setClearColor(0xffffff);
-    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
-    renderer.physicallyCorrectLights = true;
 
     document.body.appendChild(renderer.domElement);
 
@@ -1120,7 +1119,7 @@ async function loadPanoramaSphere() {
     textureLoader.load(
       PANORAMA_URL,
       (panoTex) => {
-        panoTex.encoding = THREE.sRGBEncoding;
+        panoTex.colorSpace = THREE.SRGBColorSpace;
         panoTex.flipY = true;
 
         const geo = new THREE.SphereGeometry(80, 64, 32);
@@ -1925,7 +1924,7 @@ function bakeFaceOntoBaseColor(baseTex, faceTex) {
   drawTextureToCanvas(ctx, faceTex, w, h);
 
   const baked = new THREE.CanvasTexture(canvas);
-  baked.encoding = THREE.sRGBEncoding;
+  baked.colorSpace = THREE.SRGBColorSpace;
   baked.flipY = false; // glTF convention
   baked.needsUpdate = true;
   return baked;
@@ -2662,83 +2661,74 @@ function downloadRigGlb() {
     return originalConsoleWarn.apply(console, args);
   };
 
-  try {
-    // NOTE: In Three r128 GLTFExporter.parse signature is:
-    // parse(input, onDone, options)
-    exporter.parse(
-      exportRoot,
-      (result) => {
-        console.warn = originalConsoleWarn;
-        exportUiState.pending = false;
+  exporter.parseAsync(exportRoot, {
+    binary: true,
+    onlyVisible: true,
+    trs: true
+  }).then((result) => {
+    console.warn = originalConsoleWarn;
+    exportUiState.pending = false;
 
-        avatarGroup.scale.copy(oldScale);
-        avatarGroup.position.copy(oldPos);
-        avatarGroup.updateMatrixWorld(true);
+    avatarGroup.scale.copy(oldScale);
+    avatarGroup.position.copy(oldPos);
+    avatarGroup.updateMatrixWorld(true);
 
-        const glb = result instanceof ArrayBuffer ? result : null;
-        if (!glb) {
-          setExportStatus("Export failed before download. Open Console for details.", "warn");
-          logLine(
-            `Export failed: expected ArrayBuffer (.glb) but got ${typeof result}.`,
-            "warn"
-          );
-          return;
-        }
+    const glb = result instanceof ArrayBuffer ? result : null;
+    if (!glb) {
+      setExportStatus("Export failed before download. Open Console for details.", "warn");
+      logLine(
+        `Export failed: expected ArrayBuffer (.glb) but got ${typeof result}.`,
+        "warn"
+      );
+      return;
+    }
 
-        let outGlb = glb;
+    let outGlb = glb;
 
-        // Attempt a conservative Windows-compat pass.
-        // If it fails for any reason, fall back to the raw exporter output.
-        try {
-          const optimized = optimizeGlbForWindows(glb);
-          outGlb = optimized.glb;
-          if (optimized?.report?.steps?.length) {
-            logLine(
-              `🧹 Export cleanup: ${optimized.report.steps
-                .map((s) => s.step)
-                .join(", ")}`,
-              "dim"
-            );
-          }
-        } catch (e) {
-          logLine(`⚠️ Export cleanup skipped: ${e?.message || e}`, "dim");
-          outGlb = glb;
-        }
-
-        releaseLastExportBlobUrl();
-        const blob = new Blob([outGlb], { type: "model/gltf-binary" });
-        const { url, clickError } = downloadBlob(blob, filename);
-        exportUiState.lastBlobUrl = url;
-        exportUiState.lastFilename = filename;
-        setExportFallbackLink(url, filename);
-
-        if (clickError) {
-          setExportStatus(
-            "Download was blocked by browser. Use “Open saved export link” to save manually.",
-            "warn"
-          );
-          logLine(`⚠️ Download click failed: ${clickError?.message || clickError}`, "warn");
-        } else {
-          setExportStatus("Download started. If no file appears, use “Open saved export link”.", "ok");
-          logLine(`✅ Download started: ${filename}`);
-        }
-
-        if (exportUiState.warningSuppressedCount > 0) {
-          logLine(
-            `ℹ️ Export note: suppressed ${exportUiState.warningSuppressedCount} known GLTFExporter normalScale warnings (visual-only).`,
-            "dim"
-          );
-          exportUiState.warningSuppressedCount = 0;
-        }
-      },
-      {
-        binary: true,
-        onlyVisible: true,
-        embedImages: true,
-        trs: true
+    // Attempt a conservative Windows-compat pass.
+    // If it fails for any reason, fall back to the raw exporter output.
+    try {
+      const optimized = optimizeGlbForWindows(glb);
+      outGlb = optimized.glb;
+      if (optimized?.report?.steps?.length) {
+        logLine(
+          `🧹 Export cleanup: ${optimized.report.steps
+            .map((s) => s.step)
+            .join(", ")}`,
+          "dim"
+        );
       }
-    );
-  } catch (err) {
+    } catch (e) {
+      logLine(`⚠️ Export cleanup skipped: ${e?.message || e}`, "dim");
+      outGlb = glb;
+    }
+
+    releaseLastExportBlobUrl();
+    const blob = new Blob([outGlb], { type: "model/gltf-binary" });
+    const { url, clickError } = downloadBlob(blob, filename);
+    exportUiState.lastBlobUrl = url;
+    exportUiState.lastFilename = filename;
+    setExportFallbackLink(url, filename);
+
+    if (clickError) {
+      setExportStatus(
+        "Download was blocked by browser. Use “Open saved export link” to save manually.",
+        "warn"
+      );
+      logLine(`⚠️ Download click failed: ${clickError?.message || clickError}`, "warn");
+    } else {
+      setExportStatus("Download started. If no file appears, use “Open saved export link”.", "ok");
+      logLine(`✅ Download started: ${filename}`);
+    }
+
+    if (exportUiState.warningSuppressedCount > 0) {
+      logLine(
+        `ℹ️ Export note: suppressed ${exportUiState.warningSuppressedCount} known GLTFExporter normalScale warnings (visual-only).`,
+        "dim"
+      );
+      exportUiState.warningSuppressedCount = 0;
+    }
+  }).catch((err) => {
     console.warn = originalConsoleWarn;
     exportUiState.pending = false;
 
@@ -2749,8 +2739,7 @@ function downloadRigGlb() {
 
     setExportStatus("Export failed before download. Open Console for details.", "warn");
     logLine(`Export error: ${err?.message || err}`, "warn");
-    return false;
-  }
+  });
 
   return true;
 }
@@ -2972,7 +2961,7 @@ async function loadFriendsies(id) {
         // Keep viewer behavior (some sources need Y flip)
         tex.repeat.y = -1;
         tex.offset.y = 1;
-        tex.encoding = THREE.sRGBEncoding;
+        tex.colorSpace = THREE.SRGBColorSpace;
         return tex;
       })
     : Promise.resolve(null);

@@ -347,43 +347,40 @@
       </div>
     </div>
 
-    <!-- Three.js r128 + loaders/controls -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-    <!-- REQUIRED for EXRLoader when EXR uses ZIP compression -->
-    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/EXRLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
-    <script src="/scene-bootstrap.js?v=2026-02-18a"></script>
-    <script src="/identifier-utils.js?v=2026-02-18a"></script>
-    <script src="/routing-utils.js?v=2026-02-18a"></script>
-    <script src="/search-utils.js?v=2026-02-18a"></script>
-    <script src="/search-ui-utils.js?v=2026-02-18a"></script>
-    <script src="/load-queue-utils.js?v=2026-02-18a"></script>
-    <script src="/image-load-utils.js?v=2026-02-18a"></script>
-    <script src="/look-utils.js?v=2026-02-18a"></script>
-    <script src="/anim-utils.js?v=2026-02-18a"></script>
-    <script src="/anim-select-utils.js?v=2026-02-18a"></script>
-    <script src="/carousel-query-utils.js?v=2026-02-18a"></script>
-    <script src="/drag-physics-utils.js?v=2026-02-18a"></script>
-    <script src="/carousel-utils.js?v=2026-02-18a"></script>
-    <script src="/control-panel-utils.js?v=2026-02-18a"></script>
-    <script src="/console-utils.js?v=2026-02-18a"></script>
-    <script src="/export-utils.js?v=2026-02-18a"></script>
-    <script src="/rig-utils.js?v=2026-02-18a"></script>
-    <script src="/token-utils.js?v=2026-02-18a"></script>
-    <script src="/avatar-runtime-utils.js?v=2026-02-18a"></script>
-    <script src="/avatar-cleanup-utils.js?v=2026-02-20a"></script>
-    <script src="/mascot-utils.js?v=2026-02-18a"></script>
-    <script src="/control-shell-utils.js?v=2026-02-18a"></script>
-    <script src="/interaction-shell-utils.js?v=2026-02-18a"></script>
-    <script src="/app-state-store.js?v=2026-02-18a"></script>
-    <script src="/main.js?v=2026-02-18o"></script>
+    <!-- Three.js r175 via import map (ES modules, no bundler) -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.175.0/build/three.module.min.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.175.0/examples/jsm/"
+      }
+    }
+    </script>
+    <script type="module" src="/three-imports.js"></script>
+    <script type="module" src="/scene-bootstrap.js?v=2026-02-18a"></script>
+    <script type="module" src="/identifier-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/routing-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/search-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/search-ui-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/load-queue-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/image-load-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/look-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/anim-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/anim-select-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/carousel-query-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/drag-physics-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/carousel-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/control-panel-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/console-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/export-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/rig-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/token-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/avatar-runtime-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/avatar-cleanup-utils.js?v=2026-02-20a"></script>
+    <script type="module" src="/mascot-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/control-shell-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/interaction-shell-utils.js?v=2026-02-18a"></script>
+    <script type="module" src="/app-state-store.js?v=2026-02-18a"></script>
+    <script type="module" src="/main.js?v=2026-02-18o"></script>
   </body>
 </html>
