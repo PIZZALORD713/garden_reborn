@@ -1,33 +1,22 @@
 (function initFrienemiesControlShellUtils(globalScope) {
-  const DEFAULT_BOTTOM_SURFACE_MODE = Object.freeze({
-    CAROUSEL: "carousel",
-    SETTINGS: "settings"
-  });
-
-  function resolveBottomSurfaceMode(mode, options = {}) {
-    const modeMap = options.modeMap || DEFAULT_BOTTOM_SURFACE_MODE;
-    return mode === modeMap.SETTINGS ? modeMap.SETTINGS : modeMap.CAROUSEL;
-  }
+  const SHELF_VIEWS = Object.freeze([
+    "grid", "animate", "look", "share", "info", "console"
+  ]);
 
   function getInitialControlShellState(options = {}) {
     const appState = options.appState || null;
     const defaults = options.defaults || {};
-    const modeMap = options.modeMap || DEFAULT_BOTTOM_SURFACE_MODE;
     const shell = appState && appState.controlShell ? appState.controlShell : {};
 
     return {
-      bottomSurfaceMode: resolveBottomSurfaceMode(
-        shell.bottomSurfaceMode,
-        { modeMap }
-      ),
-      controlPanelOpen:
-        typeof shell.controlPanelOpen === "boolean"
-          ? shell.controlPanelOpen
-          : !!defaults.controlPanelOpen,
-      controlActiveTab:
-        typeof shell.controlActiveTab === "string" && shell.controlActiveTab.trim()
-          ? shell.controlActiveTab
-          : defaults.controlActiveTab || "animations",
+      activeView:
+        typeof shell.activeView === "string" && SHELF_VIEWS.includes(shell.activeView)
+          ? shell.activeView
+          : defaults.activeView || "grid",
+      radialOpen:
+        typeof shell.radialOpen === "boolean"
+          ? shell.radialOpen
+          : !!defaults.radialOpen,
       statusText:
         typeof shell.statusText === "string"
           ? shell.statusText
@@ -35,28 +24,20 @@
     };
   }
 
-  function updateBottomSurfaceModeState(options = {}) {
-    const modeMap = options.modeMap || DEFAULT_BOTTOM_SURFACE_MODE;
-    const nextMode = resolveBottomSurfaceMode(options.mode, { modeMap });
+  function updateActiveViewState(options = {}) {
+    const view = typeof options.view === "string" && SHELF_VIEWS.includes(options.view)
+      ? options.view
+      : "grid";
     const appState = options.appState || null;
-    if (appState && appState.controlShell) appState.controlShell.bottomSurfaceMode = nextMode;
-    return nextMode;
+    if (appState && appState.controlShell) appState.controlShell.activeView = view;
+    return view;
   }
 
-  function updateControlPanelOpenState(options = {}) {
+  function updateRadialOpenState(options = {}) {
     const nextOpen = !!options.open;
     const appState = options.appState || null;
-    if (appState && appState.controlShell) appState.controlShell.controlPanelOpen = nextOpen;
+    if (appState && appState.controlShell) appState.controlShell.radialOpen = nextOpen;
     return nextOpen;
-  }
-
-  function updateControlActiveTabState(options = {}) {
-    const fallbackTab = options.fallbackTab || "animations";
-    const rawTab = typeof options.tab === "string" ? options.tab.trim() : "";
-    const nextTab = rawTab || fallbackTab;
-    const appState = options.appState || null;
-    if (appState && appState.controlShell) appState.controlShell.controlActiveTab = nextTab;
-    return nextTab;
   }
 
   function updateStatusTextState(options = {}) {
@@ -67,11 +48,10 @@
   }
 
   globalScope.FrienemiesControlShellUtils = {
+    SHELF_VIEWS,
     getInitialControlShellState,
-    resolveBottomSurfaceMode,
-    updateBottomSurfaceModeState,
-    updateControlPanelOpenState,
-    updateControlActiveTabState,
+    updateActiveViewState,
+    updateRadialOpenState,
     updateStatusTextState
   };
 })(window);

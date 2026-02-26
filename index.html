@@ -20,69 +20,187 @@
 
   <body>
     <div id="ui" class="ui">
-      <form id="commandBar" class="commandBar" role="search" aria-label="Primary search">
-        <label class="commandBarLabel" for="commandInput">Load token ID, wallet address, or ENS name</label>
-        <div class="commandBarRow">
-          <input
-            id="commandInput"
-            class="searchInput commandInput"
-            type="text"
-            placeholder="e.g. 8448, 0xabc...123, or pizzalord.eth"
-            autocomplete="off"
-            inputmode="search"
-          />
-          <button id="commandSubmit" class="commandSubmit" type="submit">Load</button>
-        </div>
-      </form>
 
-      <div id="carouselRegion" class="carouselRegion" data-bottom-surface-mode="carousel">
-        <button
-          id="carouselToggle"
-          class="carouselToggle is-hidden"
-          type="button"
-          aria-label="Pin carousel open"
-          aria-pressed="false"
-        >&#9729;</button>
-        <div id="tokenCarousel" class="glassCarousel is-hidden" aria-label="Token picker">
-          <div id="carouselViewport" class="carouselViewport" role="listbox">
-            <div id="spacerLeft" class="carouselSpacer"></div>
-            <ul class="tokenTrack" id="tokenSlides"></ul>
-            <div id="spacerRight" class="carouselSpacer"></div>
-          </div>
-        </div>
+      <!-- Shelf: unified bottom surface with cloud toggle + gear view picker -->
+      <div id="shelf" class="shelf is-closed" aria-expanded="false">
 
-        <aside id="controlPanel" class="controlPanel" aria-hidden="true">
-          <div class="controlTabs">
-            <button class="controlTab is-active" type="button" data-control-tab="animations">Animations</button>
-            <button class="controlTab" type="button" data-control-tab="lighting">Lighting/Scene</button>
-            <button class="controlTab" type="button" data-control-tab="console">Console</button>
+        <!-- Cloud toggle — sits above the panel, on the "horizon" -->
+        <button id="shelfCloud" class="shelfCloud" type="button" aria-label="Toggle shelf">
+          <svg viewBox="0 0 36 24" aria-hidden="true">
+            <path d="M28.5 20h-22a6 6 0 0 1-.8-11.95 8.5 8.5 0 0 1 16.37-2.22A6.5 6.5 0 0 1 28.5 12.5v.01A5 5 0 0 1 28.5 20z"
+                  fill="rgba(255,255,255,0.85)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+          </svg>
+        </button>
+
+        <!-- Glass panel — the actual shelf surface -->
+        <div id="shelfPanel" class="shelfPanel">
+
+          <!-- Header row: search (left) + view picker (right) -->
+          <div class="shelfHeader">
+            <div id="shelfSearchWrap" class="shelfSearchWrap">
+              <button id="shelfSearchBtn" class="shelfSearchBtn" type="button" aria-label="Search">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2" fill="none"/>
+                  <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+              <input
+                id="shelfSearchInput"
+                class="shelfSearchInput"
+                type="text"
+                placeholder="Token ID, wallet, or ENS"
+                autocomplete="off"
+                inputmode="search"
+              />
+              <button
+                id="resetCollectionBtn"
+                class="sheetAction viewAllChip"
+                type="button"
+                aria-hidden="true"
+              >
+                View all
+              </button>
+            </div>
+
+            <!-- Gear + horizontal row of view icons -->
+            <div class="shelfGearWrap">
+              <div id="shelfRadial" class="shelfRadial" aria-hidden="true">
+                <button class="radialItem" data-view="grid" aria-label="Grid">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2" fill="none"/>
+                  </svg>
+                </button>
+                <button class="radialItem" data-view="animate" aria-label="Animate">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <polygon points="10,8 10,16 17,12" fill="currentColor"/>
+                  </svg>
+                </button>
+                <button class="radialItem" data-view="look" aria-label="Look">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="13.5" cy="6.5" r="2.5" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <circle cx="17.5" cy="15.5" r="2.5" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <circle cx="8" cy="13" r="3" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <line x1="13.5" y1="9" x2="10.8" y2="10.5" stroke="currentColor" stroke-width="2"/>
+                    <line x1="15.3" y1="13.3" x2="11" y2="13" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                </button>
+                <button class="radialItem" data-view="share" aria-label="Share">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+                    <polyline points="8,8 12,4 16,8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </button>
+                <button class="radialItem" data-view="info" aria-label="Info">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <line x1="12" y1="11" x2="12" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="12" cy="8" r="1" fill="currentColor"/>
+                  </svg>
+                </button>
+                <button class="radialItem" data-view="console" aria-label="Console">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <polyline points="7,9 10,12 7,15" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="13" y1="15" x2="17" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+              <button id="shelfGear" class="shelfGear" type="button" aria-label="Switch view" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none"/>
+                  <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1 1 0 0 1 0 1.4l-1.3 1.3a1 1 0 0 1-1.4 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a1 1 0 0 1-1 1h-1.8a1 1 0 0 1-1-1v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a1 1 0 0 1-1.4 0L4.9 17.9a1 1 0 0 1 0-1.4l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a1 1 0 0 1-1-1v-1.8a1 1 0 0 1 1-1h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a1 1 0 0 1 0-1.4L6.1 4.9a1 1 0 0 1 1.4 0l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V4a1 1 0 0 1 1-1h1.8a1 1 0 0 1 1 1v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1 1 0 0 1 1.4 0l1.3 1.3a1 1 0 0 1 0 1.4l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H20a1 1 0 0 1 1 1v1.8a1 1 0 0 1-1 1h-.2a1 1 0 0 0-.9.6z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                </svg>
+              </button>
+            </div>
           </div>
-          <div class="controlBody">
-            <section class="controlSection is-active" data-control-section="animations">
+
+          <!-- View body — one view visible at a time -->
+          <div class="shelfBody">
+
+            <!-- GRID view (default) -->
+            <section id="view-grid" class="shelfView is-active" data-view="grid">
+              <div id="carouselViewport" class="carouselViewport" role="listbox">
+                <div id="spacerLeft" class="carouselSpacer"></div>
+                <ul class="tokenTrack" id="tokenSlides"></ul>
+                <div id="spacerRight" class="carouselSpacer"></div>
+              </div>
+              <div id="searchResults" class="searchResults"></div>
+            </section>
+
+            <!-- ANIMATE view -->
+            <section id="view-animate" class="shelfView" data-view="animate">
               <label class="fieldLabel" for="controlAnimSelect">Animation</label>
               <select id="controlAnimSelect" class="searchInput"></select>
               <button id="controlPlayAnimBtn" class="sheetAction" type="button">Play selected animation</button>
             </section>
-            <section class="controlSection" data-control-section="lighting">
+
+            <!-- LOOK view -->
+            <section id="view-look" class="shelfView" data-view="look">
               <button class="sheetAction" data-control-preset="Cinematic" type="button">Cinematic</button>
               <button class="sheetAction" data-control-preset="Punchy Studio" type="button">Punchy Studio</button>
               <button class="sheetAction" data-control-preset="Soft Pastel" type="button">Soft Pastel</button>
             </section>
-            <section class="controlSection" data-control-section="console">
-              <button id="openConsoleModal" class="sheetAction" type="button">Open console viewer</button>
+
+            <!-- SHARE view -->
+            <section id="view-share" class="shelfView" data-view="share">
+              <button id="copyLinkBtn" class="sheetAction" type="button">Copy link</button>
+              <button id="downloadGlbBtn" class="sheetAction" type="button">Download .glb</button>
+              <p id="exportStatus" class="sheetStatus" role="status" aria-live="polite"></p>
+              <a id="exportFallbackLink" class="sheetAction exportFallbackLink" href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true">Open saved export link</a>
             </section>
+
+            <!-- INFO view -->
+            <section id="view-info" class="shelfView" data-view="info">
+              <div class="quickstartTitle">About fRiENEMiES Studio</div>
+              <p class="infoCopy">fRiENEMiES Studio is a community-built toolkit inspired by fRiENDSiES.</p>
+              <p class="infoCopy">Friends change. Enemies evolve. We ship.</p>
+              <p class="infoCopy infoFinePrint">Independent and community-led. Not affiliated with the original creators.</p>
+              <div class="quickstartTitle">Community &amp; updates</div>
+              <div class="infoLinks">
+                <a id="discordLink" class="sheetAction" href="https://discord.com/invite/clawd" target="_blank" rel="noopener noreferrer">Discord</a>
+                <a id="xLink" class="sheetAction" href="https://x.com" target="_blank" rel="noopener noreferrer">X (Twitter)</a>
+                <a id="githubLink" class="sheetAction" href="https://github.com/PIZZALORD713/garden_reborn" target="_blank" rel="noopener noreferrer">GitHub</a>
+              </div>
+              <div class="quickstartTitle">Tips</div>
+              <button id="showOnboardingBtn" class="sheetAction" type="button">Show onboarding again</button>
+            </section>
+
+            <!-- CONSOLE view -->
+            <section id="view-console" class="shelfView" data-view="console">
+              <div class="consoleViewHeader">
+                <strong>Console</strong>
+                <div class="consoleActions">
+                  <button id="copyConsoleBtn" class="sheetAction" type="button">Copy</button>
+                  <button id="clearConsoleBtn" class="sheetAction" type="button">Clear</button>
+                  <button id="openConsoleModal" class="sheetAction" type="button">Fullscreen</button>
+                </div>
+              </div>
+              <pre id="consoleViewer" class="consoleViewer consoleViewerInline"></pre>
+            </section>
+
           </div>
-        </aside>
+        </div>
       </div>
 
-      <button id="controlGear" class="controlGear" type="button" aria-label="Open controls" aria-expanded="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none" />
-          <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a1 1 0 0 1 0 1.4l-1.3 1.3a1 1 0 0 1-1.4 0l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a1 1 0 0 1-1 1h-1.8a1 1 0 0 1-1-1v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a1 1 0 0 1-1.4 0L4.9 17.9a1 1 0 0 1 0-1.4l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a1 1 0 0 1-1-1v-1.8a1 1 0 0 1 1-1h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a1 1 0 0 1 0-1.4L6.1 4.9a1 1 0 0 1 1.4 0l.1.1a1 1 0 0 0 1.1.2h.1a1 1 0 0 0 .6-.9V4a1 1 0 0 1 1-1h1.8a1 1 0 0 1 1 1v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a1 1 0 0 1 1.4 0l1.3 1.3a1 1 0 0 1 0 1.4l-.1.1a1 1 0 0 0-.2 1.1v.1a1 1 0 0 0 .9.6H20a1 1 0 0 1 1 1v1.8a1 1 0 0 1-1 1h-.2a1 1 0 0 0-.9.6z" stroke="currentColor" stroke-width="1.5" fill="none" />
-        </svg>
-      </button>
-
-      
+      <!-- Console fullscreen modal (kept for deeper debugging) -->
+      <div id="consoleModal" class="consoleModal" aria-hidden="true">
+        <div class="consoleCard" role="dialog" aria-modal="true" aria-label="Console viewer">
+          <div class="consoleHeader">
+            <strong>Console Viewer</strong>
+            <div class="consoleActions">
+              <button id="copyConsoleModalBtn" class="sheetAction" type="button">Copy</button>
+              <button id="clearConsoleModalBtn" class="sheetAction" type="button">Clear</button>
+              <button id="closeConsoleBtn" class="sheetAction" type="button">Close</button>
+            </div>
+          </div>
+          <pre id="consoleModalViewer" class="consoleViewer"></pre>
+        </div>
+      </div>
 
       <aside id="mascotPanel" class="mascotPanel is-disabled" aria-hidden="true">
         <button id="mascotToggle" class="mascotToggle" type="button" aria-expanded="true">Sauce-0x</button>
@@ -96,175 +214,6 @@
           </div>
         </div>
       </aside>
-
-      <div id="consoleModal" class="consoleModal" aria-hidden="true">
-        <div class="consoleCard" role="dialog" aria-modal="true" aria-label="Console viewer">
-          <div class="consoleHeader">
-            <strong>Console Viewer</strong>
-            <div class="consoleActions">
-              <button id="copyConsoleBtn" class="sheetAction" type="button">Copy</button>
-              <button id="clearConsoleBtn" class="sheetAction" type="button">Clear</button>
-              <button id="closeConsoleBtn" class="sheetAction" type="button">Close</button>
-            </div>
-          </div>
-          <pre id="consoleViewer" class="consoleViewer"></pre>
-        </div>
-      </div>
-
-      <div id="menuStack" class="menuStack">
-        <button id="hamburger" class="fab" type="button" aria-label="Menu">
-          <svg class="fab-icon fab-icon--menu" viewBox="0 0 24 24" aria-hidden="true">
-            <line
-              x1="4"
-              y1="7"
-              x2="20"
-              y2="7"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-            <line
-              x1="4"
-              y1="12"
-              x2="20"
-              y2="12"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-            <line
-              x1="4"
-              y1="17"
-              x2="20"
-              y2="17"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-          </svg>
-          <svg class="fab-icon fab-icon--close" viewBox="0 0 24 24" aria-hidden="true">
-            <line
-              x1="6"
-              y1="6"
-              x2="18"
-              y2="18"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-            <line
-              x1="18"
-              y1="6"
-              x2="6"
-              y2="18"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            />
-          </svg>
-        </button>
-
-        <div id="menu" class="menu" aria-hidden="true">
-          <button class="menuIcon" type="button" data-panel="find" aria-label="Find">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2" fill="none" />
-              <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            </svg>
-          </button>
-          <button class="menuIcon" type="button" data-panel="share" aria-label="Share">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M4 7h16v10H4z"
-                stroke="currentColor"
-                stroke-width="2"
-                fill="none"
-                stroke-linejoin="round"
-              />
-              <path
-                d="M4 7l8 6 8-6"
-                stroke="currentColor"
-                stroke-width="2"
-                fill="none"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-          <button class="menuIcon" type="button" data-panel="vibe" aria-label="Vibe">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"
-                stroke="currentColor"
-                stroke-width="2"
-                fill="none"
-                stroke-linejoin="round"
-              />
-            </svg>
-          </button>
-          <button class="menuIcon" type="button" data-panel="info" aria-label="Info">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none" />
-              <line x1="12" y1="11" x2="12" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-              <circle cx="12" cy="8" r="1" fill="currentColor" />
-            </svg>
-          </button>
-        </div>
-
-        <div id="panel-find" class="sheet" aria-hidden="true">
-          <div class="sheetBody">
-            <label class="fieldLabel" for="searchInput">Enter token ID, wallet address, or ENS name</label>
-            <input
-              id="searchInput"
-              class="searchInput"
-              type="text"
-              placeholder="e.g. 8448, 0xabc...123, or pizzalord.eth"
-              autocomplete="off"
-              inputmode="search"
-            />
-            <button
-              id="resetCollectionBtn"
-              class="sheetAction viewAllChip"
-              type="button"
-              aria-hidden="true"
-            >
-              View all
-            </button>
-            <div id="searchResults" class="searchResults"></div>
-          </div>
-        </div>
-        <div id="panel-share" class="sheet" aria-hidden="true">
-          <div class="sheetBody">
-            <button id="copyLinkBtn" class="sheetAction" type="button">Copy link</button>
-            <button id="downloadGlbBtn" class="sheetAction" type="button">Download .glb</button>
-            <p id="exportStatus" class="sheetStatus" role="status" aria-live="polite"></p>
-            <a id="exportFallbackLink" class="sheetAction exportFallbackLink" href="#" target="_blank" rel="noopener noreferrer" aria-hidden="true">Open saved export link</a>
-          </div>
-        </div>
-        <div id="panel-vibe" class="sheet" aria-hidden="true">
-          <div class="sheetBody">
-            <button class="sheetAction" data-preset="Cinematic" type="button">Cinematic</button>
-            <button class="sheetAction" data-preset="Punchy Studio" type="button">
-              Punchy Studio
-            </button>
-            <button class="sheetAction" data-preset="Soft Pastel" type="button">Soft Pastel</button>
-          </div>
-        </div>
-        <div id="panel-info" class="sheet" aria-hidden="true">
-          <div class="sheetBody infoPanelBody">
-            <div class="quickstartTitle">About fRiENEMiES Studio</div>
-            <p class="infoCopy">fRiENEMiES Studio is a community-built toolkit inspired by fRiENDSiES.</p>
-            <p class="infoCopy">Friends change. Enemies evolve. We ship.</p>
-            <p class="infoCopy infoFinePrint">Independent and community-led. Not affiliated with the original creators.</p>
-            <div class="quickstartTitle">Community & updates</div>
-            <div class="infoLinks">
-              <a id="discordLink" class="sheetAction" href="https://discord.com/invite/clawd" target="_blank" rel="noopener noreferrer">Discord</a>
-              <a id="xLink" class="sheetAction" href="https://x.com" target="_blank" rel="noopener noreferrer">X (Twitter)</a>
-              <a id="githubLink" class="sheetAction" href="https://github.com/PIZZALORD713/garden_reborn" target="_blank" rel="noopener noreferrer">GitHub</a>
-            </div>
-            <div class="quickstartTitle">Tips</div>
-            <button id="showOnboardingBtn" class="sheetAction" type="button">Show onboarding again</button>
-          </div>
-        </div>
-      </div>
 
       <div id="onboarding" class="onboarding" aria-hidden="true">
         <div class="onboardingCard" role="dialog" aria-modal="false" aria-labelledby="onboardingTitle" aria-describedby="onboardingBody">
@@ -370,7 +319,6 @@
     <script type="module" src="/carousel-query-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/drag-physics-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/carousel-utils.js?v=2026-02-18a"></script>
-    <script type="module" src="/control-panel-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/console-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/export-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/rig-utils.js?v=2026-02-18a"></script>

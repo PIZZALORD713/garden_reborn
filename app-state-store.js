@@ -6,9 +6,8 @@
 
     return {
       controlShell: {
-        bottomSurfaceMode: "carousel",
-        controlPanelOpen: false,
-        controlActiveTab: "animations",
+        activeView: "grid",
+        radialOpen: false,
         statusText: "booting."
       },
       avatarRuntime: {
@@ -29,19 +28,13 @@
         lastFaceTexture: null
       },
       interactionShell: {
-        hamburgerTimer: null,
-        carouselHideTimer: null,
+        shelfOpen: false,
+        searchExpanded: false,
         idleTimer: null,
         idleActive: false,
-        activePanel: null,
-        menuOpen: false,
         orbitReleaseTimer: null,
         carouselHovered: false,
-        carouselScrolling: false,
-        hamburgerHovered: false,
-        carouselPinned: false,
-        carouselDismissed: false,
-        toggleHideTimer: null
+        carouselScrolling: false
       },
       carouselQuery: {
         carouselTokenIds,
