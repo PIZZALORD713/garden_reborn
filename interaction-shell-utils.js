@@ -5,18 +5,15 @@
     const shell = appState && appState.interactionShell ? appState.interactionShell : {};
 
     return {
-      hamburgerTimer: shell.hamburgerTimer ?? defaults.hamburgerTimer ?? null,
-      carouselHideTimer: shell.carouselHideTimer ?? defaults.carouselHideTimer ?? null,
+      shelfOpen:
+        typeof shell.shelfOpen === "boolean" ? shell.shelfOpen : !!defaults.shelfOpen,
+      searchExpanded:
+        typeof shell.searchExpanded === "boolean" ? shell.searchExpanded : !!defaults.searchExpanded,
       idleTimer: shell.idleTimer ?? defaults.idleTimer ?? null,
       idleActive:
         typeof shell.idleActive === "boolean"
           ? shell.idleActive
           : !!defaults.idleActive,
-      activePanel: shell.activePanel ?? defaults.activePanel ?? null,
-      menuOpen:
-        typeof shell.menuOpen === "boolean"
-          ? shell.menuOpen
-          : !!defaults.menuOpen,
       orbitReleaseTimer: shell.orbitReleaseTimer ?? defaults.orbitReleaseTimer ?? null,
       carouselHovered:
         typeof shell.carouselHovered === "boolean"
@@ -25,20 +22,7 @@
       carouselScrolling:
         typeof shell.carouselScrolling === "boolean"
           ? shell.carouselScrolling
-          : !!defaults.carouselScrolling,
-      hamburgerHovered:
-        typeof shell.hamburgerHovered === "boolean"
-          ? shell.hamburgerHovered
-          : !!defaults.hamburgerHovered,
-      carouselPinned:
-        typeof shell.carouselPinned === "boolean"
-          ? shell.carouselPinned
-          : !!defaults.carouselPinned,
-      carouselDismissed:
-        typeof shell.carouselDismissed === "boolean"
-          ? shell.carouselDismissed
-          : !!defaults.carouselDismissed,
-      toggleHideTimer: shell.toggleHideTimer ?? defaults.toggleHideTimer ?? null
+          : !!defaults.carouselScrolling
     };
   }
 

@@ -201,7 +201,6 @@ const renderSearchMessageFromUtils =
     container.appendChild(notice);
   });
 
-const controlPanelUtils = window.FrienemiesControlPanelUtils || {};
 const consoleUtils = window.FrienemiesConsoleUtils || {};
 
 const rigUtils = window.FrienemiesRigUtils || {};
@@ -578,43 +577,37 @@ function applyLookPreset(name) {
 
 const uiRoot = document.getElementById("ui");
 const ui = {
-  carouselRegion: document.getElementById("carouselRegion"),
-  carouselToggle: document.getElementById("carouselToggle"),
-  carousel: document.getElementById("tokenCarousel"),
+  shelf: document.getElementById("shelf"),
+  shelfCloud: document.getElementById("shelfCloud"),
+  shelfPanel: document.getElementById("shelfPanel"),
+  shelfGear: document.getElementById("shelfGear"),
+  shelfRadial: document.getElementById("shelfRadial"),
+  shelfSearchWrap: document.getElementById("shelfSearchWrap"),
+  shelfSearchBtn: document.getElementById("shelfSearchBtn"),
+  shelfSearchInput: document.getElementById("shelfSearchInput"),
   slides: document.getElementById("tokenSlides"),
   carouselViewport: document.getElementById("carouselViewport"),
   spacerLeft: document.getElementById("spacerLeft"),
-  spacerRight: document.getElementById("spacerRight"),
-  hamburger: document.getElementById("hamburger"),
-  menuStack: document.getElementById("menuStack"),
-  menu: document.getElementById("menu"),
-  panels: {
-    find: document.getElementById("panel-find"),
-    share: document.getElementById("panel-share"),
-    vibe: document.getElementById("panel-vibe"),
-    info: document.getElementById("panel-info")
-  }
+  spacerRight: document.getElementById("spacerRight")
 };
 
-const searchInput = document.getElementById("searchInput");
-const commandBar = document.getElementById("commandBar");
-const commandInput = document.getElementById("commandInput");
 const searchResults = document.getElementById("searchResults");
 const resetCollectionBtn = document.getElementById("resetCollectionBtn");
 const copyLinkBtn = document.getElementById("copyLinkBtn");
 const downloadGlbBtn = document.getElementById("downloadGlbBtn");
 const exportStatus = document.getElementById("exportStatus");
 const exportFallbackLink = document.getElementById("exportFallbackLink");
-const controlGear = document.getElementById("controlGear");
-const controlPanel = document.getElementById("controlPanel");
 const controlAnimSelect = document.getElementById("controlAnimSelect");
 const controlPlayAnimBtn = document.getElementById("controlPlayAnimBtn");
 const consoleModal = document.getElementById("consoleModal");
 const consoleViewer = document.getElementById("consoleViewer");
+const consoleModalViewer = document.getElementById("consoleModalViewer");
 const openConsoleModalBtn = document.getElementById("openConsoleModal");
 const closeConsoleBtn = document.getElementById("closeConsoleBtn");
 const copyConsoleBtn = document.getElementById("copyConsoleBtn");
 const clearConsoleBtn = document.getElementById("clearConsoleBtn");
+const copyConsoleModalBtn = document.getElementById("copyConsoleModalBtn");
+const clearConsoleModalBtn = document.getElementById("clearConsoleModalBtn");
 const onboardingEl = document.getElementById("onboarding");
 const onboardingInput = document.getElementById("onboardingInput");
 const onboardingAnimSelect = document.getElementById("onboardingAnimSelect");
@@ -628,10 +621,7 @@ const mascotToggle = document.getElementById("mascotToggle");
 const mascotBody = document.getElementById("mascotBody");
 const mascotSprite = document.getElementById("mascotSprite");
 const ENABLE_MASCOT_PANEL = false;
-const BOTTOM_SURFACE_MODE = Object.freeze({
-  CAROUSEL: "carousel",
-  SETTINGS: "settings"
-});
+const SHELF_VIEWS = Object.freeze(["grid", "animate", "look", "share", "info", "console"]);
 const ONBOARDING_SEEN_KEY = "frenemies.onboarding.seen.v2";
 
 const debugUi = {
@@ -687,9 +677,8 @@ const createAppState =
   appStateStoreUtils.createState ||
   (() => ({
     controlShell: {
-      bottomSurfaceMode: BOTTOM_SURFACE_MODE.CAROUSEL,
-      controlPanelOpen: false,
-      controlActiveTab: "animations",
+      activeView: "grid",
+      radialOpen: false,
       statusText: "booting."
     },
     avatarRuntime: {
@@ -710,19 +699,13 @@ const createAppState =
       lastFaceTexture: null
     },
     interactionShell: {
-      hamburgerTimer: null,
-      carouselHideTimer: null,
+      shelfOpen: false,
+      searchExpanded: false,
       idleTimer: null,
       idleActive: false,
-      activePanel: null,
-      menuOpen: false,
       orbitReleaseTimer: null,
       carouselHovered: false,
-      carouselScrolling: false,
-      hamburgerHovered: false,
-      carouselPinned: false,
-      carouselDismissed: false,
-      toggleHideTimer: null
+      carouselScrolling: false
     },
     carouselQuery: {
       carouselTokenIds: [...DEFAULT_TOKEN_IDS],
@@ -753,21 +736,16 @@ const getInitialControlShellState =
   controlShellUtils.getInitialControlShellState ||
   ((options = {}) => {
     const defaults = options.defaults || {};
-    const modeMap = options.modeMap || BOTTOM_SURFACE_MODE;
     const shell = options.appState?.controlShell || {};
     return {
-      bottomSurfaceMode:
-        shell.bottomSurfaceMode === modeMap.SETTINGS
-          ? modeMap.SETTINGS
-          : modeMap.CAROUSEL,
-      controlPanelOpen:
-        typeof shell.controlPanelOpen === "boolean"
-          ? shell.controlPanelOpen
-          : !!defaults.controlPanelOpen,
-      controlActiveTab:
-        typeof shell.controlActiveTab === "string" && shell.controlActiveTab.trim()
-          ? shell.controlActiveTab
-          : defaults.controlActiveTab || "animations",
+      activeView:
+        typeof shell.activeView === "string" && SHELF_VIEWS.includes(shell.activeView)
+          ? shell.activeView
+          : defaults.activeView || "grid",
+      radialOpen:
+        typeof shell.radialOpen === "boolean"
+          ? shell.radialOpen
+          : !!defaults.radialOpen,
       statusText:
         typeof shell.statusText === "string"
           ? shell.statusText
@@ -775,38 +753,24 @@ const getInitialControlShellState =
     };
   });
 
-const updateBottomSurfaceModeStateFromUtils =
-  controlShellUtils.updateBottomSurfaceModeState ||
+const updateActiveViewStateFromUtils =
+  controlShellUtils.updateActiveViewState ||
   ((options = {}) => {
-    const modeMap = options.modeMap || BOTTOM_SURFACE_MODE;
-    const nextMode = options.mode === modeMap.SETTINGS
-      ? modeMap.SETTINGS
-      : modeMap.CAROUSEL;
+    const nextView = SHELF_VIEWS.includes(options.view) ? options.view : "grid";
     if (options.appState?.controlShell) {
-      options.appState.controlShell.bottomSurfaceMode = nextMode;
+      options.appState.controlShell.activeView = nextView;
     }
-    return nextMode;
+    return nextView;
   });
 
-const updateControlPanelOpenStateFromUtils =
-  controlShellUtils.updateControlPanelOpenState ||
+const updateRadialOpenStateFromUtils =
+  controlShellUtils.updateRadialOpenState ||
   ((options = {}) => {
     const nextOpen = !!options.open;
     if (options.appState?.controlShell) {
-      options.appState.controlShell.controlPanelOpen = nextOpen;
+      options.appState.controlShell.radialOpen = nextOpen;
     }
     return nextOpen;
-  });
-
-const updateControlActiveTabStateFromUtils =
-  controlShellUtils.updateControlActiveTabState ||
-  ((options = {}) => {
-    const rawTab = typeof options.tab === "string" ? options.tab.trim() : "";
-    const nextTab = rawTab || options.fallbackTab || "animations";
-    if (options.appState?.controlShell) {
-      options.appState.controlShell.controlActiveTab = nextTab;
-    }
-    return nextTab;
   });
 
 const updateStatusTextStateFromUtils =
@@ -821,168 +785,17 @@ const updateStatusTextStateFromUtils =
 
 const initialControlShellState = getInitialControlShellState({
   appState,
-  modeMap: BOTTOM_SURFACE_MODE,
   defaults: {
-    bottomSurfaceMode: BOTTOM_SURFACE_MODE.CAROUSEL,
-    controlPanelOpen: false,
-    controlActiveTab: "animations",
+    activeView: "grid",
+    radialOpen: false,
     statusText: "booting…"
   }
 });
 
-let bottomSurfaceMode = initialControlShellState.bottomSurfaceMode;
-let controlPanelOpen = initialControlShellState.controlPanelOpen;
-let controlActiveTab = initialControlShellState.controlActiveTab;
+let activeView = initialControlShellState.activeView;
+let radialOpen = initialControlShellState.radialOpen;
 const logBuffer = [];
 const LOG_BUFFER_MAX = 300;
-
-const setControlPanelOpenState =
-  controlPanelUtils.setControlPanelOpenState ||
-  function setControlPanelOpenStateFallback({
-    open,
-    panel,
-    gear
-  }) {
-    panel?.classList.toggle("is-open", !!open);
-    panel?.setAttribute("aria-hidden", open ? "false" : "true");
-    gear?.setAttribute("aria-expanded", open ? "true" : "false");
-  };
-
-const computeControlAnchorStyles =
-  controlPanelUtils.computeControlAnchorStyles ||
-  function computeControlAnchorStylesFallback({
-    windowWidth,
-    windowHeight,
-    carouselRect,
-    hasPanel
-  }) {
-    const bottomGap = Math.max(12, windowHeight - carouselRect.bottom + 12);
-
-    if (windowWidth <= 780) {
-      return {
-        gearStyle: {
-          left: "",
-          right: "12px",
-          bottom: `${bottomGap}px`
-        },
-        panelStyle: hasPanel
-          ? {
-              left: "",
-              right: "",
-              bottom: ""
-            }
-          : null
-      };
-    }
-
-    const gearLeft = Math.min(windowWidth - 54, carouselRect.right + 10);
-    const panelWidth = Math.min(360, windowWidth - 96);
-    const preferredLeft = gearLeft + 50;
-    const maxLeft = windowWidth - panelWidth - 12;
-
-    return {
-      gearStyle: {
-        left: `${gearLeft}px`,
-        right: "auto",
-        bottom: `${bottomGap}px`
-      },
-      panelStyle: hasPanel
-        ? {
-            left: `${Math.min(preferredLeft, maxLeft)}px`,
-            right: "auto",
-            bottom: `${Math.max(20, bottomGap - 6)}px`
-          }
-        : null
-    };
-  };
-
-const computeControlVisibility =
-  controlPanelUtils.computeControlVisibility ||
-  function computeControlVisibilityFallback({
-    isCarouselHidden,
-    carouselDismissed: isCarouselDismissed
-  }) {
-    return !isCarouselHidden && !isCarouselDismissed;
-  };
-
-const applyControlTabState =
-  controlPanelUtils.applyControlTabState ||
-  function applyControlTabStateFallback({
-    tab,
-    tabButtons,
-    sections
-  }) {
-    tabButtons.forEach((btn) => {
-      btn.classList.toggle("is-active", btn.dataset.controlTab === tab);
-    });
-    sections.forEach((el) => {
-      el.classList.toggle("is-active", el.dataset.controlSection === tab);
-    });
-  };
-
-function setBottomSurfaceMode(mode) {
-  bottomSurfaceMode = updateBottomSurfaceModeStateFromUtils({
-    mode,
-    appState,
-    modeMap: BOTTOM_SURFACE_MODE
-  });
-  ui.carouselRegion?.setAttribute("data-bottom-surface-mode", bottomSurfaceMode);
-  ui.carouselRegion?.classList.toggle("is-settings", bottomSurfaceMode === BOTTOM_SURFACE_MODE.SETTINGS);
-}
-
-function setControlPanelOpen(open) {
-  controlPanelOpen = updateControlPanelOpenStateFromUtils({
-    open,
-    appState
-  });
-  setBottomSurfaceMode(controlPanelOpen ? BOTTOM_SURFACE_MODE.SETTINGS : BOTTOM_SURFACE_MODE.CAROUSEL);
-  setControlPanelOpenState({
-    open: controlPanelOpen,
-    panel: controlPanel,
-    gear: controlGear
-  });
-}
-
-function syncControlAnchor() {
-  if (!controlGear || !ui.carouselRegion) return;
-  const rect = ui.carouselRegion.getBoundingClientRect();
-  const nextStyles = computeControlAnchorStyles({
-    windowWidth: window.innerWidth,
-    windowHeight: window.innerHeight,
-    carouselRect: rect,
-    hasPanel: !!controlPanel
-  });
-
-  if (!nextStyles?.gearStyle) return;
-  Object.assign(controlGear.style, nextStyles.gearStyle);
-  if (controlPanel && nextStyles.panelStyle) {
-    Object.assign(controlPanel.style, nextStyles.panelStyle);
-  }
-}
-
-function syncControlVisibility() {
-  if (!controlGear || !ui.carousel) return;
-  const carouselVisible = computeControlVisibility({
-    isCarouselHidden: ui.carousel.classList.contains("is-hidden"),
-    carouselDismissed
-  });
-  const gearVisible = bottomSurfaceMode === BOTTOM_SURFACE_MODE.SETTINGS ? true : carouselVisible;
-  controlGear.classList.toggle("is-hidden", !gearVisible);
-  if (!gearVisible && controlPanelOpen) setControlPanelOpen(false);
-}
-
-function setControlTab(tab) {
-  controlActiveTab = updateControlActiveTabStateFromUtils({
-    tab,
-    appState,
-    fallbackTab: "animations"
-  });
-  applyControlTabState({
-    tab: controlActiveTab,
-    tabButtons: document.querySelectorAll(".controlTab"),
-    sections: document.querySelectorAll(".controlSection")
-  });
-}
 
 const renderConsoleViewerFromUtils =
   consoleUtils.renderConsoleViewer ||
@@ -3149,10 +2962,8 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
 }
 
 // ----------------------------
-// Minimal UI: idle hamburger + menu + carousel
+// Shelf interaction state
 // ----------------------------
-const HAMBURGER_HIDE_MS = 1000;
-const CAROUSEL_HIDE_MS = 1000;
 const IDLE_TIMEOUT_MS = 10000;
 
 const getInitialInteractionShellState =
@@ -3160,12 +2971,12 @@ const getInitialInteractionShellState =
   function getInitialInteractionShellStateFallback({ appState, defaults = {} } = {}) {
     const shell = appState?.interactionShell || {};
     return {
-      hamburgerTimer: shell.hamburgerTimer ?? defaults.hamburgerTimer ?? null,
-      carouselHideTimer: shell.carouselHideTimer ?? defaults.carouselHideTimer ?? null,
+      shelfOpen:
+        typeof shell.shelfOpen === "boolean" ? shell.shelfOpen : !!defaults.shelfOpen,
+      searchExpanded:
+        typeof shell.searchExpanded === "boolean" ? shell.searchExpanded : !!defaults.searchExpanded,
       idleTimer: shell.idleTimer ?? defaults.idleTimer ?? null,
       idleActive: typeof shell.idleActive === "boolean" ? shell.idleActive : !!defaults.idleActive,
-      activePanel: shell.activePanel ?? defaults.activePanel ?? null,
-      menuOpen: typeof shell.menuOpen === "boolean" ? shell.menuOpen : !!defaults.menuOpen,
       orbitReleaseTimer: shell.orbitReleaseTimer ?? defaults.orbitReleaseTimer ?? null,
       carouselHovered:
         typeof shell.carouselHovered === "boolean"
@@ -3174,18 +2985,7 @@ const getInitialInteractionShellState =
       carouselScrolling:
         typeof shell.carouselScrolling === "boolean"
           ? shell.carouselScrolling
-          : !!defaults.carouselScrolling,
-      hamburgerHovered:
-        typeof shell.hamburgerHovered === "boolean"
-          ? shell.hamburgerHovered
-          : !!defaults.hamburgerHovered,
-      carouselPinned:
-        typeof shell.carouselPinned === "boolean" ? shell.carouselPinned : !!defaults.carouselPinned,
-      carouselDismissed:
-        typeof shell.carouselDismissed === "boolean"
-          ? shell.carouselDismissed
-          : !!defaults.carouselDismissed,
-      toggleHideTimer: shell.toggleHideTimer ?? defaults.toggleHideTimer ?? null
+          : !!defaults.carouselScrolling
     };
   };
 
@@ -3205,35 +3005,23 @@ function setInteractionShellField(key, value) {
 const initialInteractionShellState = getInitialInteractionShellState({
   appState,
   defaults: {
-    hamburgerTimer: null,
-    carouselHideTimer: null,
+    shelfOpen: false,
+    searchExpanded: false,
     idleTimer: null,
     idleActive: false,
-    activePanel: null,
-    menuOpen: false,
     orbitReleaseTimer: null,
     carouselHovered: false,
-    carouselScrolling: false,
-    hamburgerHovered: false,
-    carouselPinned: false,
-    carouselDismissed: false,
-    toggleHideTimer: null
+    carouselScrolling: false
   }
 });
 
-let hamburgerTimer = initialInteractionShellState.hamburgerTimer;
-let carouselHideTimer = initialInteractionShellState.carouselHideTimer;
+let shelfOpen = initialInteractionShellState.shelfOpen;
+let searchExpanded = initialInteractionShellState.searchExpanded;
 let idleTimer = initialInteractionShellState.idleTimer;
 let idleActive = initialInteractionShellState.idleActive;
-let activePanel = initialInteractionShellState.activePanel;
-let menuOpen = initialInteractionShellState.menuOpen;
 let orbitReleaseTimer = initialInteractionShellState.orbitReleaseTimer;
 let carouselHovered = initialInteractionShellState.carouselHovered;
 let carouselScrolling = initialInteractionShellState.carouselScrolling;
-let hamburgerHovered = initialInteractionShellState.hamburgerHovered;
-let carouselPinned = initialInteractionShellState.carouselPinned;
-let carouselDismissed = initialInteractionShellState.carouselDismissed;
-let toggleHideTimer = initialInteractionShellState.toggleHideTimer;
 
 const getInitialCarouselQueryState =
   carouselQueryUtils.getInitialCarouselQueryState ||
@@ -3503,84 +3291,47 @@ function onCarouselScroll() {
   });
 }
 
-function showHamburger() {
-  if (!ui.hamburger) return;
-  ui.hamburger.classList.remove("is-hidden");
-  if (hamburgerTimer) clearTimeout(hamburgerTimer);
-  // Toggle follows hamburger visibility (unless carousel is pinned)
-  showToggle(false);
-  if (menuOpen || hamburgerHovered) return;
-  hamburgerTimer = setInteractionShellField("hamburgerTimer", setTimeout(() => {
-    ui.hamburger?.classList.add("is-hidden");
-  }, HAMBURGER_HIDE_MS));
+/* ── Shelf open/close ─────────────────────────────────────── */
+function setShelfOpen(open) {
+  shelfOpen = setInteractionShellField("shelfOpen", !!open);
+  if (!ui.shelf) return;
+  ui.shelf.classList.toggle("is-closed", !shelfOpen);
+  ui.shelf.setAttribute("aria-expanded", String(shelfOpen));
 }
 
-function showCarousel() {
-  if (!ui.carousel) return;
-
-  // User explicitly dismissed the carousel via toggle - keep it hidden
-  if (carouselDismissed) {
-    syncControlVisibility();
-    return;
-  }
-
-  ui.carousel.classList.remove("is-hidden");
-  if (carouselHideTimer) clearTimeout(carouselHideTimer);
-  syncControlAnchor();
-  syncControlVisibility();
-
-  // Pinned - carousel stays open, toggle stays visible alongside it
-  if (carouselPinned) {
-    showToggle(true);
-    return;
-  }
-
-  if (carouselHovered || isDragging || carouselScrolling) return;
-  carouselHideTimer = setInteractionShellField("carouselHideTimer", setTimeout(() => {
-    ui.carousel?.classList.add("is-hidden");
-    syncControlVisibility();
-  }, CAROUSEL_HIDE_MS));
+/* ── View switching (gear radial) ─────────────────────────── */
+function setActiveView(viewName) {
+  if (!SHELF_VIEWS.includes(viewName)) return;
+  activeView = updateActiveViewStateFromUtils({ view: viewName, appState });
+  document.querySelectorAll(".shelfView").forEach((el) => {
+    el.classList.toggle("is-active", el.dataset.view === activeView);
+  });
+  document.querySelectorAll(".radialItem").forEach((el) => {
+    el.classList.toggle("is-active", el.dataset.view === activeView);
+  });
+  if (activeView !== "grid") setSearchExpanded(false);
+  setRadialOpen(false);
 }
 
-function showToggle(persistent) {
-  if (!ui.carouselToggle) return;
-  ui.carouselToggle.classList.remove("is-hidden");
-  syncControlAnchor();
-  syncControlVisibility();
-  if (toggleHideTimer) clearTimeout(toggleHideTimer);
-  // If persistent (pinned), dismissed, or carousel is hovered, don't auto-hide
-  if (persistent || carouselPinned || carouselDismissed || carouselHovered) return;
-  // Otherwise follow hamburger timing
-  if (menuOpen || hamburgerHovered) return;
-  toggleHideTimer = setInteractionShellField("toggleHideTimer", setTimeout(() => {
-    ui.carouselToggle?.classList.add("is-hidden");
-    syncControlVisibility();
-  }, HAMBURGER_HIDE_MS));
+function setRadialOpen(open) {
+  radialOpen = updateRadialOpenStateFromUtils({ open, appState });
+  if (!ui.shelfRadial) return;
+  ui.shelfRadial.classList.toggle("is-open", radialOpen);
+  ui.shelfRadial.setAttribute("aria-hidden", String(!radialOpen));
+  ui.shelfGear?.classList.toggle("is-active", radialOpen);
+  ui.shelfGear?.setAttribute("aria-expanded", String(radialOpen));
 }
 
-function setCarouselPinned(pinned) {
-  carouselPinned = setInteractionShellField("carouselPinned", !!pinned);
-  carouselDismissed = setInteractionShellField("carouselDismissed", !carouselPinned);
-  syncControlVisibility();
-  if (!ui.carouselToggle) return;
-  ui.carouselToggle.classList.toggle("is-pinned", carouselPinned);
-  ui.carouselToggle.setAttribute("aria-pressed", String(carouselPinned));
-  ui.carouselToggle.setAttribute(
-    "aria-label",
-    carouselPinned ? "Unpin carousel" : "Pin carousel open"
-  );
-
-  if (carouselPinned) {
-    // Pin - show carousel and keep toggle visible
-    ui.carouselRegion?.classList.remove("is-dismissed");
-    showCarousel();
-    showToggle(true);
+/* ── Grid search ──────────────────────────────────────────── */
+function setSearchExpanded(expanded) {
+  searchExpanded = setInteractionShellField("searchExpanded", !!expanded);
+  if (!ui.shelfSearchWrap) return;
+  ui.shelfSearchWrap.classList.toggle("is-expanded", searchExpanded);
+  if (searchExpanded) {
+    ui.shelfSearchInput?.focus();
   } else {
-    // Dismiss - immediately hide carousel, slide toggle to bottom
-    if (carouselHideTimer) clearTimeout(carouselHideTimer);
-    ui.carousel?.classList.add("is-hidden");
-    ui.carouselRegion?.classList.add("is-dismissed");
-    showToggle(true);
+    if (ui.shelfSearchInput) ui.shelfSearchInput.value = "";
+    ui.shelfSearchInput?.blur();
   }
 }
 
@@ -3594,41 +3345,8 @@ function scheduleIdleTimer() {
 function handleUserActivity() {
   if (idleActive) {
     idleActive = setInteractionShellField("idleActive", false);
-    showHamburger();
   }
-  showCarousel();
   scheduleIdleTimer();
-}
-
-function setMenuOpen(open) {
-  menuOpen = setInteractionShellField("menuOpen", !!open);
-  if (!menuOpen) {
-    defocusIfInside(ui.menu, ui.hamburger);
-  }
-  if (ui.hamburger) {
-    ui.hamburger.classList.toggle("is-open", menuOpen);
-  }
-  if (ui.menu) {
-    ui.menu.classList.toggle("is-open", menuOpen);
-    ui.menu.setAttribute("aria-hidden", menuOpen ? "false" : "true");
-  }
-  if (!menuOpen) setActivePanel(null);
-  showHamburger();
-}
-
-function setActivePanel(name) {
-  activePanel = setInteractionShellField("activePanel", name);
-  Object.entries(ui.panels).forEach(([key, el]) => {
-    if (!el) return;
-    const isOpen = key === activePanel;
-    if (!isOpen) defocusIfInside(el, ui.hamburger);
-    el.classList.toggle("is-open", isOpen);
-    el.setAttribute("aria-hidden", isOpen ? "false" : "true");
-  });
-
-  if (name === "find") {
-    setTimeout(() => searchInput?.focus(), 100);
-  }
 }
 
 function showOnboarding(force = false) {
@@ -3638,8 +3356,8 @@ function showOnboarding(force = false) {
   onboardingEl.classList.add("is-open");
   onboardingEl.setAttribute("aria-hidden", "false");
 
-  if (commandInput?.value && onboardingInput && !onboardingInput.value) {
-    onboardingInput.value = commandInput.value;
+  if (ui.shelfSearchInput?.value && onboardingInput && !onboardingInput.value) {
+    onboardingInput.value = ui.shelfSearchInput.value;
   }
 }
 
@@ -3647,9 +3365,8 @@ function submitPrimarySearch(raw) {
   const value = normalizeSearchInput(raw);
   if (!value) return false;
 
-  if (searchInput && searchInput.value !== value) searchInput.value = value;
+  if (ui.shelfSearchInput && ui.shelfSearchInput.value !== value) ui.shelfSearchInput.value = value;
   if (onboardingInput && onboardingInput.value !== value) onboardingInput.value = value;
-  if (commandInput && commandInput.value !== value) commandInput.value = value;
 
   handleSearch(value);
   return true;
@@ -3712,7 +3429,7 @@ async function navigateToWallet(owner) {
     if (searchResults) searchResults.innerHTML = "";
     const slug = walletData.ownerInput || owner;
     window.history.pushState({}, "", buildOwnerPath(slug));
-    setMenuOpen(false);
+    setRadialOpen(false);
     logLine(`🔍 Search: loaded ${walletData.tokenIds.length} tokens for ${slug}`);
   } catch (err) {
     renderSearchMessage(`Lookup failed: ${err?.message || "please try again"}`, {
@@ -3758,7 +3475,7 @@ async function handleSearch(query) {
         loadToken(asNum);
       }
     }
-    setMenuOpen(false);
+    setRadialOpen(false);
     return;
   }
 
@@ -4037,7 +3754,7 @@ function applyMomentum() {
     stopMomentum();
     // Re-enable snap so browser settles to nearest card
     vp.style.scrollSnapType = "";
-    showCarousel();
+    /* shelf stays open until cloud tap */
     return;
   }
   vp.scrollLeft -= dragVelocity;
@@ -4129,7 +3846,7 @@ function onDragEnd(e) {
   }
 
   isDragging = setDragPhysicsField("isDragging", false);
-  showCarousel();
+  /* shelf stays open until cloud tap */
 
   // Clear wasDragging after the click event has had a chance to check it
   requestAnimationFrame(() => {
@@ -4161,7 +3878,7 @@ function bindCarouselListeners() {
 
   // Pointer-drag with momentum (desktop fling scrolling)
   ui.carouselViewport.addEventListener("pointerdown", (e) => {
-    showCarousel();
+    /* shelf stays open until cloud tap */
     onDragStart(e);
   });
   ui.carouselViewport.addEventListener("pointermove", onDragMove);
@@ -4180,7 +3897,7 @@ function bindCarouselListeners() {
     const scrollLeft = ui.carouselViewport.scrollLeft;
     const centerIndex = scrollLeftToIndex(scrollLeft);
     setActiveCarouselIndex(centerIndex, { forceLoad: true });
-    showCarousel();
+    /* shelf stays open until cloud tap */
   };
 
   if ("onscrollend" in window) {
@@ -4377,24 +4094,26 @@ function initCarousel(startTokenId = DEFAULT_TOKEN_ID) {
     });
   }
 
-  showCarousel();
+  /* shelf stays open until cloud tap */
 }
 
-ui.hamburger?.addEventListener("click", () => {
-  setMenuOpen(!menuOpen);
-});
+/* ── Shelf event handlers ───────────────────────────────── */
+ui.shelfCloud?.addEventListener("click", () => setShelfOpen(!shelfOpen));
 
-controlGear?.addEventListener("click", () => {
-  setControlPanelOpen(!controlPanelOpen);
-  syncControlVisibility();
-});
+ui.shelfGear?.addEventListener("click", () => setRadialOpen(!radialOpen));
 
-document.querySelectorAll(".controlTab").forEach((btn) => {
+document.querySelectorAll(".radialItem").forEach((btn) => {
   btn.addEventListener("click", () => {
-    const tab = btn.dataset.controlTab;
-    if (!tab) return;
-    setControlTab(tab);
+    const view = btn.dataset.view;
+    if (view) setActiveView(view);
   });
+});
+
+ui.shelfSearchBtn?.addEventListener("click", () => setSearchExpanded(!searchExpanded));
+
+ui.shelfSearchInput?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") submitPrimarySearch(ui.shelfSearchInput.value);
+  if (e.key === "Escape") setSearchExpanded(false);
 });
 
 document.querySelectorAll("[data-control-preset]").forEach((btn) => {
@@ -4439,62 +4158,18 @@ consoleModal?.addEventListener("click", (event) => {
   }
 });
 
-ui.hamburger?.addEventListener("pointerenter", () => {
-  hamburgerHovered = setInteractionShellField("hamburgerHovered", true);
-  showHamburger();
-});
-ui.hamburger?.addEventListener("pointerleave", () => {
-  hamburgerHovered = setInteractionShellField("hamburgerHovered", false);
-  showHamburger();
+copyConsoleModalBtn?.addEventListener("click", async () => {
+  const payload = logBuffer.join("\n");
+  if (!payload) return;
+  await navigator.clipboard.writeText(payload);
 });
 
-ui.carouselToggle?.addEventListener("click", () => {
-  setCarouselPinned(!carouselPinned);
-});
-
-ui.carousel?.addEventListener("pointerenter", () => {
-  carouselHovered = setInteractionShellField("carouselHovered", true);
-  showCarousel();
-  showToggle(false);
-});
-ui.carousel?.addEventListener("pointerleave", () => {
-  carouselHovered = setInteractionShellField("carouselHovered", false);
-  showCarousel();
-  showToggle(false);
-});
-
-controls?.addEventListener("end", () => {
-  if (orbitReleaseTimer) clearTimeout(orbitReleaseTimer);
-  orbitReleaseTimer = setInteractionShellField("orbitReleaseTimer", setTimeout(() => {
-    showHamburger();
-  }, 250));
-});
-
-ui.menu?.addEventListener("click", (event) => {
-  const btn = event.target.closest(".menuIcon");
-  if (!btn || !ui.menu.contains(btn)) return;
-  const panel = btn.dataset.panel;
-  if (!panel) return;
-  if (activePanel === panel) {
-    setActivePanel(null);
-  } else {
-    setActivePanel(panel);
-  }
-});
-
-searchInput?.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter") return;
-  submitPrimarySearch(searchInput.value);
-});
-
-commandBar?.addEventListener("submit", (event) => {
-  event.preventDefault();
-  submitPrimarySearch(commandInput?.value);
+clearConsoleModalBtn?.addEventListener("click", () => {
+  clearLog();
 });
 
 resetCollectionBtn?.addEventListener("click", () => {
   resetToFullCollection();
-  setMenuOpen(false);
 });
 
 searchResults?.addEventListener("click", (event) => {
@@ -4502,7 +4177,6 @@ searchResults?.addEventListener("click", (event) => {
   if (action?.dataset.searchAction !== "reset-collection") return;
   resetToFullCollection();
   searchResults.innerHTML = "";
-  setMenuOpen(false);
 });
 
 copyLinkBtn?.addEventListener("click", () => {
@@ -4528,7 +4202,6 @@ downloadGlbBtn?.addEventListener("click", () => {
     return;
   }
 
-  setMenuOpen(false);
 });
 
 // "Enter Studio" — submits input if filled, otherwise just dismisses
@@ -4556,7 +4229,6 @@ onboardingSkipBtn?.addEventListener("click", () => {
 
 showOnboardingBtn?.addEventListener("click", () => {
   showOnboarding(true);
-  setMenuOpen(false);
 });
 
 // Enter key on onboarding input submits
@@ -4573,31 +4245,10 @@ document.addEventListener("keydown", (event) => {
   hideOnboarding(true);
 });
 
-document.querySelectorAll("[data-preset]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const name = btn.dataset.preset;
-    if (!name) return;
-    applyLookPreset(name);
-    document.querySelectorAll("[data-preset]").forEach((b) => {
-      b.classList.remove("is-active");
-    });
-    btn.classList.add("is-active");
-  });
-});
-
 window.addEventListener("pointerdown", (event) => {
   const target = event.target;
-
-  if (menuOpen) {
-    if (!ui.menu?.contains(target) && !ui.hamburger?.contains(target) && !Object.values(ui.panels).some((panel) => panel?.contains(target))) {
-      setMenuOpen(false);
-    }
-  }
-
-  if (controlPanelOpen) {
-    if (!controlPanel?.contains(target) && !controlGear?.contains(target)) {
-      setControlPanelOpen(false);
-    }
+  if (radialOpen && !ui.shelfGear?.contains(target) && !ui.shelfRadial?.contains(target)) {
+    setRadialOpen(false);
   }
 });
 
@@ -4822,13 +4473,9 @@ window.addEventListener("popstate", (event) => {
   await loadAnimationManifest();
   populateOnboardingAnimSelect();
   initMascotHook();
-  setControlTab("animations");
-  setBottomSurfaceMode(BOTTOM_SURFACE_MODE.CAROUSEL);
-  setControlPanelOpen(false);
+  setActiveView("grid");
+  setShelfOpen(false);
   initCarousel(carouselStartTokenId);
-  syncControlAnchor();
-  syncControlVisibility();
-  showHamburger();
   scheduleIdleTimer();
   // Skip onboarding when landing on a /fren/ deep-link
   if (!frenRouteActive) {
@@ -4922,8 +4569,6 @@ window.addEventListener("resize", () => {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
-  syncControlAnchor();
-  syncControlVisibility();
 
   // Recalculate carousel spacers and re-center on active card
   if (activeCarouselIndex != null && carouselTokenIds.length && ui.slides) {

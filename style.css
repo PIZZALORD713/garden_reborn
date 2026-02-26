@@ -34,7 +34,7 @@ canvas {
   position: fixed;
   left: max(16px, calc(env(safe-area-inset-left) + 8px));
   top: max(16px, calc(env(safe-area-inset-top) + 8px));
-  z-index: var(--z-carousel);
+  z-index: var(--z-shelf);
   max-width: min(420px, calc(100vw - 110px));
   padding: 10px 12px;
   border-radius: 14px;
@@ -72,60 +72,7 @@ canvas {
   z-index: 0;
 }
 
-.commandBar {
-  pointer-events: auto;
-  position: fixed;
-  top: max(16px, calc(env(safe-area-inset-top) + 8px));
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(560px, calc(100vw - 124px));
-  z-index: var(--z-command);
-  padding: 10px;
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-shadow);
-  display: grid;
-  gap: 8px;
-}
-
-.commandBarLabel {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.commandBarRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-}
-
-.commandInput {
-  min-width: 0;
-}
-
-.commandSubmit {
-  border: none;
-  border-radius: var(--radius-sm);
-  background: rgba(30, 35, 56, 0.84);
-  color: rgba(255, 255, 255, 0.96);
-  padding: 0 14px;
-  font-size: var(--text-md);
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform var(--duration-fast) ease, background var(--duration-fast) ease;
-}
-
-.commandSubmit:hover {
-  background: rgba(18, 22, 38, 0.92);
-  transform: translateY(-1px);
-}
-
-.commandSubmit:active {
-  transform: translateY(0);
-}
+/* (commandBar removed — search is now inline in the shelf Grid view) */
 
 /* Glassmorphism helpers */
 :root {
@@ -165,124 +112,339 @@ canvas {
 
   /* Z-index layers */
   --z-base: 1;
-  --z-carousel: 5;
-  --z-menu: 6;
-  --z-sheet: 7;
-  --z-command: 8;
+  --z-shelf: 5;
   --z-overlay: 14;
-  --z-gear: 16;
   --z-mascot: 18;
   --z-modal: 24;
 }
 
-/* Carousel region (wrapper for toggle + carousel) */
-.carouselRegion {
-  --toggle-offset: 12px; /* gap between toggle and carousel top */
+/* ── Shelf ────────────────────────────────────────────────── */
+
+/* Wrapper: fixed at bottom, flex column (cloud on top, panel below) */
+.shelf {
   pointer-events: none;
   position: fixed;
   left: 50%;
   bottom: 28px;
   transform: translateX(-50%);
   width: min(720px, calc(100vw - 32px));
-  z-index: var(--z-carousel);
+  z-index: var(--z-shelf);
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: bottom var(--duration-slow) cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--duration-slow) cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Dismissed — toggle slides to bottom edge, carousel collapses */
-.carouselRegion.is-dismissed {
-  bottom: 8px;
+/* Closed state: push down so only ~12px of cloud peeks above viewport bottom */
+.shelf.is-closed {
+  transform: translateX(-50%) translateY(calc(100% - 12px));
 }
 
-.carouselRegion.is-dismissed .glassCarousel,
-.carouselRegion.is-dismissed .controlPanel {
-  display: none;
-}
-
-.carouselRegion.is-dismissed .carouselToggle {
-  margin-bottom: 0;
-}
-
-.carouselRegion.is-settings .glassCarousel {
-  display: none;
-}
-
-.carouselRegion.is-settings .controlPanel {
-  display: block;
-}
-
-/* Toggle button */
-.carouselToggle {
+/* Cloud toggle — horizon-sitting button above the panel */
+.shelfCloud {
   pointer-events: auto;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-circle);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.42);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: 0 4px 18px rgba(14, 20, 42, 0.10);
+  width: 48px;
+  height: 32px;
+  border: none;
+  background: none;
+  padding: 0;
   cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
   display: grid;
   place-items: center;
-  margin-bottom: var(--toggle-offset);
-  opacity: 1;
-  transition: opacity var(--duration-slow) ease,
-    transform var(--duration-slow) cubic-bezier(0.34, 1.56, 0.64, 1),
-    background var(--duration-fast) ease,
-    box-shadow var(--duration-fast) ease;
-  will-change: transform, opacity;
+  margin-bottom: 6px;
   flex-shrink: 0;
+  filter: drop-shadow(0 2px 6px rgba(14, 20, 42, 0.10));
+  transition: transform var(--duration-md) ease, filter var(--duration-fast) ease;
 }
 
-.carouselToggle:hover {
-  background: rgba(255, 255, 255, 0.65);
-  transform: scale(1.10);
-  box-shadow: 0 6px 22px rgba(14, 20, 42, 0.14);
+.shelfCloud svg {
+  width: 48px;
+  height: 32px;
 }
 
-.carouselToggle:active {
-  transform: scale(0.95);
+/* Cloud idle peek — only when shelf is closed */
+.shelf.is-closed .shelfCloud {
+  animation: cloudPeek 5s ease-in-out infinite;
 }
 
-.carouselToggle.is-hidden {
-  opacity: 0;
-  transform: scale(0.7) translateY(8px);
-  pointer-events: none;
+/* Cloud hover — rises up when shelf is closed */
+.shelf.is-closed .shelfCloud:hover {
+  animation: none;
+  transform: translateY(-20px);
+  filter: drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16));
 }
 
-/* Pinned state — elevated glass, subtle glow */
-.carouselToggle.is-pinned {
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.4),
-    0 6px 24px rgba(14, 20, 42, 0.12);
-  border-color: rgba(255, 255, 255, 0.5);
+/* Cloud active press */
+.shelfCloud:active {
+  transform: scale(0.92);
 }
 
-/* Carousel */
-.glassCarousel {
+/* Cloud micro-float — subtle motion when shelf is open */
+.shelf:not(.is-closed) .shelfCloud {
+  animation: cloudFloat 8s ease-in-out infinite;
+}
+
+@keyframes cloudPeek {
+  0%, 65%, 100% { transform: translateY(0); }
+  75% { transform: translateY(-4px); }
+  85% { transform: translateY(-1px); }
+}
+
+@keyframes cloudFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-2px) scale(1.03); }
+}
+
+/* Glass panel — the actual shelf surface */
+.shelfPanel {
   pointer-events: auto;
   width: 100%;
-  padding: 12px 18px 16px;
   border-radius: var(--radius-lg);
   background: rgba(255, 255, 255, 0.45);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-shadow);
-  transition: opacity var(--duration-slow) ease,
-    transform var(--duration-slow) cubic-bezier(0.34, 1.56, 0.64, 1);
-  will-change: transform, opacity;
+  padding: 10px 14px 14px;
 }
 
-.glassCarousel.is-hidden {
+/* Header row: search left, gear right */
+.shelfHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* Search wrap: icon + collapsible input */
+.shelfSearchWrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.shelfSearchBtn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-circle);
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: background var(--duration-fast) ease, transform var(--duration-fast) var(--spring);
+  padding: 0;
+}
+
+.shelfSearchBtn:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: scale(1.06);
+}
+
+.shelfSearchBtn svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-secondary);
+}
+
+.shelfSearchInput {
+  width: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: var(--text-md);
+  color: var(--text-primary);
+  outline: none;
   opacity: 0;
-  transform: translateY(16px);
-  /* Keep pointer-events: auto so the carousel can receive scroll/drag
-     even while visually hidden — interaction will trigger showCarousel(). */
+  transition: width var(--duration-md) var(--ease-out-expo),
+    padding var(--duration-md) var(--ease-out-expo),
+    opacity var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.shelfSearchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.shelfSearchWrap.is-expanded .shelfSearchInput {
+  width: 200px;
+  padding: 6px 10px;
+  opacity: 1;
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.shelfSearchWrap.is-expanded .shelfSearchInput:focus {
+  border-color: rgba(22, 26, 40, 0.2);
+  box-shadow: 0 0 0 3px rgba(200, 180, 240, 0.18);
+}
+
+/* View-all chip inside search wrap */
+.shelfSearchWrap .viewAllChip {
+  margin-top: 0;
+  margin-left: 6px;
+  white-space: nowrap;
+  display: none;
+  font-size: var(--text-xs);
+  padding: 5px 10px;
+}
+
+.shelfSearchWrap .viewAllChip.is-visible {
+  display: block;
+}
+
+/* Gear wrap: contains radial row + gear button */
+.shelfGearWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.shelfGear {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-circle);
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: background var(--duration-fast) ease,
+    transform var(--duration-md) var(--spring);
+  padding: 0;
+  color: var(--text-primary);
+}
+
+.shelfGear:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.shelfGear.is-active {
+  background: rgba(255, 255, 255, 0.85);
+  transform: rotate(60deg);
+}
+
+.shelfGear svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Radial: horizontal row of view icons to the left of gear */
+.shelfRadial {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) ease;
+}
+
+.shelfRadial.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.radialItem {
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-circle);
+  background: rgba(255, 255, 255, 0.42);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  opacity: 0;
+  transform: scale(0.5) translateX(12px);
+  transition: background var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+}
+
+.radialItem svg {
+  width: 15px;
+  height: 15px;
+  color: var(--text-secondary);
+}
+
+.shelfRadial.is-open .radialItem {
+  animation: radialSlideIn var(--duration-md) cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.shelfRadial.is-open .radialItem:nth-child(1) { animation-delay: 0ms; }
+.shelfRadial.is-open .radialItem:nth-child(2) { animation-delay: 30ms; }
+.shelfRadial.is-open .radialItem:nth-child(3) { animation-delay: 60ms; }
+.shelfRadial.is-open .radialItem:nth-child(4) { animation-delay: 90ms; }
+.shelfRadial.is-open .radialItem:nth-child(5) { animation-delay: 120ms; }
+.shelfRadial.is-open .radialItem:nth-child(6) { animation-delay: 150ms; }
+
+@keyframes radialSlideIn {
+  from { opacity: 0; transform: scale(0.5) translateX(12px); }
+  to { opacity: 1; transform: scale(1) translateX(0); }
+}
+
+.radialItem:hover {
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 2px 8px rgba(14, 20, 42, 0.10);
+}
+
+.radialItem.is-active {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+.radialItem.is-active svg {
+  color: var(--text-primary);
+}
+
+/* View body */
+.shelfBody {
+  min-height: 0;
+}
+
+/* Individual views */
+.shelfView {
+  display: none;
+}
+
+.shelfView.is-active {
+  display: block;
+}
+
+.shelfView.is-active[data-view="grid"] {
+  display: flex;
+  flex-direction: column;
+}
+
+.shelfView.is-active[data-view="animate"],
+.shelfView.is-active[data-view="look"],
+.shelfView.is-active[data-view="share"] {
+  display: grid;
+  gap: 8px;
+}
+
+/* Inline console viewer (compact height) */
+.consoleViewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.consoleViewerInline {
+  max-height: 140px;
+  background: rgba(18, 22, 28, 0.88);
+  color: #d7deea;
+  border-radius: var(--radius-sm);
 }
 
 .carouselViewport {
@@ -463,178 +625,7 @@ canvas {
   }
 }
 
-/* Hamburger + menu */
-.menuStack {
-  pointer-events: none;
-  position: fixed;
-  top: max(24px, calc(env(safe-area-inset-top) + 16px));
-  right: max(24px, calc(env(safe-area-inset-right) + 16px));
-  bottom: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 12px;
-  z-index: var(--z-menu);
-}
-
-.fab {
-  pointer-events: auto;
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-circle);
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg-elevated);
-  backdrop-filter: var(--glass-blur-strong);
-  -webkit-backdrop-filter: var(--glass-blur-strong);
-  box-shadow: var(--glass-shadow);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  opacity: 1;
-  transition: opacity var(--duration-slow) ease,
-    transform var(--duration-md) cubic-bezier(0.34, 1.56, 0.64, 1);
-  padding: 0;
-}
-
-.fab svg {
-  width: 22px;
-  height: 22px;
-  color: rgba(28, 32, 48, 0.7);
-  transition: transform var(--duration-md) cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity var(--duration-fast) ease;
-}
-
-.fab .fab-icon--close {
-  display: none;
-}
-
-.fab.is-open .fab-icon--menu {
-  display: none;
-}
-
-.fab.is-open .fab-icon--close {
-  display: block;
-}
-
-.fab.is-open {
-  transform: rotate(90deg);
-}
-
-.fab.is-hidden {
-  opacity: 0;
-  transform: scale(0.85);
-  pointer-events: none;
-}
-
-.menu {
-  pointer-events: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px;
-  border-radius: var(--radius-md);
-  background: var(--glass-bg-elevated);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-shadow);
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity var(--duration-fast) ease,
-    transform var(--duration-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
-  pointer-events: none;
-}
-
-.menu.is-open {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-.menu.is-open .menuIcon {
-  animation: menuReveal var(--duration-md) cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-.menu.is-open .menuIcon:nth-child(1) {
-  animation-delay: 40ms;
-}
-
-.menu.is-open .menuIcon:nth-child(2) {
-  animation-delay: 100ms;
-}
-
-.menu.is-open .menuIcon:nth-child(3) {
-  animation-delay: 160ms;
-}
-
-.menuIcon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-circle);
-  border: none;
-  background: rgba(255, 255, 255, 0.45);
-  box-shadow: 0 4px 16px rgba(14, 20, 42, 0.08);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  transition: background var(--duration-fast) ease,
-    transform var(--duration-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.menuIcon:hover {
-  background: rgba(255, 255, 255, 0.8);
-  transform: scale(1.08);
-}
-
-.menuIcon svg {
-  width: 20px;
-  height: 20px;
-  color: rgba(28, 32, 48, 0.8);
-}
-
-@keyframes menuReveal {
-  from {
-    opacity: 0;
-    transform: scale(0.6) translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-/* Sheets */
-.sheet {
-  pointer-events: auto;
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
-  bottom: auto;
-  width: min(260px, 75vw);
-  padding: 16px;
-  border-radius: var(--radius-lg);
-  background: var(--glass-bg-elevated);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: none;
-  box-shadow: var(--glass-shadow-elevated);
-  opacity: 0;
-  transform: translateY(-8px) scale(0.97);
-  transition: opacity var(--duration-fast) ease,
-    transform var(--duration-md) cubic-bezier(0.34, 1.56, 0.64, 1);
-  pointer-events: none;
-  z-index: var(--z-sheet);
-}
-
-.sheet.is-open {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
-}
-
-.sheetBody {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-}
+/* (menuStack / fab / menu / sheet / menuIcon — all removed, replaced by shelf + gear radial) */
 
 .sheetAction {
   display: block;
@@ -742,10 +733,6 @@ canvas {
   color: var(--text-secondary);
   display: grid;
   gap: 4px;
-}
-
-.infoPanelBody .sheetAction {
-  text-decoration: none;
 }
 
 .infoCopy {
@@ -1186,58 +1173,50 @@ canvas {
 }
 
 @media (max-width: 720px) {
-  .commandBar {
-    top: max(10px, calc(env(safe-area-inset-top) + 4px));
-    width: calc(100vw - 84px);
-    padding: 8px;
-    gap: 6px;
+  .shelf {
+    width: calc(100vw - 16px);
+    bottom: 16px;
   }
 
-  .commandBarLabel {
-    font-size: var(--text-xs);
+  .shelf.is-closed {
+    transform: translateX(-50%) translateY(calc(100% - 10px));
   }
 
-  .commandSubmit {
-    padding: 0 12px;
-    font-size: var(--text-sm);
-  }
-
-  .carouselRegion {
-    width: calc(100vw - 24px);
-    bottom: 24px;
-  }
-
-  .glassCarousel {
+  .shelfPanel {
+    border-radius: 18px;
+    padding: 8px 10px 12px;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+  }
+
+  .shelfCloud {
+    width: 40px;
+    height: 26px;
+    margin-bottom: 4px;
+  }
+
+  .shelfCloud svg {
+    width: 40px;
+    height: 26px;
+  }
+
+  .shelfSearchWrap.is-expanded .shelfSearchInput {
+    width: 140px;
+  }
+
+  .radialItem {
+    width: 28px;
+    height: 28px;
+  }
+
+  .radialItem svg {
+    width: 13px;
+    height: 13px;
   }
 
   :root {
     --card-width: 104px;
     --card-gap: 10px;
-  }
-
-  .carouselToggle {
-    width: 36px;
-    height: 36px;
-    font-size: var(--text-xl);
-  }
-
-  .sheet {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: auto;
-    width: 100%;
-    border-radius: 20px 20px 0 0;
-    max-height: 55vh;
-    overflow-y: auto;
-    transform: translateY(100%);
-  }
-
-  .sheet.is-open {
-    transform: translateY(0);
   }
 
   .onboarding {
@@ -1275,53 +1254,8 @@ canvas {
   }
 }
 
-.controlGear {
-  position: fixed;
-  right: 16px;
-  bottom: 132px;
-  z-index: var(--z-gear);
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.44);
-  color: var(--text-primary);
-  box-shadow: 0 4px 18px rgba(14, 20, 42, 0.12);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  pointer-events: auto;
-  transition: opacity var(--duration-md) ease, transform var(--duration-md) ease, background var(--duration-fast) ease;
-}
-.controlGear.is-hidden {
-  opacity: 0;
-  pointer-events: none;
-  transform: scale(0.8) translateY(6px);
-}
-.controlGear:hover { background: rgba(255, 255, 255, 0.66); }
-.controlGear svg { width: 18px; height: 18px; }
-.controlPanel {
-  pointer-events: auto;
-  width: 100%;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg-elevated);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-shadow);
-  padding: 10px;
-  display: none;
-}
-.controlPanel.is-open { display: block; }
-.controlTabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
-.controlTab { border: 1px solid var(--glass-border); border-radius: var(--radius-sm); background: rgba(255,255,255,.6); font-size: var(--text-xs); font-weight: 500; padding: 6px; cursor: pointer; transition: background var(--duration-fast) ease; }
-.controlTab:hover { background: rgba(255,255,255,.75); }
-.controlTab.is-active { background: rgba(255,255,255,.9); font-weight: 600; }
-.controlSection { display: none; gap: 8px; }
-.controlSection.is-active { display: grid; }
+/* (controlGear / controlPanel / controlTabs / controlSection — removed, replaced by shelf views) */
+
 .consoleModal {
   position: fixed;
   inset: 0;
@@ -1348,18 +1282,6 @@ canvas {
 .consoleHeader { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid rgba(255,255,255,.1); }
 .consoleActions { display: flex; gap: 6px; }
 .consoleViewer { margin: 0; padding: 10px; overflow: auto; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; }
-
-@media (max-width: 780px) {
-  .controlGear { right: 12px; bottom: 118px; left: auto; }
-  .controlPanel {
-    right: 0;
-    left: 0 !important;
-    bottom: 0 !important;
-    width: 100%;
-    border-radius: 14px 14px 0 0;
-    padding: 12px;
-  }
-}
 
 .mascotPanel {
   pointer-events: auto;
@@ -1404,19 +1326,19 @@ canvas {
 .mascotAction { text-align: center; padding: 8px 10px; font-size: var(--text-sm); }
 
 /* ── Focus-visible states (keyboard navigation) ───────────── */
-.fab:focus-visible,
-.menuIcon:focus-visible,
-.carouselToggle:focus-visible,
+.shelfCloud:focus-visible,
+.shelfGear:focus-visible,
+.shelfSearchBtn:focus-visible,
+.radialItem:focus-visible,
 .sheetAction:focus-visible,
 .onboardingBtn:focus-visible,
-.controlTab:focus-visible,
-.controlGear:focus-visible,
 .tokenCard:focus-visible {
   outline: 2px solid rgba(22, 26, 40, 0.35);
   outline-offset: 2px;
 }
 
-.searchInput:focus-visible {
+.searchInput:focus-visible,
+.shelfSearchInput:focus-visible {
   outline: none;
   border-color: rgba(22, 26, 40, 0.2);
   box-shadow: 0 0 0 3px rgba(200, 180, 240, 0.18);
@@ -1425,15 +1347,28 @@ canvas {
 @media (prefers-reduced-motion: reduce) {
   .tokenSlide,
   .tokenCard,
-  .tokenImage,
-  .carouselToggle {
+  .tokenImage {
     transition: none !important;
     animation: none !important;
   }
 
-  .glassCarousel {
+  .shelf {
+    transition: none !important;
+  }
+
+  .shelfCloud {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .shelfPanel {
     backdrop-filter: none;
     background: rgba(255, 255, 255, 0.85);
+  }
+
+  .radialItem {
+    animation: none !important;
+    transition: none !important;
   }
 
   .onboardingCard,
