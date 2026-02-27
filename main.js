@@ -3770,6 +3770,9 @@ function onDragStart(e) {
   const vp = ui.carouselViewport;
   if (!vp) return;
 
+  // Prevent browser default drag/selection so the gesture stays with our handler
+  e.preventDefault();
+
   stopMomentum();
   isDragging = setDragPhysicsField("isDragging", false); // hasn't moved past threshold yet
   dragStartX = setDragPhysicsField("dragStartX", e.clientX);
@@ -3796,6 +3799,9 @@ function onDragMove(e) {
   }
 
   if (!isDragging) return;
+
+  // Suppress any residual browser handling once committed to drag
+  e.preventDefault();
 
   // Track velocity from recent movement
   const now = performance.now();
@@ -3875,6 +3881,9 @@ function bindCarouselListeners() {
     if (Number.isNaN(index)) return;
     scrollToCarouselIndex(index);
   });
+
+  // Block native drag-and-drop on the carousel so pointer-drag owns the gesture
+  ui.carouselViewport.addEventListener("dragstart", (e) => e.preventDefault());
 
   // Pointer-drag with momentum (desktop fling scrolling)
   ui.carouselViewport.addEventListener("pointerdown", (e) => {
