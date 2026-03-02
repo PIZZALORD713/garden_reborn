@@ -4949,8 +4949,16 @@ window.addEventListener("resize", () => {
   }
 });
 
+// Prismatic panel lighting follows pointer position for open sheets.
+window.addEventListener("mousemove", (event) => {
+  document.querySelectorAll(".sheet.is-open").forEach((sheet) => {
+    const rect = sheet.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
 
-
-
-
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    sheet.style.setProperty("--mouse-x", `${Math.max(0, Math.min(100, x))}%`);
+    sheet.style.setProperty("--mouse-y", `${Math.max(0, Math.min(100, y))}%`);
+  });
+});
 

@@ -340,18 +340,26 @@ canvas {
 
 .tokenSlide.is-active .tokenCard {
   transform: translateY(-16px) scale(1.10);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 10px 28px rgba(14, 20, 42, 0.15);
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow: 0 16px 56px rgba(138, 43, 226, 0.26), 0 0 32px rgba(64, 224, 208, 0.2);
+  border-color: rgba(147, 112, 219, 0.45);
   color: var(--text-primary);
+  animation: none;
+}
+
+.tokenSlide.is-active .tokenCard::after {
+  opacity: 1;
+  background: conic-gradient(from 0deg, #ff0080, #ff8c00, #40e0d0, #4169e1, #9370db, #ff1493, #ff0080);
+  animation: holoSpin 4s linear infinite;
 }
 
 .tokenCard {
   width: var(--card-width);
   padding: 10px 12px 12px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 6px 22px rgba(14, 20, 42, 0.08);
-  border: none;
+  background: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 8px 28px rgba(14, 20, 42, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -360,13 +368,51 @@ canvas {
   font-weight: 600;
   font-size: var(--text-md);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
   transition: transform var(--duration-md) cubic-bezier(0.34, 1.56, 0.64, 1),
-    background var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+    background var(--duration-fast) ease, box-shadow var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+  animation: cardBreathe 6s ease-in-out infinite;
+}
+
+.tokenCard::before {
+  content: "";
+  position: absolute;
+  inset: -120%;
+  background: linear-gradient(45deg, transparent 35%, rgba(255, 255, 255, 0.26) 50%, transparent 65%);
+  transform: translate(-55%, -55%) rotate(35deg);
+  transition: transform 900ms ease;
+  pointer-events: none;
+}
+
+.tokenCard::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.8), rgba(118, 75, 162, 0.8), rgba(79, 172, 254, 0.8));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease;
+  pointer-events: none;
 }
 
 .tokenCard:hover {
   transform: translateY(-3px) scale(1.02);
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.34);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.tokenCard:hover::before {
+  transform: translate(60%, 60%) rotate(35deg);
+}
+
+.tokenCard:hover::after {
+  opacity: 1;
 }
 
 .tokenImageWrap {
@@ -463,6 +509,47 @@ canvas {
   }
 }
 
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes cardBreathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes holoSpin {
+  0% {
+    transform: rotate(0deg);
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+    filter: hue-rotate(360deg);
+  }
+}
+
+@keyframes hueShift {
+  0%,
+  100% {
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(180deg);
+  }
+}
+
 /* Hamburger + menu */
 .menuStack {
   pointer-events: none;
@@ -481,12 +568,12 @@ canvas {
   pointer-events: auto;
   width: 56px;
   height: 56px;
-  border-radius: var(--radius-circle);
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg-elevated);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.12);
   backdrop-filter: var(--glass-blur-strong);
   -webkit-backdrop-filter: var(--glass-blur-strong);
-  box-shadow: var(--glass-shadow);
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.16), inset 0 1px 1px rgba(255, 255, 255, 0.3);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -494,14 +581,39 @@ canvas {
   transition: opacity var(--duration-slow) ease,
     transform var(--duration-md) cubic-bezier(0.34, 1.56, 0.64, 1);
   padding: 0;
+  position: relative;
+  overflow: hidden;
+  animation: breathe 4s ease-in-out infinite;
+}
+
+.fab::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 18px;
+  padding: 2px;
+  background: conic-gradient(from 0deg, #ff0080, #ff8c00, #40e0d0, #4169e1, #9370db, #ff1493, #ff0080);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease;
+  pointer-events: none;
+}
+
+.fab:hover::before,
+.fab.is-open::before {
+  opacity: 1;
+  animation: holoSpin 3s linear infinite;
 }
 
 .fab svg {
   width: 22px;
   height: 22px;
-  color: rgba(28, 32, 48, 0.7);
+  color: rgba(28, 32, 48, 0.8);
   transition: transform var(--duration-md) cubic-bezier(0.34, 1.56, 0.64, 1),
     opacity var(--duration-fast) ease;
+  z-index: 1;
 }
 
 .fab .fab-icon--close {
@@ -567,28 +679,50 @@ canvas {
 }
 
 .menuIcon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-circle);
-  border: none;
-  background: rgba(255, 255, 255, 0.45);
-  box-shadow: 0 4px 16px rgba(14, 20, 42, 0.08);
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 20px rgba(14, 20, 42, 0.12);
+  backdrop-filter: blur(12px);
   display: grid;
   place-items: center;
   cursor: pointer;
   transition: background var(--duration-fast) ease,
-    transform var(--duration-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform var(--duration-fast) cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color var(--duration-fast) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.menuIcon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(138, 43, 226, 0.18), rgba(64, 224, 208, 0.14), rgba(255, 0, 128, 0.14));
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease;
+  mix-blend-mode: overlay;
 }
 
 .menuIcon:hover {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(138, 43, 226, 0.35);
   transform: scale(1.08);
+}
+
+.menuIcon:hover::before {
+  opacity: 1;
+  animation: hueShift 3s ease-in-out infinite;
 }
 
 .menuIcon svg {
   width: 20px;
   height: 20px;
-  color: rgba(28, 32, 48, 0.8);
+  color: rgba(28, 32, 48, 0.85);
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes menuReveal {
@@ -612,10 +746,10 @@ canvas {
   width: min(260px, 75vw);
   padding: 16px;
   border-radius: var(--radius-lg);
-  background: var(--glass-bg-elevated);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: none;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: var(--glass-shadow-elevated);
   opacity: 0;
   transform: translateY(-8px) scale(0.97);
@@ -623,6 +757,21 @@ canvas {
     transform var(--duration-md) cubic-bezier(0.34, 1.56, 0.64, 1);
   pointer-events: none;
   z-index: var(--z-sheet);
+  overflow: hidden;
+}
+
+.sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(138, 43, 226, 0.14), transparent 60%);
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease;
+  pointer-events: none;
+}
+
+.sheet:hover::before {
+  opacity: 1;
 }
 
 .sheet.is-open {
@@ -640,16 +789,29 @@ canvas {
   display: block;
   width: 100%;
   padding: 10px 12px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
   font-size: var(--text-md);
   font-weight: 500;
   text-align: left;
   cursor: pointer;
   color: var(--text-primary);
   transition: background var(--duration-fast) ease,
-    transform var(--duration-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform var(--duration-fast) cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.sheetAction::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent);
+  transform: translateX(-100%);
+  transition: transform 600ms ease;
 }
 
 .sheetAction + .sheetAction {
@@ -657,8 +819,14 @@ canvas {
 }
 
 .sheetAction:hover {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(138, 43, 226, 0.16);
+  border-color: rgba(138, 43, 226, 0.38);
+  box-shadow: 0 8px 24px rgba(138, 43, 226, 0.18);
   transform: scale(1.02);
+}
+
+.sheetAction:hover::before {
+  transform: translateX(100%);
 }
 
 .sheetAction.is-active {
@@ -1426,9 +1594,23 @@ canvas {
   .tokenSlide,
   .tokenCard,
   .tokenImage,
-  .carouselToggle {
+  .carouselToggle,
+  .fab,
+  .menuIcon,
+  .sheet,
+  .sheetAction {
     transition: none !important;
     animation: none !important;
+  }
+
+  .tokenCard::before,
+  .tokenCard::after,
+  .fab::before,
+  .menuIcon::before,
+  .sheet::before,
+  .sheetAction::before {
+    animation: none !important;
+    transition: none !important;
   }
 
   .glassCarousel {
