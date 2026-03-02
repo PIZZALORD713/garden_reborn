@@ -186,15 +186,23 @@ canvas {
   animation: cloudPeek 5s ease-in-out infinite;
 }
 
-/* Cloud hover — rises up when closed; shimmer pulse fires once on entry */
+/* Cloud hover — rises when closed; SVG shimmer rect sweeps via CSS animation */
 .shelf.is-closed .shelfCloud:hover {
-  animation: cloudShimmerPulse 0.65s ease-out forwards;
+  animation: none;
   transform: translateY(-20px);
+  filter:
+    drop-shadow(0 4px 10px rgba(14, 20, 42, 0.10))
+    drop-shadow(0 0 18px rgba(195, 165, 255, 0.80))
+    drop-shadow(0 0 32px rgba(150, 185, 255, 0.50));
 }
 
-/* Cloud hover when shelf is open — shimmer pulse only, no lift */
+/* Cloud hover when shelf is open */
 .shelf:not(.is-closed) .shelfCloud:hover {
-  animation: cloudShimmerPulse 0.65s ease-out forwards;
+  animation: none;
+  filter:
+    drop-shadow(0 4px 10px rgba(14, 20, 42, 0.10))
+    drop-shadow(0 0 18px rgba(195, 165, 255, 0.80))
+    drop-shadow(0 0 32px rgba(150, 185, 255, 0.50));
 }
 
 /* Cloud active press — scale down + warm compressed glow */
@@ -221,20 +229,25 @@ canvas {
   50% { transform: translateY(-2px) scale(1.03); }
 }
 
-/* Shimmer pulse: glow blooms briefly then settles — fires once on hover entry */
-@keyframes cloudShimmerPulse {
-  0%, 100% {
-    filter:
-      drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16))
-      drop-shadow(0 0 8px  rgba(160, 130, 220, 0.45))
-      drop-shadow(0 0 14px rgba(120, 160, 255, 0.25));
-  }
-  35% {
-    filter:
-      drop-shadow(0 4px 10px rgba(14, 20, 42, 0.10))
-      drop-shadow(0 0 18px rgba(195, 165, 255, 0.85))
-      drop-shadow(0 0 32px rgba(150, 185, 255, 0.55));
-  }
+/* Cloud shimmer rect — parked off-left; sweeps through cloud silhouette on hover */
+.cloudShimmerRect {
+  transform: translateX(-48px);
+  transform-box: fill-box;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.shelfCloud:hover .cloudShimmerRect {
+  animation: cloudSvgShimmer 0.65s ease-out forwards;
+}
+
+.shelfCloud:active .cloudShimmerRect {
+  animation: cloudSvgShimmer 0.35s ease-out forwards;
+}
+
+@keyframes cloudSvgShimmer {
+  from { transform: translateX(-48px); }
+  to   { transform: translateX(96px); }
 }
 
 /* Glass panel — the actual shelf surface */
@@ -1472,7 +1485,13 @@ canvas {
     animation: none !important;
   }
 
-  /* Cloud shimmer: suppress pulse, keep static glow */
+  /* Suppress SVG shimmer sweep in cloud button */
+  .shelfCloud:hover .cloudShimmerRect,
+  .shelfCloud:active .cloudShimmerRect {
+    animation: none !important;
+  }
+
+  /* Cloud hover: static glow only, no sweep */
   .shelf.is-closed .shelfCloud:hover,
   .shelf:not(.is-closed) .shelfCloud:hover {
     animation: none !important;

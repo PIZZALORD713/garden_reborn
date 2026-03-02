@@ -27,8 +27,24 @@
         <!-- Cloud toggle — sits above the panel, on the "horizon" -->
         <button id="shelfCloud" class="shelfCloud" type="button" aria-label="Toggle shelf">
           <svg viewBox="0 0 36 24" aria-hidden="true">
+            <defs>
+              <clipPath id="cloudClip">
+                <path d="M28.5 20h-22a6 6 0 0 1-.8-11.95 8.5 8.5 0 0 1 16.37-2.22A6.5 6.5 0 0 1 28.5 12.5v.01A5 5 0 0 1 28.5 20z"/>
+              </clipPath>
+              <linearGradient id="cloudShimmerGrad" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="1" y2="0.8">
+                <stop offset="0%"   stop-color="white" stop-opacity="0"/>
+                <stop offset="30%"  stop-color="white" stop-opacity="0"/>
+                <stop offset="45%"  stop-color="white" stop-opacity="0.72"/>
+                <stop offset="50%"  stop-color="rgb(220,205,255)" stop-opacity="0.55"/>
+                <stop offset="55%"  stop-color="white" stop-opacity="0.72"/>
+                <stop offset="70%"  stop-color="white" stop-opacity="0"/>
+                <stop offset="100%" stop-color="white" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
             <path d="M28.5 20h-22a6 6 0 0 1-.8-11.95 8.5 8.5 0 0 1 16.37-2.22A6.5 6.5 0 0 1 28.5 12.5v.01A5 5 0 0 1 28.5 20z"
                   fill="rgba(255,255,255,0.85)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+            <rect class="cloudShimmerRect" x="0" y="-2" width="36" height="28"
+                  fill="url(#cloudShimmerGrad)" clip-path="url(#cloudClip)"/>
           </svg>
         </button>
 
