@@ -186,23 +186,15 @@ canvas {
   animation: cloudPeek 5s ease-in-out infinite;
 }
 
-/* Cloud hover — rises up when shelf is closed, gains iridescent glow */
+/* Cloud hover — rises up when closed; shimmer pulse fires once on entry */
 .shelf.is-closed .shelfCloud:hover {
-  animation: none;
+  animation: cloudShimmerPulse 0.65s ease-out forwards;
   transform: translateY(-20px);
-  filter:
-    drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16))
-    drop-shadow(0 0 8px rgba(160, 130, 220, 0.45))
-    drop-shadow(0 0 14px rgba(120, 160, 255, 0.25));
 }
 
-/* Cloud hover when shelf is open */
+/* Cloud hover when shelf is open — shimmer pulse only, no lift */
 .shelf:not(.is-closed) .shelfCloud:hover {
-  animation: none;
-  filter:
-    drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16))
-    drop-shadow(0 0 8px rgba(160, 130, 220, 0.45))
-    drop-shadow(0 0 14px rgba(120, 160, 255, 0.25));
+  animation: cloudShimmerPulse 0.65s ease-out forwards;
 }
 
 /* Cloud active press — scale down + warm compressed glow */
@@ -227,6 +219,22 @@ canvas {
 @keyframes cloudFloat {
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-2px) scale(1.03); }
+}
+
+/* Shimmer pulse: glow blooms briefly then settles — fires once on hover entry */
+@keyframes cloudShimmerPulse {
+  0%, 100% {
+    filter:
+      drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16))
+      drop-shadow(0 0 8px  rgba(160, 130, 220, 0.45))
+      drop-shadow(0 0 14px rgba(120, 160, 255, 0.25));
+  }
+  35% {
+    filter:
+      drop-shadow(0 4px 10px rgba(14, 20, 42, 0.10))
+      drop-shadow(0 0 18px rgba(195, 165, 255, 0.85))
+      drop-shadow(0 0 32px rgba(150, 185, 255, 0.55));
+  }
 }
 
 /* Glass panel — the actual shelf surface */
@@ -388,6 +396,7 @@ canvas {
 .radialItem {
   position: relative;
   isolation: isolate;
+  overflow: hidden;                    /* clips shimmer stripe to circle */
   width: 30px;
   height: 30px;
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -403,35 +412,27 @@ canvas {
     box-shadow var(--duration-fast) ease;
 }
 
-/* Conic-gradient border ring — hidden by default, revealed on hover */
-.radialItem::before {
+/* Diagonal shimmer stripe — parked off-left, sweeps through on hover */
+.radialItem::after {
   content: "";
   position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  background: conic-gradient(
-    from 0deg,
-    rgba(160, 130, 220, 0.00)  0deg,
-    rgba(160, 130, 220, 0.75) 60deg,
-    rgba(120, 160, 255, 0.75) 120deg,
-    rgba(180, 220, 255, 0.60) 180deg,
-    rgba(200, 180, 240, 0.75) 240deg,
-    rgba(160, 130, 220, 0.75) 300deg,
-    rgba(160, 130, 220, 0.00) 360deg
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent               0%,
+    transparent              25%,
+    rgba(255, 255, 255, 0.60) 40%,
+    rgba(220, 205, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0.60) 60%,
+    transparent              75%,
+    transparent             100%
   );
-  -webkit-mask:
-    radial-gradient(farthest-side, transparent calc(50% - 1.5px), white calc(50% - 1.5px));
-  mask:
-    radial-gradient(farthest-side, transparent calc(50% - 1.5px), white calc(50% - 1.5px));
-  opacity: 0;
-  transition: opacity var(--duration-fast) ease;
+  transform: translateX(-170%);
   pointer-events: none;
   will-change: transform;
 }
 
 .radialItem svg {
-  position: relative;
-  z-index: 1;
   width: 15px;
   height: 15px;
   color: var(--text-secondary);
@@ -453,48 +454,35 @@ canvas {
   to { opacity: 1; transform: scale(1) translateX(0); }
 }
 
-@keyframes spinBorder {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+@keyframes shimmerSweep {
+  from { transform: translateX(-170%); }
+  to   { transform: translateX(200%);  }
 }
 
 .radialItem:hover {
   background: rgba(255, 255, 255, 0.75);
-  box-shadow: 0 2px 8px rgba(14, 20, 42, 0.10);
+  box-shadow:
+    0 2px 8px rgba(14, 20, 42, 0.10),
+    0 0 0 1.5px rgba(175, 150, 235, 0.50),
+    0 0 10px  rgba(155, 125, 215, 0.22);
 }
 
-/* Hover: gradient ring fades in and slowly spins */
-.radialItem:hover::before {
-  opacity: 1;
-  animation: spinBorder 3s linear infinite;
+/* Hover: shimmer sweeps left → right in 0.5 s */
+.radialItem:hover::after {
+  animation: shimmerSweep 0.50s ease-out forwards;
 }
 
-/* Active click: ring brightens and spins faster */
-.radialItem:active::before {
-  opacity: 1;
-  animation: spinBorder 1.2s linear infinite;
-  background: conic-gradient(
-    from 0deg,
-    rgba(160, 130, 220, 0.00)   0deg,
-    rgba(180, 150, 255, 1.00)  60deg,
-    rgba(140, 180, 255, 1.00) 120deg,
-    rgba(200, 235, 255, 0.90) 180deg,
-    rgba(220, 200, 255, 1.00) 240deg,
-    rgba(180, 150, 255, 1.00) 300deg,
-    rgba(160, 130, 220, 0.00) 360deg
-  );
+/* Active click: same sweep, snappier */
+.radialItem:active::after {
+  animation: shimmerSweep 0.28s ease-out forwards;
 }
 
 .radialItem.is-active {
   background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-}
-
-/* Active/selected: static gradient ring marks the current view */
-.radialItem.is-active::before {
-  opacity: 0.7;
-  animation: none;
+  border-color: rgba(180, 155, 240, 0.60);
+  box-shadow:
+    0 0 0 1.5px rgba(175, 150, 235, 0.65),
+    0 0 10px  rgba(155, 125, 215, 0.28);
 }
 
 .radialItem.is-active svg {
@@ -1478,43 +1466,18 @@ canvas {
     transform: none !important;
   }
 
-  /* Cloud: keep subtle glow on hover but suppress the rise/float motion */
+  /* Radial shimmer: suppress the sweep animation */
+  .radialItem:hover::after,
+  .radialItem:active::after {
+    animation: none !important;
+  }
+
+  /* Cloud shimmer: suppress pulse, keep static glow */
   .shelf.is-closed .shelfCloud:hover,
   .shelf:not(.is-closed) .shelfCloud:hover {
-    transform: none;
+    animation: none !important;
     filter:
-      drop-shadow(0 2px 6px rgba(14, 20, 42, 0.12))
-      drop-shadow(0 0 6px rgba(160, 130, 220, 0.30));
-  }
-
-  .shelfCloud:active {
-    transform: none;
-    filter: drop-shadow(0 0 6px rgba(200, 170, 255, 0.45));
-  }
-
-  /* Radial ring: show static gradient on hover, no spin */
-  .radialItem:hover::before {
-    opacity: 1 !important;
-    animation: none !important;
-  }
-
-  .radialItem:active::before {
-    opacity: 1 !important;
-    animation: none !important;
-    background: conic-gradient(
-      from 0deg,
-      rgba(160, 130, 220, 0.00)   0deg,
-      rgba(180, 150, 255, 1.00)  60deg,
-      rgba(140, 180, 255, 1.00) 120deg,
-      rgba(200, 235, 255, 0.90) 180deg,
-      rgba(220, 200, 255, 1.00) 240deg,
-      rgba(180, 150, 255, 1.00) 300deg,
-      rgba(160, 130, 220, 0.00) 360deg
-    );
-  }
-
-  .radialItem.is-active::before {
-    opacity: 0.6 !important;
-    animation: none !important;
+      drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16))
+      drop-shadow(0 0 8px rgba(160, 130, 220, 0.40));
   }
 }
