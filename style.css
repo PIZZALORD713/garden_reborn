@@ -162,55 +162,21 @@ canvas {
   height: 32px;
 }
 
-/* Cloud SVG path — subtle iridescent tint on hover/active */
-.shelfCloud svg path {
-  fill: rgba(255, 255, 255, 0.85);
-  stroke: rgba(255, 255, 255, 0.40);
-  transition:
-    fill var(--duration-md) ease,
-    stroke var(--duration-md) ease;
-}
-
-.shelfCloud:hover svg path {
-  fill: rgba(240, 235, 255, 0.90);
-  stroke: rgba(200, 190, 255, 0.55);
-}
-
-.shelfCloud:active svg path {
-  fill: rgba(255, 252, 255, 0.95);
-  stroke: rgba(220, 210, 255, 0.65);
-}
-
 /* Cloud idle peek — only when shelf is closed */
 .shelf.is-closed .shelfCloud {
   animation: cloudPeek 5s ease-in-out infinite;
 }
 
-/* Cloud hover — rises when closed; SVG shimmer rect sweeps via CSS animation */
+/* Cloud hover — rises up when shelf is closed */
 .shelf.is-closed .shelfCloud:hover {
   animation: none;
   transform: translateY(-20px);
-  filter:
-    drop-shadow(0 4px 10px rgba(14, 20, 42, 0.10))
-    drop-shadow(0 0 18px rgba(195, 165, 255, 0.80))
-    drop-shadow(0 0 32px rgba(150, 185, 255, 0.50));
+  filter: drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16));
 }
 
-/* Cloud hover when shelf is open */
-.shelf:not(.is-closed) .shelfCloud:hover {
-  animation: none;
-  filter:
-    drop-shadow(0 4px 10px rgba(14, 20, 42, 0.10))
-    drop-shadow(0 0 18px rgba(195, 165, 255, 0.80))
-    drop-shadow(0 0 32px rgba(150, 185, 255, 0.50));
-}
-
-/* Cloud active press — scale down + warm compressed glow */
+/* Cloud active press */
 .shelfCloud:active {
   transform: scale(0.92);
-  filter:
-    drop-shadow(0 1px 4px rgba(14, 20, 42, 0.22))
-    drop-shadow(0 0 6px rgba(200, 170, 255, 0.55));
 }
 
 /* Cloud micro-float — subtle motion when shelf is open */
@@ -407,9 +373,6 @@ canvas {
 }
 
 .radialItem {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;                    /* clips shimmer stripe to circle */
   width: 30px;
   height: 30px;
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -423,26 +386,6 @@ canvas {
   transform: scale(0.5) translateX(12px);
   transition: background var(--duration-fast) ease,
     box-shadow var(--duration-fast) ease;
-}
-
-/* Diagonal shimmer stripe — parked off-left, sweeps through on hover */
-.radialItem::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    110deg,
-    transparent               0%,
-    transparent              25%,
-    rgba(255, 255, 255, 0.60) 40%,
-    rgba(220, 205, 255, 0.45) 50%,
-    rgba(255, 255, 255, 0.60) 60%,
-    transparent              75%,
-    transparent             100%
-  );
-  transform: translateX(-170%);
-  pointer-events: none;
-  will-change: transform;
 }
 
 .radialItem svg {
@@ -467,35 +410,15 @@ canvas {
   to { opacity: 1; transform: scale(1) translateX(0); }
 }
 
-@keyframes shimmerSweep {
-  from { transform: translateX(-170%); }
-  to   { transform: translateX(200%);  }
-}
-
 .radialItem:hover {
   background: rgba(255, 255, 255, 0.75);
-  box-shadow:
-    0 2px 8px rgba(14, 20, 42, 0.10),
-    0 0 0 1.5px rgba(175, 150, 235, 0.50),
-    0 0 10px  rgba(155, 125, 215, 0.22);
-}
-
-/* Hover: shimmer sweeps left → right in 0.5 s */
-.radialItem:hover::after {
-  animation: shimmerSweep 0.50s ease-out forwards;
-}
-
-/* Active click: same sweep, snappier */
-.radialItem:active::after {
-  animation: shimmerSweep 0.28s ease-out forwards;
+  box-shadow: 0 2px 8px rgba(14, 20, 42, 0.10);
 }
 
 .radialItem.is-active {
   background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(180, 155, 240, 0.60);
-  box-shadow:
-    0 0 0 1.5px rgba(175, 150, 235, 0.65),
-    0 0 10px  rgba(155, 125, 215, 0.28);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
 .radialItem.is-active svg {
@@ -1479,24 +1402,9 @@ canvas {
     transform: none !important;
   }
 
-  /* Radial shimmer: suppress the sweep animation */
-  .radialItem:hover::after,
-  .radialItem:active::after {
-    animation: none !important;
-  }
-
   /* Suppress SVG shimmer sweep in cloud button */
   .shelfCloud:hover .cloudShimmerRect,
   .shelfCloud:active .cloudShimmerRect {
     animation: none !important;
-  }
-
-  /* Cloud hover: static glow only, no sweep */
-  .shelf.is-closed .shelfCloud:hover,
-  .shelf:not(.is-closed) .shelfCloud:hover {
-    animation: none !important;
-    filter:
-      drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16))
-      drop-shadow(0 0 8px rgba(160, 130, 220, 0.40));
   }
 }
