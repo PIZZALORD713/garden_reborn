@@ -153,8 +153,9 @@ canvas {
   place-items: center;
   margin-bottom: 6px;
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 6px rgba(14, 20, 42, 0.10));
+  filter: drop-shadow(0 2px 8px rgba(31, 38, 135, 0.18));
   transition: transform var(--duration-md) ease, filter var(--duration-fast) ease;
+  position: relative;
 }
 
 .shelfCloud svg {
@@ -200,10 +201,11 @@ canvas {
   pointer-events: auto;
   width: 100%;
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.45);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-shadow);
+  background: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  box-shadow: 0 12px 40px rgba(31, 38, 135, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.24);
   padding: 10px 14px 14px;
 }
 
@@ -228,19 +230,20 @@ canvas {
 .shelfSearchBtn {
   width: 32px;
   height: 32px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius-circle);
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.18);
   cursor: pointer;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  transition: background var(--duration-fast) ease, transform var(--duration-fast) var(--spring);
+  transition: background var(--duration-fast) ease, transform var(--duration-fast) var(--spring), border-color var(--duration-fast) ease;
   padding: 0;
 }
 
 .shelfSearchBtn:hover {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(147, 112, 219, 0.38);
   transform: scale(1.06);
 }
 
@@ -308,25 +311,27 @@ canvas {
 .shelfGear {
   width: 32px;
   height: 32px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: var(--radius-circle);
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.18);
   cursor: pointer;
   display: grid;
   place-items: center;
   flex-shrink: 0;
   transition: background var(--duration-fast) ease,
-    transform var(--duration-md) var(--spring);
+    transform var(--duration-md) var(--spring), border-color var(--duration-fast) ease;
   padding: 0;
   color: var(--text-primary);
 }
 
 .shelfGear:hover {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(147, 112, 219, 0.38);
 }
 
 .shelfGear.is-active {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.36);
+  border-color: rgba(147, 112, 219, 0.45);
   transform: rotate(60deg);
 }
 
@@ -354,9 +359,9 @@ canvas {
 .radialItem {
   width: 30px;
   height: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.26);
   border-radius: var(--radius-circle);
-  background: rgba(255, 255, 255, 0.42);
+  background: rgba(255, 255, 255, 0.24);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -364,7 +369,8 @@ canvas {
   opacity: 0;
   transform: scale(0.5) translateX(12px);
   transition: background var(--duration-fast) ease,
-    box-shadow var(--duration-fast) ease;
+    box-shadow var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
 }
 
 .radialItem svg {
@@ -390,14 +396,15 @@ canvas {
 }
 
 .radialItem:hover {
-  background: rgba(255, 255, 255, 0.75);
-  box-shadow: 0 2px 8px rgba(14, 20, 42, 0.10);
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(147, 112, 219, 0.36);
+  box-shadow: 0 4px 14px rgba(14, 20, 42, 0.14);
 }
 
 .radialItem.is-active {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(255, 255, 255, 0.5);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.48);
+  border-color: rgba(147, 112, 219, 0.5);
+  box-shadow: 0 0 14px rgba(147, 112, 219, 0.24);
 }
 
 .radialItem.is-active svg {
@@ -504,18 +511,24 @@ canvas {
 
 .tokenSlide.is-active .tokenCard {
   transform: translateY(-16px) scale(1.10);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 10px 28px rgba(14, 20, 42, 0.15);
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow: 0 16px 56px rgba(138, 43, 226, 0.22), 0 0 30px rgba(64, 224, 208, 0.18);
+  border-color: rgba(147, 112, 219, 0.4);
   color: var(--text-primary);
+  animation: none;
+}
+
+.tokenSlide.is-active .tokenCard::after {
+  opacity: 1;
 }
 
 .tokenCard {
   width: var(--card-width);
   padding: 10px 12px 12px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 6px 22px rgba(14, 20, 42, 0.08);
-  border: none;
+  background: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 8px 28px rgba(14, 20, 42, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -524,13 +537,51 @@ canvas {
   font-weight: 600;
   font-size: var(--text-md);
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
   transition: transform var(--duration-md) cubic-bezier(0.34, 1.56, 0.64, 1),
-    background var(--duration-fast) ease, box-shadow var(--duration-fast) ease;
+    background var(--duration-fast) ease, box-shadow var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+  animation: cardBreathe 6s ease-in-out infinite;
+}
+
+.tokenCard::before {
+  content: "";
+  position: absolute;
+  inset: -120%;
+  background: linear-gradient(45deg, transparent 35%, rgba(255, 255, 255, 0.24) 50%, transparent 65%);
+  transform: translate(-55%, -55%) rotate(35deg);
+  transition: transform 900ms ease;
+  pointer-events: none;
+}
+
+.tokenCard::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.8), rgba(118, 75, 162, 0.8), rgba(79, 172, 254, 0.8));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease;
+  pointer-events: none;
 }
 
 .tokenCard:hover {
   transform: translateY(-3px) scale(1.02);
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.34);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.tokenCard:hover::before {
+  transform: translate(60%, 60%) rotate(35deg);
+}
+
+.tokenCard:hover::after {
+  opacity: 1;
 }
 
 .tokenImageWrap {
@@ -627,22 +678,45 @@ canvas {
   }
 }
 
+@keyframes cardBreathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
 /* (menuStack / fab / menu / sheet / menuIcon — all removed, replaced by shelf + gear radial) */
 
 .sheetAction {
   display: block;
   width: 100%;
   padding: 10px 12px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.12);
   font-size: var(--text-md);
   font-weight: 500;
   text-align: left;
   cursor: pointer;
   color: var(--text-primary);
   transition: background var(--duration-fast) ease,
-    transform var(--duration-fast) cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform var(--duration-fast) cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.sheetAction::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent);
+  transform: translateX(-100%);
+  transition: transform 600ms ease;
 }
 
 .sheetAction + .sheetAction {
@@ -650,8 +724,14 @@ canvas {
 }
 
 .sheetAction:hover {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(138, 43, 226, 0.16);
+  border-color: rgba(138, 43, 226, 0.38);
+  box-shadow: 0 8px 24px rgba(138, 43, 226, 0.18);
   transform: scale(1.02);
+}
+
+.sheetAction:hover::before {
+  transform: translateX(100%);
 }
 
 .sheetAction.is-active {
@@ -1349,9 +1429,17 @@ canvas {
 @media (prefers-reduced-motion: reduce) {
   .tokenSlide,
   .tokenCard,
-  .tokenImage {
+  .tokenImage,
+  .sheetAction {
     transition: none !important;
     animation: none !important;
+  }
+
+  .tokenCard::before,
+  .tokenCard::after,
+  .sheetAction::before {
+    animation: none !important;
+    transition: none !important;
   }
 
   .shelf {
