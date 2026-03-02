@@ -162,14 +162,8 @@ canvas {
   height: 32px;
 }
 
-/* Cloud idle peek — only when shelf is closed */
-.shelf.is-closed .shelfCloud {
-  animation: cloudPeek 5s ease-in-out infinite;
-}
-
 /* Cloud hover — rises up when shelf is closed */
 .shelf.is-closed .shelfCloud:hover {
-  animation: none;
   transform: translateY(-20px);
   filter: drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16));
 }
@@ -179,25 +173,9 @@ canvas {
   transform: scale(0.92);
 }
 
-/* Cloud micro-float — subtle motion when shelf is open */
-.shelf:not(.is-closed) .shelfCloud {
-  animation: cloudFloat 8s ease-in-out infinite;
-}
-
-@keyframes cloudPeek {
-  0%, 65%, 100% { transform: translateY(0); }
-  75% { transform: translateY(-4px); }
-  85% { transform: translateY(-1px); }
-}
-
-@keyframes cloudFloat {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-2px) scale(1.03); }
-}
-
 /* Cloud shimmer rect — parked off-left; sweeps through cloud silhouette on hover */
 .cloudShimmerRect {
-  transform: translateX(-48px);
+  transform: translateX(-110%);   /* % relative to fill-box width (36 SVG units) — no px ambiguity */
   transform-box: fill-box;
   pointer-events: none;
   will-change: transform;
@@ -212,8 +190,8 @@ canvas {
 }
 
 @keyframes cloudSvgShimmer {
-  from { transform: translateX(-48px); }
-  to   { transform: translateX(96px); }
+  from { transform: translateX(-110%); }
+  to   { transform: translateX(210%); }
 }
 
 /* Glass panel — the actual shelf surface */
