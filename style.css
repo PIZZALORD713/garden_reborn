@@ -162,21 +162,55 @@ canvas {
   height: 32px;
 }
 
+/* Cloud SVG path — subtle iridescent tint on hover/active */
+.shelfCloud svg path {
+  fill: rgba(255, 255, 255, 0.85);
+  stroke: rgba(255, 255, 255, 0.40);
+  transition:
+    fill var(--duration-md) ease,
+    stroke var(--duration-md) ease;
+}
+
+.shelfCloud:hover svg path {
+  fill: rgba(240, 235, 255, 0.90);
+  stroke: rgba(200, 190, 255, 0.55);
+}
+
+.shelfCloud:active svg path {
+  fill: rgba(255, 252, 255, 0.95);
+  stroke: rgba(220, 210, 255, 0.65);
+}
+
 /* Cloud idle peek — only when shelf is closed */
 .shelf.is-closed .shelfCloud {
   animation: cloudPeek 5s ease-in-out infinite;
 }
 
-/* Cloud hover — rises up when shelf is closed */
+/* Cloud hover — rises up when shelf is closed, gains iridescent glow */
 .shelf.is-closed .shelfCloud:hover {
   animation: none;
   transform: translateY(-20px);
-  filter: drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16));
+  filter:
+    drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16))
+    drop-shadow(0 0 8px rgba(160, 130, 220, 0.45))
+    drop-shadow(0 0 14px rgba(120, 160, 255, 0.25));
 }
 
-/* Cloud active press */
+/* Cloud hover when shelf is open */
+.shelf:not(.is-closed) .shelfCloud:hover {
+  animation: none;
+  filter:
+    drop-shadow(0 4px 10px rgba(14, 20, 42, 0.16))
+    drop-shadow(0 0 8px rgba(160, 130, 220, 0.45))
+    drop-shadow(0 0 14px rgba(120, 160, 255, 0.25));
+}
+
+/* Cloud active press — scale down + warm compressed glow */
 .shelfCloud:active {
   transform: scale(0.92);
+  filter:
+    drop-shadow(0 1px 4px rgba(14, 20, 42, 0.22))
+    drop-shadow(0 0 6px rgba(200, 170, 255, 0.55));
 }
 
 /* Cloud micro-float — subtle motion when shelf is open */
@@ -352,6 +386,8 @@ canvas {
 }
 
 .radialItem {
+  position: relative;
+  isolation: isolate;
   width: 30px;
   height: 30px;
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -367,7 +403,35 @@ canvas {
     box-shadow var(--duration-fast) ease;
 }
 
+/* Conic-gradient border ring — hidden by default, revealed on hover */
+.radialItem::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    rgba(160, 130, 220, 0.00)  0deg,
+    rgba(160, 130, 220, 0.75) 60deg,
+    rgba(120, 160, 255, 0.75) 120deg,
+    rgba(180, 220, 255, 0.60) 180deg,
+    rgba(200, 180, 240, 0.75) 240deg,
+    rgba(160, 130, 220, 0.75) 300deg,
+    rgba(160, 130, 220, 0.00) 360deg
+  );
+  -webkit-mask:
+    radial-gradient(farthest-side, transparent calc(50% - 1.5px), white calc(50% - 1.5px));
+  mask:
+    radial-gradient(farthest-side, transparent calc(50% - 1.5px), white calc(50% - 1.5px));
+  opacity: 0;
+  transition: opacity var(--duration-fast) ease;
+  pointer-events: none;
+  will-change: transform;
+}
+
 .radialItem svg {
+  position: relative;
+  z-index: 1;
   width: 15px;
   height: 15px;
   color: var(--text-secondary);
@@ -389,15 +453,48 @@ canvas {
   to { opacity: 1; transform: scale(1) translateX(0); }
 }
 
+@keyframes spinBorder {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 .radialItem:hover {
   background: rgba(255, 255, 255, 0.75);
   box-shadow: 0 2px 8px rgba(14, 20, 42, 0.10);
+}
+
+/* Hover: gradient ring fades in and slowly spins */
+.radialItem:hover::before {
+  opacity: 1;
+  animation: spinBorder 3s linear infinite;
+}
+
+/* Active click: ring brightens and spins faster */
+.radialItem:active::before {
+  opacity: 1;
+  animation: spinBorder 1.2s linear infinite;
+  background: conic-gradient(
+    from 0deg,
+    rgba(160, 130, 220, 0.00)   0deg,
+    rgba(180, 150, 255, 1.00)  60deg,
+    rgba(140, 180, 255, 1.00) 120deg,
+    rgba(200, 235, 255, 0.90) 180deg,
+    rgba(220, 200, 255, 1.00) 240deg,
+    rgba(180, 150, 255, 1.00) 300deg,
+    rgba(160, 130, 220, 0.00) 360deg
+  );
 }
 
 .radialItem.is-active {
   background: rgba(255, 255, 255, 0.85);
   border-color: rgba(255, 255, 255, 0.5);
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+/* Active/selected: static gradient ring marks the current view */
+.radialItem.is-active::before {
+  opacity: 0.7;
+  animation: none;
 }
 
 .radialItem.is-active svg {
@@ -1379,5 +1476,45 @@ canvas {
   .onboardingBtn {
     transition: none !important;
     transform: none !important;
+  }
+
+  /* Cloud: keep subtle glow on hover but suppress the rise/float motion */
+  .shelf.is-closed .shelfCloud:hover,
+  .shelf:not(.is-closed) .shelfCloud:hover {
+    transform: none;
+    filter:
+      drop-shadow(0 2px 6px rgba(14, 20, 42, 0.12))
+      drop-shadow(0 0 6px rgba(160, 130, 220, 0.30));
+  }
+
+  .shelfCloud:active {
+    transform: none;
+    filter: drop-shadow(0 0 6px rgba(200, 170, 255, 0.45));
+  }
+
+  /* Radial ring: show static gradient on hover, no spin */
+  .radialItem:hover::before {
+    opacity: 1 !important;
+    animation: none !important;
+  }
+
+  .radialItem:active::before {
+    opacity: 1 !important;
+    animation: none !important;
+    background: conic-gradient(
+      from 0deg,
+      rgba(160, 130, 220, 0.00)   0deg,
+      rgba(180, 150, 255, 1.00)  60deg,
+      rgba(140, 180, 255, 1.00) 120deg,
+      rgba(200, 235, 255, 0.90) 180deg,
+      rgba(220, 200, 255, 1.00) 240deg,
+      rgba(180, 150, 255, 1.00) 300deg,
+      rgba(160, 130, 220, 0.00) 360deg
+    );
+  }
+
+  .radialItem.is-active::before {
+    opacity: 0.6 !important;
+    animation: none !important;
   }
 }
