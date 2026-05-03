@@ -68,3 +68,4 @@ P0 and P1 issues must also include a source label and at least one acceptance cr
 - [#67](https://github.com/PIZZALORD713/garden_reborn/issues/67) P2: Research Web3 holder verification, claim, chain, and inventory mechanics without implementing contracts
 - [#68](https://github.com/PIZZALORD713/garden_reborn/issues/68) P2: Scope collector and AI identity pages as a later product track
 - [#69](https://github.com/PIZZALORD713/garden_reborn/issues/69) P2: Map gm.pizza and broader ecosystem ideas as non-blocking long-term opportunities
+- [#70](https://github.com/PIZZALORD713/garden_reborn/issues/70) P0: Complete GitHub Projects v2 board setup after project-scope auth
