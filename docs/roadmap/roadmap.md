@@ -25,9 +25,12 @@ Milestone due: 2026-06-14
 
 Milestone due: 2026-07-26
 
-- [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63) Define the shared [Studio-to-Blender contract](../contracts/studio-blender-contract.md).
 - [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64) Promote Blender scene generation into the official roadmap.
 - [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) Harden animation pack validation against skeleton rules.
+
+## Completed Contract Work
+
+- [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63) Defined the shared [Studio-to-Blender contract](../contracts/studio-blender-contract.md).
 
 ## Later: Cycle 03 - Render Packs and Scene Direction
 
