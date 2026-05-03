@@ -2,35 +2,81 @@
 
 _Last updated: 2026-05-03_
 
-This document records the artifacts currently informing the fRiENEMiES roadmap. Use the context pack for brand and north-star canon, but use current repo/local evidence for implementation status.
+This is the canonical evidence map for the fRiENEMiES roadmap. It tells agents and contributors which artifacts define brand intent, which artifacts represent current implementation, which artifacts are historical, and which artifacts are adjacent ecosystem context.
 
-## Canonical Rule
-
-- Brand, tone, north star, and legal/IP guardrails come from the fRiENEMiES AI Agent Context Pack.
-- Current product status comes from live repositories and local working artifacts.
-- Older polished docs are evidence, not automatic truth.
-- Public copy must not imply official FriendsWithYou affiliation, verified commercial rights, guaranteed value, or finalized claim mechanics.
-
-## Sources
-
-| Source | Location | Role | Freshness | Confidence | Next Action |
-|---|---|---|---|---|---|
-| fRiENEMiES AI Agent Context Pack | `/Users/sauce/Downloads/frienemies_ai_agent_context.md` | Brand, positioning, guardrails, product pillars | Polished but not newest | High for intent, medium for status | Refresh into current canon/status brief |
-| garden_reborn | https://github.com/PIZZALORD713/garden_reborn | Current fRiENEMiES Studio web app: view, animate, export | Updated 2026-03-02 | High | Canonical issue repo and Studio implementation source |
-| garden_reborn roadmap docs | `ROADMAP.md`, `TODO.md`, `CANON.md`, `ARCHITECTURE.md`, `DESIGN_REVIEW.md` | Current architecture, slice queue, design/rig/export rules | Current within repo | High | Merge into board and keep docs synced |
-| frienemies-dapp | https://github.com/PIZZALORD713/frienemies-dapp | Older Next.js/RainbowKit/Moralis/Three.js dapp | Updated 2025-03-03 | Medium historical | Mine for wallet/Moralis ideas only |
-| animation_collection2 | https://github.com/PIZZALORD713/animation_collection2 | Current GLB animation presets | Updated 2026-02-13 | High | Validate against skeleton contract |
-| animation_collection | https://github.com/PIZZALORD713/animation_collection | Earlier FBX/GLB animation experiments | Updated 2026-01-26 | Medium historical | Archive useful clips and conversion lessons |
-| Local Blender scene pipeline | `/Users/sauce/Documents/New project` | Blender token assembly, directed scenes, render/export pipeline | Current local work | High for prototype | Promote into Blender/scene-generation track |
-| Avatar Blender Pipeline doc | `/Users/sauce/Documents/New project/docs/avatar-blender-pipeline.md` | Blender-side composable avatar pipeline notes: BODY-first rig rule, part modes, animation handling, real Friendsies token assembly, face PNG head-UV clone, directed scene V0 | Current local work | High for Blender contract | Use as primary source for Studio-to-Blender contract and scene-generation track |
-| Agent Avatar System spec | `/Users/sauce/Documents/Sauce0x - Agent Vault/Projects/repo-landscape/friendsies-agent-avatar-system-product-spec.md` | Agent identity compiler and static render pack vision | Recent local planning | High for product angle | Convert into V1 render-pack spec |
-| Agent Avatar System notes | `/Users/sauce/Documents/Sauce0x - Agent Vault/Projects/repo-landscape/friendsies-agent-avatar-system.md` | garden_reborn-based render-pack build plan | Recent local planning | High for approach | Fold into agent identity track |
-| Thornvale | https://github.com/PIZZALORD713/Thornvale | Adjacent 3D/game ecosystem work | Updated 2026-02-14 | Medium adjacent | Keep as ecosystem reference |
-| gm-assets | https://github.com/PIZZALORD713/gm-assets | gm.pizza and related brand assets | Updated 2025-05-11 | Medium adjacent | Keep as ecosystem reference |
+Use this rule: the polished context pack is canon for brand and guardrails, but current repo and local implementation evidence wins for status.
 
 ## Project Board
 
 - [fRiENEMiES Roadmap](https://github.com/users/PIZZALORD713/projects/1)
+
+## Source Classes
+
+| Class | Meaning | How to Use |
+|---|---|---|
+| Canon | Stable brand, voice, guardrails, north star | Use for public tone and strategic direction |
+| Current implementation | Working code or active local pipeline | Use for status, technical contracts, and execution |
+| High-value spec | Product or architecture spec not yet fully implemented | Use to shape next issues and acceptance criteria |
+| Historical reference | Older repo or artifact superseded by newer work | Mine for reusable ideas, do not treat as current |
+| Adjacent ecosystem | Related brand, game, asset, or tool context | Keep visible, but do not let it block Studio + Blender |
+| Speculative | Future claim, inventory, marketplace, or AI-social ideas | Research only until explicitly approved |
+
+## Canonical Rules
+
+- fRiENEMiES is independent, community-led, and not an official FriendsWithYou product.
+- Public copy must not imply verified commercial rights, guaranteed value, guaranteed rewards, or finalized claim mechanics.
+- Web3 claim, trait inventory, marketplace, and token mechanics are research tracks until a separate decision promotes them.
+- The first execution horizon is Studio + Blender: view, animate, export, render, and direct character scenes.
+- BODY-first rig assembly is the core technical invariant across Studio and Blender.
+
+## Artifact Inventory
+
+| Source | Location | Class | What It Proves | Freshness | Confidence | Feeds |
+|---|---|---|---|---|---|---|
+| fRiENEMiES AI Agent Context Pack | `/Users/sauce/Downloads/frienemies_ai_agent_context.md` | Canon | Brand identity, origin framing, tone, legal/IP guardrails, product pillars, strategic phases | Polished but not newest | High for intent, medium for status | [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60), [#67](https://github.com/PIZZALORD713/garden_reborn/issues/67), [#68](https://github.com/PIZZALORD713/garden_reborn/issues/68), [#69](https://github.com/PIZZALORD713/garden_reborn/issues/69) |
+| garden_reborn repo | https://github.com/PIZZALORD713/garden_reborn | Current implementation | Current fRiENEMiES Studio app: token/wallet/ENS loading, animation preview, GLB export, lighting presets, holder routes, pack schemas, MCP scaffold | Updated 2026-05-03 | High | [#61](https://github.com/PIZZALORD713/garden_reborn/issues/61), [#62](https://github.com/PIZZALORD713/garden_reborn/issues/62), [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63), [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) |
+| garden_reborn `README.md` | https://github.com/PIZZALORD713/garden_reborn/blob/main/README.md | Current implementation | Public product framing: view, animate, export; vanilla Three.js r175; Moralis-backed holder lookup; GLB export compatibility cleanup | Current in repo | High | [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60), [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63) |
+| garden_reborn `CANON.md` | https://github.com/PIZZALORD713/garden_reborn/blob/main/CANON.md | Current implementation | BODY skeleton is source of truth; skinned parts bind to BODY; rigid attachments retarget; GLB export rules; face decal compatibility path | Current in repo | High | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63), [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) |
+| garden_reborn `ARCHITECTURE.md` | https://github.com/PIZZALORD713/garden_reborn/blob/main/ARCHITECTURE.md | Current implementation | Runtime pipeline, state seams, API boundary, schemas, packs, MCP, Sauce-0x mascot hook | Current in repo | High | [#61](https://github.com/PIZZALORD713/garden_reborn/issues/61), [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63) |
+| garden_reborn `TODO.md` | https://github.com/PIZZALORD713/garden_reborn/blob/main/TODO.md | Current implementation | Slice history, current active task `slice-057-post-slice-056-verification-pass`, modularization/QA cadence | Current in repo | High | [#61](https://github.com/PIZZALORD713/garden_reborn/issues/61) |
+| garden_reborn `ROADMAP.md` | https://github.com/PIZZALORD713/garden_reborn/blob/main/ROADMAP.md | Current implementation | Existing two-track roadmap: Ship Studio and Framework/MCP | Current in repo | High | [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60), [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) |
+| garden_reborn schemas | `schemas/character.manifest.schema.json`, `schemas/animation.pack.schema.json`, `schemas/skeleton.contract.v1.json` | Current implementation | Baseline manifest, animation pack, and skeleton contract schemas already exist | Current in repo | High | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63), [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) |
+| garden_reborn pack registry | `packs/registry.json`, `packs/example-pack/pack.json` | Current implementation | Pack registry exists, but example clip URLs should be validated before relying on them | Current in repo | Medium-high | [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) |
+| Open PR #56 | https://github.com/PIZZALORD713/garden_reborn/pull/56 | Current implementation | Open Studio UI branch for iridescent hover/gradient work | Updated 2026-03-02 | Medium until triaged | [#62](https://github.com/PIZZALORD713/garden_reborn/issues/62) |
+| Open PR #57 | https://github.com/PIZZALORD713/garden_reborn/pull/57 | Current implementation | Open Studio UI branch for prismatic glass cards, menu, and sheets | Updated 2026-03-02 | Medium until triaged | [#62](https://github.com/PIZZALORD713/garden_reborn/issues/62) |
+| Local Blender scene pipeline | `/Users/sauce/Documents/New project` | Current implementation | Blender LTS pipeline for JSON-directed token scenes, Friendsies asset fetch, PNG render, `.blend`, and GLB export | Current local work | High for prototype | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63), [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64), [#65](https://github.com/PIZZALORD713/garden_reborn/issues/65) |
+| Local Blender README | `/Users/sauce/Documents/New project/README.md` | Current implementation | Current local workflow: scene idea to JSON recipe to token assets to Blender render/export | Current local work | High | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63), [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64) |
+| Avatar Blender Pipeline doc | `/Users/sauce/Documents/New project/docs/avatar-blender-pipeline.md` | Current implementation | Blender-side BODY-first rig rules, part modes, animation sanitizer, real token path, head-UV-clone face overlays, directed scene V0 | Current local work | High | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63), [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64) |
+| Local directed scene recipe | `/Users/sauce/Documents/New project/manifests/scenes/friendsies-bus-pizza-drop.json` | Current implementation | Multi-actor scene schema in practice: actors, roles, poses, props, camera, render outputs | Current local work | High for prototype | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63), [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64) |
+| Local token manifests | `/Users/sauce/Documents/New project/manifests/friendsies/token-*.json` | Current implementation | Concrete token recipe shape for body, parts, face, traits, scene, render, outputs | Current local work | High for prototype | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63) |
+| Agent Avatar System product spec | `/Users/sauce/Documents/Sauce0x - Agent Vault/Projects/repo-landscape/friendsies-agent-avatar-system-product-spec.md` | High-value spec | Agent Identity Compiler framing, static render pack outputs, identity/render/export preset model | Recent local planning | High for product angle | [#65](https://github.com/PIZZALORD713/garden_reborn/issues/65) |
+| Agent Avatar System notes | `/Users/sauce/Documents/Sauce0x - Agent Vault/Projects/repo-landscape/friendsies-agent-avatar-system.md` | High-value spec | `garden_reborn` as render-pack foundation, screenshot/export automation gap, Sauce-0x/token 8521 seed | Recent local planning | High for approach | [#65](https://github.com/PIZZALORD713/garden_reborn/issues/65) |
+| frienemies-dapp repo | https://github.com/PIZZALORD713/frienemies-dapp | Historical reference | Earlier public Next.js/RainbowKit/wagmi/Moralis/Three.js dapp with wallet-first architecture | Updated 2025-03-03 | Medium historical | [#67](https://github.com/PIZZALORD713/garden_reborn/issues/67) |
+| Agent Vault frienemies-dapp review | `/Users/sauce/Documents/Sauce0x - Agent Vault/Projects/repo-landscape/repos/frienemies-dapp.md` | Historical reference | Confirms `frienemies-dapp` as lineage/reference, likely superseded by `garden_reborn` | Recent local review | Medium-high | [#67](https://github.com/PIZZALORD713/garden_reborn/issues/67) |
+| Agent Vault frienemies-app review | `/Users/sauce/Documents/Sauce0x - Agent Vault/Projects/repo-landscape/repos/frienemies-app.md` | Historical reference | Identifies private/internal bridge repo between early dapp and `garden_reborn` | Recent local review | Medium, private-source dependent | [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60) |
+| animation_collection2 | https://github.com/PIZZALORD713/animation_collection2 | Current implementation | Current GLB animation preset source: `walk`, `walk-arms-low`, `dance-rumba`, `joy-jump`, T-pose rig test | Updated 2026-02-13 | High | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63), [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) |
+| animation_collection | https://github.com/PIZZALORD713/animation_collection | Historical reference | Earlier FBX/GLB animation experiments and jsDelivr source mentioned in older docs | Updated 2026-01-26 | Medium | [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) |
+| Thornvale | https://github.com/PIZZALORD713/Thornvale | Adjacent ecosystem | 3D/game-world work with Friendsies-related visual/character loading context | Updated 2026-02-14 | Medium adjacent | [#69](https://github.com/PIZZALORD713/garden_reborn/issues/69) |
+| gm-assets | https://github.com/PIZZALORD713/gm-assets | Adjacent ecosystem | gm.pizza and related brand asset source | Updated 2025-05-11 | Medium adjacent | [#69](https://github.com/PIZZALORD713/garden_reborn/issues/69) |
+| rainbowkit-test-v0 | https://github.com/PIZZALORD713/rainbowkit-test-v0 | Adjacent ecosystem | AI/status/API experiments, useful pattern reference but not core fRiENEMiES implementation | Updated 2026-01-18 | Low-medium for fRiENEMiES | Someday research only |
+| sugar-depot-vercel | https://github.com/PIZZALORD713/sugar-depot-vercel | Adjacent ecosystem | Separate web3/app surface with wallet and collectible patterns | Updated 2025-08-16 | Low-medium for fRiENEMiES | Someday research only |
+| OTTO | https://github.com/PIZZALORD713/OTTO | Adjacent ecosystem | Separate TypeScript/UI project, not a current fRiENEMiES source | Updated 2025-07-03 | Low | Someday research only |
+| Typo-App | https://github.com/PIZZALORD713/Typo-App | Adjacent ecosystem | Separate TypeScript/UI project, not a current fRiENEMiES source | Updated 2025-06-23 | Low | Someday research only |
+
+## Current Truth Stack
+
+1. Brand and guardrails: context pack.
+2. Current browser Studio: `garden_reborn`.
+3. Current Blender scene generation: local Blender repo and `docs/avatar-blender-pipeline.md`.
+4. Agent render-pack direction: Agent Avatar System docs.
+5. Historical Web3 app context: `frienemies-dapp` and Agent Vault repo reviews.
+6. Ecosystem expansion: Thornvale, gm-assets, and other adjacent repos.
+
+## Immediate Next Actions
+
+- Use this source map to keep [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60) grounded in both canon and current evidence.
+- Use `CANON.md`, `ARCHITECTURE.md`, local Blender README, and local `docs/avatar-blender-pipeline.md` as primary sources for [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63).
+- Keep Web3, claim, inventory, and marketplace language in research mode until [#67](https://github.com/PIZZALORD713/garden_reborn/issues/67) explicitly promotes a design.
 
 ## Seed Issues
 
