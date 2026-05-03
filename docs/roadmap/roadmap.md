@@ -12,8 +12,8 @@ Turn static NFT ownership into living, expressive, remixable, AI-assisted digita
 
 Milestone due: 2026-06-14
 
-- [#59](https://github.com/PIZZALORD713/garden_reborn/issues/59) Build the source map and confidence model.
-- [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60) Refresh strategy/canon using context pack plus current evidence.
+- [#59](https://github.com/PIZZALORD713/garden_reborn/issues/59) Build the [source map](./source-map.md) and confidence model.
+- [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60) Refresh [canon and current status](./canon-and-current-status.md) using context pack plus current evidence.
 - [#61](https://github.com/PIZZALORD713/garden_reborn/issues/61) Close the current Studio verification gate.
 - [#62](https://github.com/PIZZALORD713/garden_reborn/issues/62) Resolve competing UI PR direction.
 ## Completed Setup
@@ -24,7 +24,7 @@ Milestone due: 2026-06-14
 
 Milestone due: 2026-07-26
 
-- [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63) Define the shared Studio/Blender data and export contract.
+- [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63) Define the shared [Studio-to-Blender contract](../contracts/studio-blender-contract.md).
 - [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64) Promote Blender scene generation into the official roadmap.
 - [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) Harden animation pack validation against skeleton rules.
 
