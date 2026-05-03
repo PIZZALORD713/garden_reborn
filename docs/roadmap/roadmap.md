@@ -2,7 +2,7 @@
 
 _Last updated: 2026-05-03_
 
-This roadmap uses `PIZZALORD713/garden_reborn` as the canonical planning repo. The first execution horizon is Studio + Blender: make fRiENEMiES characters reliable to load, animate, export, render, and direct into scenes before deeper Web3 claim mechanics.
+This roadmap uses `PIZZALORD713/garden_reborn` as the canonical planning repo and [fRiENEMiES Roadmap](https://github.com/users/PIZZALORD713/projects/1) as the GitHub Projects v2 board. The first execution horizon is Studio + Blender: make fRiENEMiES characters reliable to load, animate, export, render, and direct into scenes before deeper Web3 claim mechanics.
 
 ## North Star
 
@@ -16,7 +16,9 @@ Milestone due: 2026-06-14
 - [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60) Refresh strategy/canon using context pack plus current evidence.
 - [#61](https://github.com/PIZZALORD713/garden_reborn/issues/61) Close the current Studio verification gate.
 - [#62](https://github.com/PIZZALORD713/garden_reborn/issues/62) Resolve competing UI PR direction.
-- [#70](https://github.com/PIZZALORD713/garden_reborn/issues/70) P0: Complete GitHub Projects v2 board setup after project-scope auth
+## Completed Setup
+
+- [#70](https://github.com/PIZZALORD713/garden_reborn/issues/70) Created the GitHub Projects v2 board, fields, issue membership, and initial field values.
 
 ## Next: Cycle 02 - Studio Reliability and Blender Contract
 
