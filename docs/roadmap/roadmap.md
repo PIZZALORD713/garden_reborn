@@ -12,12 +12,13 @@ Turn static NFT ownership into living, expressive, remixable, AI-assisted digita
 
 Milestone due: 2026-06-14
 
-- [#59](https://github.com/PIZZALORD713/garden_reborn/issues/59) Build the [source map](./source-map.md) and confidence model.
-- [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60) Refresh [canon and current status](./canon-and-current-status.md) using context pack plus current evidence.
 - [#61](https://github.com/PIZZALORD713/garden_reborn/issues/61) Close the current Studio verification gate.
 - [#62](https://github.com/PIZZALORD713/garden_reborn/issues/62) Resolve competing UI PR direction.
-## Completed Setup
 
+## Completed Foundation Work
+
+- [#59](https://github.com/PIZZALORD713/garden_reborn/issues/59) Built the [source map](./source-map.md) and confidence model.
+- [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60) Refreshed [canon and current status](./canon-and-current-status.md) using context pack plus current evidence.
 - [#70](https://github.com/PIZZALORD713/garden_reborn/issues/70) Created the GitHub Projects v2 board, fields, issue membership, and initial field values.
 
 ## Next: Cycle 02 - Studio Reliability and Blender Contract
