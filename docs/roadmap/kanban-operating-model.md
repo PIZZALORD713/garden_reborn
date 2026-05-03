@@ -6,9 +6,9 @@ This model defines how to run the fRiENEMiES roadmap board from `PIZZALORD713/ga
 
 ## Board
 
-Target board: `fRiENEMiES Roadmap` in GitHub Projects v2.
+Board: [`fRiENEMiES Roadmap`](https://github.com/users/PIZZALORD713/projects/1) in GitHub Projects v2.
 
-Issues are the source of truth. The project board is the planning view over those issues.
+Issues are the source of truth. The project board is the planning view over those issues. The project is linked to `PIZZALORD713/garden_reborn` and seeded with issues #59-#70.
 
 ## Cadence
 
