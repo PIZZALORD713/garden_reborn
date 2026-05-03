@@ -27,6 +27,10 @@ This document records the artifacts currently informing the fRiENEMiES roadmap. 
 | Thornvale | https://github.com/PIZZALORD713/Thornvale | Adjacent 3D/game ecosystem work | Updated 2026-02-14 | Medium adjacent | Keep as ecosystem reference |
 | gm-assets | https://github.com/PIZZALORD713/gm-assets | gm.pizza and related brand assets | Updated 2025-05-11 | Medium adjacent | Keep as ecosystem reference |
 
+## Project Board
+
+- [fRiENEMiES Roadmap](https://github.com/users/PIZZALORD713/projects/1)
+
 ## Seed Issues
 
 - [#59](https://github.com/PIZZALORD713/garden_reborn/issues/59) P0: Fact-finding source map for all fRiENEMiES artifacts
