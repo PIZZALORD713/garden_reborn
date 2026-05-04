@@ -2,7 +2,7 @@
 
 ## Active
 - [x] slice-056-gpu-disposal-and-cleanup - added `avatar-cleanup-utils.js`, wired safe geometry/material/texture disposal into avatar replacement lifecycle, protected scene/global textures from accidental disposal, and added cleanup stats logging.
-- [ ] slice-057-post-slice-056-verification-pass - run full browser smoke loop (rapid token switching + animation + export + mobile sanity) in API-backed runtime to validate no regressions and confirm improved memory trend.
+- [ ] slice-057-post-slice-056-verification-pass - local static browser smoke passed on 2026-05-03 (rapid token switching + animation + export + mobile sanity), but the required API-backed runtime pass is still blocked by missing Vercel/Moralis credentials and protected deployment access.
 
 ## UI Upgrade Slice Queue
 - [x] slice-001-copy-unification - unify identifier copy across onboarding + Find surfaces.

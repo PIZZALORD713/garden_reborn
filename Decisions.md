@@ -7,6 +7,18 @@
 - **Observability:** `clearAvatar()` now logs one compact cleanup summary (`geom/mat/tex`) per swap when resources are reclaimed.
 - **Scope guard:** Runtime cleanup only; no changes to token routing, animation selection semantics, export pipeline behavior, or UI layout.
 
+## 2026-05-03 — Slice 057 partial verification, API runtime still blocked
+- **Decision:** Keep slice-057 open and blocked until an API-backed runtime can be accessed, but record the completed local static smoke evidence.
+- **Why:** The post-slice-056 browser flow passes locally, yet the required API-backed pass cannot be completed in this session because `VERCEL_TOKEN` and `MORALIS_API_KEY` are not exported, `npx vercel dev --yes --listen 127.0.0.1:4188` starts a device login, and the latest Vercel deployment returns `401 Authentication Required`.
+- **Validation evidence:**
+  - `node --check` passes for all root runtime JS modules and `api/friendsiesTokens.js`.
+  - Local static runtime (`python3 -m http.server 4187 --bind 127.0.0.1`) passed rapid token switching through `1 -> 5 -> 8521 -> 8448`; final console state included `loaded #8448`.
+  - Animation playback passed with `Walk Arms Low`; `.glb` export triggered successfully and reported `Download started. If no file appears, use “Open saved export link”.`
+  - Mobile sanity passed at `390x844` with `scrollWidth=390` and shelf/search controls visible.
+  - Playwright observed no page errors, unexpected console warnings/errors, or unexpected request failures in the static smoke.
+  - Evidence screenshots captured as `slice-057-smoke-desktop.png` and `slice-057-smoke-mobile.png`.
+- **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API contract, or architecture changes.
+
 ## 2026-02-17 — Slice 001 copy unification
 - **Decision:** Standardize search wording everywhere user enters identifiers to: "token ID, wallet address, or ENS name."
 - **Why:** Removes mixed phrasing ("wallet/ENS", "Wallet / ENS", etc.) and makes onboarding/find language consistent.
