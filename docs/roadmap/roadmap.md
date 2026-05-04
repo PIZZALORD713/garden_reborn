@@ -1,6 +1,6 @@
 # fRiENEMiES Roadmap
 
-_Last updated: 2026-05-03_
+_Last updated: 2026-05-04_
 
 This roadmap uses `PIZZALORD713/garden_reborn` as the canonical planning repo and [fRiENEMiES Roadmap](https://github.com/users/PIZZALORD713/projects/1) as the GitHub Projects v2 board. The first execution horizon is Studio + Blender: make fRiENEMiES characters reliable to load, animate, export, render, and direct into scenes before deeper Web3 claim mechanics.
 
@@ -26,12 +26,12 @@ No open P0 foundation blockers remain after the source audit, board bootstrap, S
 
 Milestone due: 2026-07-26
 
-- [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64) Promote Blender scene generation into the official roadmap.
 - [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) Harden animation pack validation against skeleton rules.
 
 ## Completed Contract Work
 
 - [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63) Defined the shared [Studio-to-Blender contract](../contracts/studio-blender-contract.md).
+- [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64) Promoted Blender scene generation into the canonical roadmap as a [first-class scene-generation track](./blender-scene-generation.md).
 
 ## Later: Cycle 03 - Render Packs and Scene Direction
 
