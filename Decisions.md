@@ -19,6 +19,13 @@
   - Evidence screenshots refreshed as `slice-057-smoke-desktop.png` and `slice-057-smoke-mobile.png`.
 - **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API contract, or architecture changes.
 
+## 2026-05-04 — Issue 066 animation pack validation hardening
+- **Decision:** Add a reusable animation-pack validator, CLI, GLB animation-channel scanner, and validation docs before expanding animation pack/runtime behavior.
+- **Why:** Studio and Blender both depend on BODY-compatible animation inputs; bad manifests, unknown bones, unsafe location tracks, scale tracks, and rest-pose mismatches should be caught before playback/export.
+- **Implementation:** Added `animation-pack-validator.js`, `tools/validate-animation-pack.mjs`, `tools/glb-animation-tracks.mjs`, and `tools/test-animation-pack-validator.mjs`; extended animation pack schema metadata for track validation; expanded documented skeleton aliases in `schemas/skeleton.contract.v1.json`.
+- **Validation evidence:** `node tools/test-animation-pack-validator.mjs` covers existing pack compatibility, missing clips, unknown bones, scale/location hazards, strict-track gates, rest-pose mismatch, and GLB channel extraction.
+- **Scope guard:** Validation tooling/docs only; no changes to Studio animation selection, playback semantics, retargeting behavior, or GLB export runtime.
+
 ## 2026-05-03 — Slice 057 partial verification, API runtime still blocked
 - **Decision:** Keep slice-057 open and blocked until an API-backed runtime can be accessed, but record the completed local static smoke evidence.
 - **Why:** The post-slice-056 browser flow passes locally, yet the required API-backed pass cannot be completed in this session because `VERCEL_TOKEN` and `MORALIS_API_KEY` are not exported, `npx vercel dev --yes --listen 127.0.0.1:4188` starts a device login, and the latest Vercel deployment returns `401 Authentication Required`.

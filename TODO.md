@@ -3,6 +3,7 @@
 ## Active
 - [x] slice-056-gpu-disposal-and-cleanup - added `avatar-cleanup-utils.js`, wired safe geometry/material/texture disposal into avatar replacement lifecycle, protected scene/global textures from accidental disposal, and added cleanup stats logging.
 - [x] slice-057-post-slice-056-verification-pass - API-backed browser smoke passed on 2026-05-04 using `vercel dev` linked to `garden-reborn`: live `/api/friendsiesTokens`, wallet UI lookup, rapid token switching, animation playback, GLB export, and mobile sanity all completed with no unexpected browser errors.
+- [x] issue-066-animation-pack-validation-hardening - added manifest/schema, skeleton alias, rest-pose, track hazard, and optional GLB channel validation tooling for animation packs.
 
 ## UI Upgrade Slice Queue
 - [x] slice-001-copy-unification - unify identifier copy across onboarding + Find surfaces.

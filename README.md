@@ -67,6 +67,14 @@ Open `http://localhost:3000/`
 
 > **Note:** Wallet/ENS lookup requires the serverless API (`/api/friendsiesTokens`), which needs `MORALIS_API_KEY` in your environment. Without it, you can still load tokens by ID.
 
+### Animation pack validation
+
+```bash
+node tools/validate-animation-pack.mjs packs/example-pack/pack.json
+```
+
+The validator checks pack shape, skeleton contract compatibility, rest-pose assumptions, and optional GLB track metadata before Studio or Blender playback. See `docs/animation-pack-validation.md`.
+
 ---
 
 ## Project Structure
@@ -235,6 +243,7 @@ PRs welcome. No build tools required -- edit the files and test with `npx serve 
 - Wallet/ENS edge case handling
 - Export validation and test fixtures
 - Animation retargeting quality
+- Animation pack validation fixtures
 - GPU resource cleanup (geometry/material/texture disposal)
 
 ### PR guidelines

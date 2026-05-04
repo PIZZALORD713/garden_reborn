@@ -5,16 +5,16 @@
   "author": "community",
   "license": "CC-BY-4.0",
   "skeletonContract": "v1",
-  "tags": ["idle", "emote", "starter"],
+  "tags": ["walk", "starter", "current"],
   "clips": [
     {
-      "name": "Idle",
-      "url": "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Idle.glb",
+      "name": "Walk",
+      "url": "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk.glb",
       "loop": true
     },
     {
-      "name": "Wave",
-      "url": "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Wave.glb",
+      "name": "Walk Arms Low",
+      "url": "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk-arms-low.glb",
       "loop": true
     }
   ]

@@ -19,9 +19,61 @@
         "required": ["name", "url"],
         "properties": {
           "name": { "type": "string" },
-          "url": { "type": "string", "format": "uri" },
+          "url": { "type": "string", "format": "uri-reference" },
           "durationSec": { "type": "number", "minimum": 0 },
-          "loop": { "type": "boolean" }
+          "loop": { "type": "boolean" },
+          "allowLocationTracks": {
+            "description": "Optional extra BODY bones whose location tracks are intentionally allowed for this clip.",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "tracks": {
+            "description": "Optional extracted animation track/channel metadata used by validators before GLB playback/export.",
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "required": ["name"],
+                  "properties": {
+                    "name": { "type": "string" },
+                    "target": { "type": "string" },
+                    "bone": { "type": "string" },
+                    "property": { "type": "string" },
+                    "path": { "type": "string" },
+                    "clipName": { "type": "string" },
+                    "source": { "type": "string" }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "allowLocationTracks": {
+          "description": "Pack-level extra BODY bones whose location tracks are intentionally allowed.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "requireTrackMetadata": { "type": "boolean" }
+      }
+    },
+    "rigAssumptions": {
+      "type": "object",
+      "properties": {
+        "sourceRig": { "type": "string" },
+        "sourceRestPose": { "type": "string", "enum": ["a-pose", "t-pose", "neutral", "unknown"] },
+        "targetRestPose": { "type": "string", "enum": ["a-pose", "t-pose", "neutral", "unknown"] },
+        "targetSkeletonContract": { "type": "string" },
+        "unitScale": { "type": "number", "exclusiveMinimum": 0 },
+        "bones": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       }
     }
