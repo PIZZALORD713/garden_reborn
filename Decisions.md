@@ -7,6 +7,18 @@
 - **Observability:** `clearAvatar()` now logs one compact cleanup summary (`geom/mat/tex`) per swap when resources are reclaimed.
 - **Scope guard:** Runtime cleanup only; no changes to token routing, animation selection semantics, export pipeline behavior, or UI layout.
 
+## 2026-05-04 — Slice 057 API-backed verification pass complete
+- **Decision:** Mark slice-057 complete after rerunning the post-slice-056 smoke loop against a live API-backed Vercel dev runtime.
+- **Why:** The remaining blocker was access, not app behavior. After Vercel CLI authentication, relinking this checkout to `pizzalords-projects/garden-reborn`, and pulling development env, `/api/friendsiesTokens` resolved live wallet data.
+- **Validation evidence:**
+  - `vercel dev --yes --listen 127.0.0.1:4188` served the app with `MORALIS_API_KEY` from the linked `garden-reborn` project.
+  - Direct API probes succeeded: `vitalik.eth` returned `200` with `tokenCount=0`; `0x28af3356c6aaf449d20c59d2531941ddfb94d713` returned `200` with `tokenCount=62`, including tokens `8448` and `8521`.
+  - Browser smoke passed on `http://127.0.0.1:4188/index.html`: rapid token switching `1 -> 5 -> 8521 -> 8448`, wallet lookup through the Studio search UI, animation playback (`Walk Arms Low`), and `.glb` export all completed.
+  - Mobile sanity passed at `390x844` with `scrollWidth=390` and shelf/search controls visible.
+  - Playwright observed no page errors, unexpected console warnings/errors, or unexpected request failures.
+  - Evidence screenshots refreshed as `slice-057-smoke-desktop.png` and `slice-057-smoke-mobile.png`.
+- **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API contract, or architecture changes.
+
 ## 2026-05-03 — Slice 057 partial verification, API runtime still blocked
 - **Decision:** Keep slice-057 open and blocked until an API-backed runtime can be accessed, but record the completed local static smoke evidence.
 - **Why:** The post-slice-056 browser flow passes locally, yet the required API-backed pass cannot be completed in this session because `VERCEL_TOKEN` and `MORALIS_API_KEY` are not exported, `npx vercel dev --yes --listen 127.0.0.1:4188` starts a device login, and the latest Vercel deployment returns `401 Authentication Required`.

@@ -12,12 +12,13 @@ Turn static NFT ownership into living, expressive, remixable, AI-assisted digita
 
 Milestone due: 2026-06-14
 
-- [#61](https://github.com/PIZZALORD713/garden_reborn/issues/61) Close the current Studio verification gate; local static smoke passed, API-backed runtime access remains blocked.
+No open P0 foundation blockers remain after the source audit, board bootstrap, Studio verification gate, and UI PR triage.
 
 ## Completed Foundation Work
 
 - [#59](https://github.com/PIZZALORD713/garden_reborn/issues/59) Built the [source map](./source-map.md) and confidence model.
 - [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60) Refreshed [canon and current status](./canon-and-current-status.md) using context pack plus current evidence.
+- [#61](https://github.com/PIZZALORD713/garden_reborn/issues/61) Completed the API-backed slice-057 verification gate with live `/api/friendsiesTokens`, rapid token switching, animation, GLB export, and mobile sanity.
 - [#62](https://github.com/PIZZALORD713/garden_reborn/issues/62) Resolved the UI PR direction: keep [#56](https://github.com/PIZZALORD713/garden_reborn/pull/56) as the small merge candidate after the API-backed gate, close/supersede [#57](https://github.com/PIZZALORD713/garden_reborn/pull/57).
 - [#70](https://github.com/PIZZALORD713/garden_reborn/issues/70) Created the GitHub Projects v2 board, fields, issue membership, and initial field values.
 
