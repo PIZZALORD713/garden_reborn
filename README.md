@@ -75,6 +75,18 @@ node tools/validate-animation-pack.mjs packs/example-pack/pack.json
 
 The validator checks pack shape, skeleton contract compatibility, rest-pose assumptions, and optional GLB track metadata before Studio or Blender playback. See `docs/animation-pack-validation.md`.
 
+### Static avatar render packs
+
+Static Avatar Render Pack V1 defines the first deterministic agent-identity output bundle:
+
+- `avatar-square.png`
+- `avatar-transparent.png`
+- `avatar-banner.png`
+- `avatar-fullbody.png`
+- `render-pack-manifest.json`
+
+See `docs/render-packs/static-avatar-render-pack-v1.md` and `examples/render-packs/sauce-0x-token-8521.static-avatar-v1.json`.
+
 ---
 
 ## Project Structure

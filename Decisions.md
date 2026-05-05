@@ -26,6 +26,13 @@
 - **Validation evidence:** `node tools/test-animation-pack-validator.mjs` covers existing pack compatibility, missing clips, unknown bones, scale/location hazards, strict-track gates, rest-pose mismatch, and GLB channel extraction.
 - **Scope guard:** Validation tooling/docs only; no changes to Studio animation selection, playback semantics, retargeting behavior, or GLB export runtime.
 
+## 2026-05-04 — Issue 065 Static Avatar Render Pack V1 spec
+- **Decision:** Define Static Avatar Render Pack V1 as the first deterministic Agent Identity Compiler output contract.
+- **Why:** The project now has Studio reliability, Blender ownership, and animation validation in place; a static render pack turns that foundation into a concrete identity asset bundle without waiting on Web3 or animation expansion.
+- **Implementation:** Added `docs/render-packs/static-avatar-render-pack-v1.md`, `schemas/static-avatar.render-pack.v1.schema.json`, and `examples/render-packs/sauce-0x-token-8521.static-avatar-v1.json`.
+- **Validation evidence:** JSON parse checks cover the schema and #8521 example manifest. The spec is implementation-ready but does not add the Blender runner yet.
+- **Scope guard:** Spec/schema/example only; no generated PNGs, Blender script migration, runtime screenshot capture, Web3 claim mechanics, or animation outputs.
+
 ## 2026-05-03 — Slice 057 partial verification, API runtime still blocked
 - **Decision:** Keep slice-057 open and blocked until an API-backed runtime can be accessed, but record the completed local static smoke evidence.
 - **Why:** The post-slice-056 browser flow passes locally, yet the required API-backed pass cannot be completed in this session because `VERCEL_TOKEN` and `MORALIS_API_KEY` are not exported, `npx vercel dev --yes --listen 127.0.0.1:4188` starts a device login, and the latest Vercel deployment returns `401 Authentication Required`.

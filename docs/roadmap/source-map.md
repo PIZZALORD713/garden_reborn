@@ -49,6 +49,7 @@ Use this rule: the polished context pack is canon for brand and guardrails, but 
 | Local Blender README | `/Users/sauce/Documents/New project/README.md` | Current implementation | Current local workflow: scene idea to JSON recipe to token assets to Blender render/export | Current local work | High | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63), [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64) |
 | Avatar Blender Pipeline doc | `/Users/sauce/Documents/New project/docs/avatar-blender-pipeline.md` | Current implementation | Blender-side BODY-first rig rules, part modes, animation sanitizer, real token path, head-UV-clone face overlays, directed scene V0 | Current local work | High | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63), [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64) |
 | Blender scene generation track | https://github.com/PIZZALORD713/garden_reborn/blob/main/docs/roadmap/blender-scene-generation.md | High-value spec | Canonical roadmap lane for directed Blender scenes, Studio/Blender ownership boundaries, and migration plan from local prototype to production tooling | Current in repo | High | [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64), [#65](https://github.com/PIZZALORD713/garden_reborn/issues/65), [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) |
+| Static Avatar Render Pack V1 | `docs/render-packs/static-avatar-render-pack-v1.md`, `schemas/static-avatar.render-pack.v1.schema.json`, `examples/render-packs/sauce-0x-token-8521.static-avatar-v1.json` | High-value spec | Deterministic agent identity PNG pack contract: square, transparent, banner, fullbody, manifest, presets, quality gates, #8521 test case | Current in repo | High | [#65](https://github.com/PIZZALORD713/garden_reborn/issues/65) |
 | Local directed scene recipe | `/Users/sauce/Documents/New project/manifests/scenes/friendsies-bus-pizza-drop.json` | Current implementation | Multi-actor scene schema in practice: actors, roles, poses, props, camera, render outputs | Current local work | High for prototype | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63), [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64) |
 | Local token manifests | `/Users/sauce/Documents/New project/manifests/friendsies/token-*.json` | Current implementation | Concrete token recipe shape for body, parts, face, traits, scene, render, outputs | Current local work | High for prototype | [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63) |
 | Agent Avatar System product spec | `/Users/sauce/Documents/Sauce0x - Agent Vault/Projects/repo-landscape/friendsies-agent-avatar-system-product-spec.md` | High-value spec | Agent Identity Compiler framing, static render pack outputs, identity/render/export preset model | Recent local planning | High for product angle | [#65](https://github.com/PIZZALORD713/garden_reborn/issues/65) |
@@ -76,8 +77,8 @@ Use this rule: the polished context pack is canon for brand and guardrails, but 
 
 ## Immediate Next Actions
 
-- Use this source map to keep [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60) grounded in both canon and current evidence.
 - Use [Studio-to-Blender Contract v0.1](../contracts/studio-blender-contract.md) and the [Blender scene generation track](./blender-scene-generation.md) as the canonical bridge from browser Studio to local Blender scene production.
+- Use [Static Avatar Render Pack V1](../render-packs/static-avatar-render-pack-v1.md) as the implementation contract for [#71](https://github.com/PIZZALORD713/garden_reborn/issues/71), the first token #8521 / Sauce-0x render-pack runner.
 - Keep Web3, claim, inventory, and marketplace language in research mode until [#67](https://github.com/PIZZALORD713/garden_reborn/issues/67) explicitly promotes a design.
 
 ## Seed Issues
@@ -94,3 +95,4 @@ Use this rule: the polished context pack is canon for brand and guardrails, but 
 - [#68](https://github.com/PIZZALORD713/garden_reborn/issues/68) P2: Scope collector and AI identity pages as a later product track
 - [#69](https://github.com/PIZZALORD713/garden_reborn/issues/69) P2: Map gm.pizza and broader ecosystem ideas as non-blocking long-term opportunities
 - [#70](https://github.com/PIZZALORD713/garden_reborn/issues/70) P0: Complete GitHub Projects v2 board setup after project-scope auth
+- [#71](https://github.com/PIZZALORD713/garden_reborn/issues/71) P1: Implement Static Avatar Render Pack V1 runner for token #8521

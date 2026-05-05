@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frienemies.studio/schemas/static-avatar.render-pack.v1.schema.json",
+  "title": "Static Avatar Render Pack V1",
+  "type": "object",
+  "required": ["version", "kind", "identityPreset", "renderPreset", "exportPack", "provenance"],
+  "properties": {
+    "version": { "type": "string", "const": "1.0.0" },
+    "kind": { "type": "string", "const": "static-avatar-render-pack" },
+    "identityPreset": {
+      "type": "object",
+      "required": ["id", "displayName", "tokenId", "role", "collection", "characterManifest"],
+      "properties": {
+        "id": { "type": "string" },
+        "displayName": { "type": "string" },
+        "tokenId": { "type": "integer", "minimum": 0 },
+        "role": { "type": "string" },
+        "archetype": { "type": "string" },
+        "collection": {
+          "type": "object",
+          "required": ["name", "contract", "chain"],
+          "properties": {
+            "name": { "type": "string" },
+            "contract": { "type": "string" },
+            "chain": { "type": "string" }
+          }
+        },
+        "characterManifest": { "type": "string" },
+        "traits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["trait_type", "value"],
+            "properties": {
+              "trait_type": { "type": "string" },
+              "value": { "type": "string" },
+              "asset_url": { "type": "string" },
+              "local_path": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "renderPreset": {
+      "type": "object",
+      "required": [
+        "id",
+        "posePreset",
+        "lightingPreset",
+        "backgroundPreset",
+        "colorPreset",
+        "engine",
+        "samples"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "posePreset": { "type": "string" },
+        "lightingPreset": { "type": "string" },
+        "backgroundPreset": { "type": "string" },
+        "colorPreset": { "type": "string" },
+        "engine": { "type": "string" },
+        "samples": { "type": "integer", "minimum": 1 },
+        "viewTransform": { "type": "string" },
+        "look": { "type": "string" },
+        "exposure": { "type": "number" },
+        "gamma": { "type": "number" },
+        "camera": {
+          "type": "object",
+          "properties": {
+            "lens": { "type": "number" },
+            "location": {
+              "type": "array",
+              "items": { "type": "number" },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "target": {
+              "type": "array",
+              "items": { "type": "number" },
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "autoFrame": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "exportPack": {
+      "type": "object",
+      "required": ["id", "outputRoot", "outputs"],
+      "properties": {
+        "id": { "type": "string", "const": "static-avatar-v1" },
+        "outputRoot": { "type": "string" },
+        "outputs": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "file",
+              "format",
+              "resolution",
+              "cropPreset",
+              "backgroundMode",
+              "alpha"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "enum": ["avatar-square", "avatar-transparent", "avatar-banner", "avatar-fullbody"]
+              },
+              "file": { "type": "string" },
+              "format": { "type": "string", "const": "png" },
+              "resolution": {
+                "type": "array",
+                "items": { "type": "integer", "minimum": 1 },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "cropPreset": { "type": "string" },
+              "backgroundMode": { "type": "string", "enum": ["included", "transparent"] },
+              "alpha": { "type": "boolean" },
+              "safeArea": {
+                "type": "object",
+                "properties": {
+                  "circleSafe": { "type": "boolean" },
+                  "horizontalEmptySpacePct": { "type": "number", "minimum": 0, "maximum": 100 },
+                  "paddingPct": { "type": "number", "minimum": 0, "maximum": 100 }
+                }
+              },
+              "cameraOverride": {
+                "type": "object",
+                "properties": {
+                  "frameMargin": { "type": "number", "exclusiveMinimum": 0 },
+                  "target": {
+                    "type": "array",
+                    "items": { "type": "number" },
+                    "minItems": 3,
+                    "maxItems": 3
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["pipeline", "generatedAt", "source"],
+      "properties": {
+        "pipeline": { "type": "string" },
+        "pipelineVersion": { "type": "string" },
+        "blenderVersion": { "type": "string" },
+        "generatedAt": { "type": "string" },
+        "source": {
+          "type": "object",
+          "required": ["repo", "localBlenderProject"],
+          "properties": {
+            "repo": { "type": "string" },
+            "repoCommit": { "type": "string" },
+            "localBlenderProject": { "type": "string" },
+            "inputManifestHash": { "type": "string" }
+          }
+        },
+        "outputHashes": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "futureHooks": {
+      "type": "object",
+      "properties": {
+        "glbOutputs": { "type": "array" },
+        "animationOutputs": { "type": "array" },
+        "moodPresets": { "type": "array" },
+        "scenePresets": { "type": "array" }
+      }
+    }
+  }
+}

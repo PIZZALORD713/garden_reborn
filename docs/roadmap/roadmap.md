@@ -38,10 +38,14 @@ No open P1 Studio/Blender reliability issues remain in the current Next set.
 
 Milestone due: 2026-09-06
 
-- [#65](https://github.com/PIZZALORD713/garden_reborn/issues/65) Specify deterministic static avatar render packs.
+- [#71](https://github.com/PIZZALORD713/garden_reborn/issues/71) Implement Static Avatar Render Pack V1 runner for token #8521.
 - [#67](https://github.com/PIZZALORD713/garden_reborn/issues/67) Research Web3 mechanics without building contracts.
 - [#68](https://github.com/PIZZALORD713/garden_reborn/issues/68) Scope collector and AI identity pages.
 - [#69](https://github.com/PIZZALORD713/garden_reborn/issues/69) Map ecosystem opportunities without blocking Studio + Blender.
+
+## Completed Render-Pack Work
+
+- [#65](https://github.com/PIZZALORD713/garden_reborn/issues/65) Specified [Static Avatar Render Pack V1](../render-packs/static-avatar-render-pack-v1.md) with required PNG outputs, identity/render/export preset model, schema, and token #8521 example manifest.
 
 ## Operating Assumptions
 

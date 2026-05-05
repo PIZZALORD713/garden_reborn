@@ -165,7 +165,8 @@ Status: later.
 - Do not rewrite the local Blender repo as part of roadmap work unless explicitly requested.
 - Keep public copy careful: this is independent, community-led creative tooling, not an official FriendsWithYou product.
 
-## Open Follow-Up Issues
+## Related Specs And Follow-Up
 
-- [#65](https://github.com/PIZZALORD713/garden_reborn/issues/65): Specify Static Avatar Render Pack V1 for agent identity outputs.
-- [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66): Harden animation pack validation against skeleton contract rules.
+- [#65](https://github.com/PIZZALORD713/garden_reborn/issues/65): [Static Avatar Render Pack V1](../render-packs/static-avatar-render-pack-v1.md) for agent identity outputs.
+- [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66): [Animation pack validation](../animation-pack-validation.md) against skeleton contract rules.
+- [#71](https://github.com/PIZZALORD713/garden_reborn/issues/71): add the local Blender runner for `static-avatar-v1` using token #8521 / Sauce-0x as the first proof case.

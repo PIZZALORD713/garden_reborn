@@ -1,0 +1,160 @@
+{
+  "$schema": "../../schemas/static-avatar.render-pack.v1.schema.json",
+  "version": "1.0.0",
+  "kind": "static-avatar-render-pack",
+  "identityPreset": {
+    "id": "sauce-0x",
+    "displayName": "Sauce-0x",
+    "tokenId": 8521,
+    "role": "agent identity seed",
+    "archetype": "operator mascot",
+    "collection": {
+      "name": "fRiENDSiES",
+      "contract": "0xe5af63234f93afd72a8b9114803e33f6d9766956",
+      "chain": "eth"
+    },
+    "characterManifest": "/Users/sauce/Documents/New project/manifests/friendsies/token-8521.json",
+    "traits": [
+      {
+        "trait_type": "body",
+        "value": "Knight",
+        "asset_url": "https://storage.googleapis.com/friendsies-v2-assets-d8088d/assets/446f633b4553bae8f6ec254e1b8b4955.glb",
+        "local_path": "references/friendsies/tokens/8521/assets/body__knight__83cbe68bec.glb"
+      },
+      {
+        "trait_type": "head",
+        "value": "Steve",
+        "asset_url": "https://storage.googleapis.com/friendsies-v2-assets-d8088d/assets/20dea7e5d0263a981773f17b497ae369.glb",
+        "local_path": "references/friendsies/tokens/8521/assets/head__steve__d9c3bff3cb.glb"
+      },
+      {
+        "trait_type": "backpiece",
+        "value": "Rocket",
+        "asset_url": "https://storage.googleapis.com/friendsies-v2-assets-d8088d/assets/7f923e4d75df575c899deb452006957e.glb",
+        "local_path": "references/friendsies/tokens/8521/assets/backpiece__rocket__74e3be71f5.glb"
+      },
+      {
+        "trait_type": "hand",
+        "value": "Wubby",
+        "asset_url": "https://storage.googleapis.com/friendsies-v2-assets-d8088d/assets/b966555a645b39795ec2ba3cd0abc1e0.glb",
+        "local_path": "references/friendsies/tokens/8521/assets/hand__wubby__389bbf4db9.glb"
+      },
+      {
+        "trait_type": "shoe",
+        "value": "Convos Green Red",
+        "asset_url": "https://storage.googleapis.com/friendsies-v2-assets-d8088d/assets/deabed5dd4be09172a28337d0d643f28.glb",
+        "local_path": "references/friendsies/tokens/8521/assets/shoe__convos-green-red__8b16316dbd.glb"
+      }
+    ]
+  },
+  "renderPreset": {
+    "id": "agent-id-v1",
+    "posePreset": "neutral-3q-readable-v1",
+    "lightingPreset": "soft-studio-v1",
+    "backgroundPreset": "frienemies-cloud-v1",
+    "colorPreset": "filmic-medium-high-contrast-v1",
+    "engine": "BLENDER_EEVEE_NEXT",
+    "samples": 64,
+    "viewTransform": "Filmic",
+    "look": "Medium High Contrast",
+    "exposure": 0,
+    "gamma": 1,
+    "camera": {
+      "lens": 52,
+      "location": [2.8, -5.6, 2.1],
+      "target": [0, 0, 1.0],
+      "autoFrame": true
+    }
+  },
+  "exportPack": {
+    "id": "static-avatar-v1",
+    "outputRoot": "output/render-packs/sauce-0x-token-8521/static-avatar-v1",
+    "outputs": [
+      {
+        "id": "avatar-square",
+        "file": "avatar-square.png",
+        "format": "png",
+        "resolution": [1024, 1024],
+        "cropPreset": "square-bust-v1",
+        "backgroundMode": "included",
+        "alpha": false,
+        "safeArea": {
+          "circleSafe": true,
+          "paddingPct": 12
+        },
+        "cameraOverride": {
+          "frameMargin": 1.2,
+          "target": [0, 0, 1.25]
+        }
+      },
+      {
+        "id": "avatar-transparent",
+        "file": "avatar-transparent.png",
+        "format": "png",
+        "resolution": [2048, 2048],
+        "cropPreset": "transparent-bust-v1",
+        "backgroundMode": "transparent",
+        "alpha": true,
+        "safeArea": {
+          "paddingPct": 10
+        },
+        "cameraOverride": {
+          "frameMargin": 1.35,
+          "target": [0, 0, 1.15]
+        }
+      },
+      {
+        "id": "avatar-banner",
+        "file": "avatar-banner.png",
+        "format": "png",
+        "resolution": [3000, 1000],
+        "cropPreset": "banner-left-v1",
+        "backgroundMode": "included",
+        "alpha": false,
+        "safeArea": {
+          "horizontalEmptySpacePct": 50,
+          "paddingPct": 8
+        },
+        "cameraOverride": {
+          "frameMargin": 1.7,
+          "target": [-0.25, 0, 1.05]
+        }
+      },
+      {
+        "id": "avatar-fullbody",
+        "file": "avatar-fullbody.png",
+        "format": "png",
+        "resolution": [2048, 3072],
+        "cropPreset": "fullbody-v1",
+        "backgroundMode": "included",
+        "alpha": false,
+        "safeArea": {
+          "paddingPct": 8
+        },
+        "cameraOverride": {
+          "frameMargin": 1.85,
+          "target": [0, 0, 1.0]
+        }
+      }
+    ]
+  },
+  "provenance": {
+    "pipeline": "friendsies-blender-static-avatar-render-pack",
+    "pipelineVersion": "v1-spec",
+    "blenderVersion": "TBD",
+    "generatedAt": "TBD",
+    "source": {
+      "repo": "https://github.com/PIZZALORD713/garden_reborn",
+      "repoCommit": "TBD",
+      "localBlenderProject": "/Users/sauce/Documents/New project",
+      "inputManifestHash": "TBD"
+    },
+    "outputHashes": {}
+  },
+  "futureHooks": {
+    "glbOutputs": [],
+    "animationOutputs": [],
+    "moodPresets": [],
+    "scenePresets": []
+  }
+}
