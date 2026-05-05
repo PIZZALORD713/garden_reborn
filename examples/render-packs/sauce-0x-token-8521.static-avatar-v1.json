@@ -116,8 +116,10 @@
           "paddingPct": 8
         },
         "cameraOverride": {
-          "frameMargin": 1.7,
-          "target": [-0.25, 0, 1.05]
+          "frameMargin": 2.05,
+          "target": [-0.25, 0, 1.05],
+          "shiftX": 0.32,
+          "shiftY": 0.05
         }
       },
       {
@@ -132,8 +134,9 @@
           "paddingPct": 8
         },
         "cameraOverride": {
-          "frameMargin": 1.85,
-          "target": [0, 0, 1.0]
+          "frameMargin": 1.65,
+          "target": [0, 0, 1.0],
+          "shiftY": -0.2
         }
       }
     ]

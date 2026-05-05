@@ -202,16 +202,23 @@ Example:
 examples/render-packs/sauce-0x-token-8521.static-avatar-v1.json
 ```
 
-## Target Runner Command
+## Runner Command
 
-The next implementation pass is [#71](https://github.com/PIZZALORD713/garden_reborn/issues/71). It should add a runner with this shape:
+The local Blender implementation pass is tracked in [#71](https://github.com/PIZZALORD713/garden_reborn/issues/71). Regenerate the #8521 pack from this spec repo's example manifest with:
 
 ```bash
 /Users/sauce/Documents/New project/scripts/build-static-avatar-render-pack.sh \
   examples/render-packs/sauce-0x-token-8521.static-avatar-v1.json
 ```
 
-The runner should:
+Run it from `garden_reborn`, or pass the absolute example manifest path from any working directory:
+
+```bash
+/Users/sauce/Documents/New\ project/scripts/build-static-avatar-render-pack.sh \
+  /tmp/garden_reborn-qa/examples/render-packs/sauce-0x-token-8521.static-avatar-v1.json
+```
+
+The runner:
 
 1. Load the render-pack manifest.
 2. Resolve/fetch the token manifest if needed.
@@ -219,6 +226,12 @@ The runner should:
 4. Apply `neutral-3q-readable-v1`.
 5. Render all four output targets.
 6. Write `render-pack-manifest.json` with generated timestamps and hashes.
+
+The current local output path is:
+
+```text
+/Users/sauce/Documents/New project/output/render-packs/sauce-0x-token-8521/static-avatar-v1/
+```
 
 ## Quality Gates
 
