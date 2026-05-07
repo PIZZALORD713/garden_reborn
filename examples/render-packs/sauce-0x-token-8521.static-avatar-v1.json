@@ -83,8 +83,10 @@
           "paddingPct": 12
         },
         "cameraOverride": {
-          "frameMargin": 1.2,
-          "target": [0, 0, 1.25]
+          "lens": 70,
+          "frameMargin": 0.92,
+          "targetZPct": 0.58,
+          "shiftY": -0.02
         }
       },
       {
@@ -99,8 +101,10 @@
           "paddingPct": 10
         },
         "cameraOverride": {
-          "frameMargin": 1.35,
-          "target": [0, 0, 1.15]
+          "lens": 70,
+          "frameMargin": 1.05,
+          "targetZPct": 0.48,
+          "shiftY": -0.04
         }
       },
       {
@@ -116,10 +120,12 @@
           "paddingPct": 8
         },
         "cameraOverride": {
-          "frameMargin": 2.05,
-          "target": [-0.25, 0, 1.05],
-          "shiftX": 0.32,
-          "shiftY": 0.05
+          "lens": 60,
+          "frameMargin": 2.4,
+          "target": [0.25, 0, 0],
+          "targetZPct": 0.5,
+          "shiftX": 0,
+          "shiftY": 0.06
         }
       },
       {
@@ -134,9 +140,10 @@
           "paddingPct": 8
         },
         "cameraOverride": {
-          "frameMargin": 1.65,
-          "target": [0, 0, 1.0],
-          "shiftY": -0.2
+          "lens": 64,
+          "frameMargin": 1.32,
+          "targetZPct": 0.46,
+          "shiftY": -0.16
         }
       }
     ]

@@ -218,6 +218,15 @@ Run it from `garden_reborn`, or pass the absolute example manifest path from any
   /tmp/garden_reborn-qa/examples/render-packs/sauce-0x-token-8521.static-avatar-v1.json
 ```
 
+Use `--only` and `--no-blend` for fast crop tuning:
+
+```bash
+/Users/sauce/Documents/New\ project/scripts/build-static-avatar-render-pack.sh \
+  examples/render-packs/sauce-0x-token-8521.static-avatar-v1.json \
+  --only avatar-banner \
+  --no-blend
+```
+
 The runner:
 
 1. Load the render-pack manifest.
@@ -226,6 +235,7 @@ The runner:
 4. Apply `neutral-3q-readable-v1`.
 5. Render all four output targets.
 6. Write `render-pack-manifest.json` with generated timestamps and hashes.
+7. Refresh `preview.html` beside the rendered outputs for browser review.
 
 The current local output path is:
 
@@ -246,6 +256,27 @@ A V1 pack passes only when:
 - output manifest records source URLs and local paths where available
 - repeated runs with the same inputs produce visually equivalent outputs
 - public wording does not imply official affiliation, guaranteed value, or finalized claim mechanics
+
+## Camera Tuning Controls
+
+Each output can own a `cameraOverride` block so the pack can be art-directed crop by crop rather than relying on one global auto camera.
+
+Supported controls:
+
+| Field | Purpose |
+|---|---|
+| `mode` | `autoFrame` by default, or `manual` to use the exact `location` while still looking at the resolved target |
+| `lens` | Per-output focal length in millimeters |
+| `frameMargin` | Auto-frame distance multiplier; larger values pull the camera back |
+| `distance` | Exact camera distance override in auto-frame mode |
+| `distanceScale` | Multiplies the computed auto-frame distance |
+| `targetMode` | `boundsOffset` by default, or `world` for absolute target coordinates |
+| `targetZPct` | Vertical aim point through avatar bounds, where `0` is feet and `1` is head/top |
+| `target` | Bounds-relative x/y offset; z is ignored unless `useLegacyTargetZ` is true |
+| `targetOffset` | Explicit world-space offset added after target resolution |
+| `location` | Camera location seed, or exact location when `mode` is `manual` |
+| `shiftX`, `shiftY` | Blender camera sensor shifts for screen-space composition |
+| `rollDeg` | Optional camera roll in degrees |
 
 ## Non-Goals
 

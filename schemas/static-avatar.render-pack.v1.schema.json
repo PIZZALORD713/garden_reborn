@@ -132,12 +132,38 @@
               "cameraOverride": {
                 "type": "object",
                 "properties": {
+                  "mode": { "type": "string", "enum": ["autoFrame", "manual"] },
+                  "lens": { "type": "number", "exclusiveMinimum": 0 },
+                  "sensorWidth": { "type": "number", "exclusiveMinimum": 0 },
                   "frameMargin": { "type": "number", "exclusiveMinimum": 0 },
+                  "distance": { "type": "number", "exclusiveMinimum": 0 },
+                  "distanceScale": { "type": "number", "exclusiveMinimum": 0 },
+                  "targetMode": { "type": "string", "enum": ["boundsOffset", "world"] },
+                  "targetZPct": { "type": "number", "minimum": 0, "maximum": 1 },
                   "target": {
                     "type": "array",
                     "items": { "type": "number" },
                     "minItems": 3,
                     "maxItems": 3
+                  },
+                  "targetOffset": {
+                    "type": "array",
+                    "items": { "type": "number" },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "location": {
+                    "type": "array",
+                    "items": { "type": "number" },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "shiftX": { "type": "number" },
+                  "shiftY": { "type": "number" },
+                  "rollDeg": { "type": "number" },
+                  "useLegacyTargetZ": {
+                    "type": "boolean",
+                    "description": "When true, adds the third target component as a z offset in boundsOffset mode."
                   }
                 }
               }
