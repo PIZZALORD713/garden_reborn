@@ -158,6 +158,13 @@
                     "minItems": 3,
                     "maxItems": 3
                   },
+                  "rotationEulerDeg": {
+                    "type": "array",
+                    "items": { "type": "number" },
+                    "minItems": 3,
+                    "maxItems": 3
+                  },
+                  "lookAt": { "type": "boolean" },
                   "shiftX": { "type": "number" },
                   "shiftY": { "type": "number" },
                   "rollDeg": { "type": "number" },

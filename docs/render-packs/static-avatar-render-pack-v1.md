@@ -243,6 +243,29 @@ The current local output path is:
 /Users/sauce/Documents/New project/output/render-packs/sauce-0x-token-8521/static-avatar-v1/
 ```
 
+## Blender Add-on Control Surface
+
+The local Blender project now includes an in-Blender authoring panel:
+
+```text
+/Users/sauce/Documents/New project/blender/addons/frienemies_render_toolkit.py
+```
+
+Install/enable helper:
+
+```bash
+/Users/sauce/Documents/New\ project/scripts/install-frienemies-blender-addon.sh
+```
+
+The add-on keeps the manifest as the portable source of truth while giving artists direct camera control in Blender:
+
+1. Assemble the render-pack token scene.
+2. Create one editable Blender camera per output.
+3. Tune cameras in the viewport.
+4. Save active/all cameras back to `cameraOverride` blocks.
+5. Render selected/all outputs and refresh `preview.html`.
+6. Duplicate the pack for another Friendsies token while reusing the camera template.
+
 ## Quality Gates
 
 A V1 pack passes only when:
@@ -275,6 +298,8 @@ Supported controls:
 | `target` | Bounds-relative x/y offset; z is ignored unless `useLegacyTargetZ` is true |
 | `targetOffset` | Explicit world-space offset added after target resolution |
 | `location` | Camera location seed, or exact location when `mode` is `manual` |
+| `rotationEulerDeg` | Exact manual camera rotation saved from Blender viewport tuning |
+| `lookAt` | Set to `false` to render from an exact saved rotation instead of looking at the target |
 | `shiftX`, `shiftY` | Blender camera sensor shifts for screen-space composition |
 | `rollDeg` | Optional camera roll in degrees |
 
