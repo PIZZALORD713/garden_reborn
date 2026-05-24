@@ -2723,24 +2723,22 @@ function downloadRigGlb() {
 // Anim presets
 // ----------------------------
 let ANIM_PRESETS = [
-  ["Idle",          "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Idle.glb"],
   ["Walk",          "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk.glb"],
   ["Walk Arms Low", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk-arms-low.glb"],
-  ["WalkStart",     "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/WalkStart.glb"],
-  ["Wave",          "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Wave.glb"],
-  ["Jump",          "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Jump.glb"],
   ["Dance Rumba",   "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/dance-rumba.glb"],
-  ["Joy Jump",      "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/joy-jump.glb"]
+  ["Joy Jump",      "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/joy-jump.glb"],
+  ["WalkStart",     "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/WalkStart.glb"],
+  ["StartWalking",  "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/StartWalking.glb"],
+  ["FrostCloud",    "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/FrostCloud_Mixamo.glb"]
 ];
 
 // Typed catalog used by AnimController for preloading and auto-cycle logic.
+// walk.glb is used as the calm base loop (idle category) since no standalone idle clip exists.
 const ANIM_LIBRARY = [
-  { name: "Idle",          url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Idle.glb",          loop: true,  category: "idle"  },
-  { name: "Walk",          url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk.glb",          loop: true,  category: "walk"  },
+  { name: "Walk",          url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk.glb",          loop: true,  category: "idle"  },
   { name: "Walk Arms Low", url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk-arms-low.glb", loop: true,  category: "walk"  },
   { name: "WalkStart",     url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/WalkStart.glb",      loop: false, category: "walk"  },
-  { name: "Wave",          url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Wave.glb",           loop: false, category: "emote" },
-  { name: "Jump",          url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Jump.glb",           loop: false, category: "emote" },
+  { name: "StartWalking",  url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/StartWalking.glb",   loop: false, category: "walk"  },
   { name: "Dance Rumba",   url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/dance-rumba.glb",   loop: false, category: "emote" },
   { name: "Joy Jump",      url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/joy-jump.glb",      loop: false, category: "emote" }
 ];
