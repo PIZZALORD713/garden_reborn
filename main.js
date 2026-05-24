@@ -296,10 +296,12 @@ function initCharacterLoader() {
   const gltfLoader = new THREE.GLTFLoader();
   gltfLoader.setDRACOLoader(dracoLoader);
 
+  const fbxLoader = THREE.FBXLoader ? new THREE.FBXLoader() : null;
+
   const textureLoader = new THREE.TextureLoader();
   textureLoader.setCrossOrigin("anonymous");
 
-  return { dracoLoader, gltfLoader, textureLoader };
+  return { dracoLoader, gltfLoader, fbxLoader, textureLoader };
 }
 
 const initEnvironment =
@@ -319,6 +321,7 @@ const controls = sceneBoot.controls;
 const loaderBoot = initCharacterLoader();
 const dracoLoader = loaderBoot.dracoLoader;
 const gltfLoader = loaderBoot.gltfLoader;
+const fbxLoader = loaderBoot.fbxLoader;
 const textureLoader = loaderBoot.textureLoader;
 
 const lighting = initLighting(scene);
@@ -599,6 +602,9 @@ const exportStatus = document.getElementById("exportStatus");
 const exportFallbackLink = document.getElementById("exportFallbackLink");
 const controlAnimSelect = document.getElementById("controlAnimSelect");
 const controlPlayAnimBtn = document.getElementById("controlPlayAnimBtn");
+const animCustomUrl = document.getElementById("animCustomUrl");
+const animLoadUrlBtn = document.getElementById("animLoadUrlBtn");
+const animFileInput = document.getElementById("animFileInput");
 const consoleModal = document.getElementById("consoleModal");
 const consoleViewer = document.getElementById("consoleViewer");
 const consoleModalViewer = document.getElementById("consoleModalViewer");
@@ -1132,6 +1138,20 @@ function loadGLB(url) {
   });
 }
 
+// Wraps FBXLoader in the same { ok, gltf } shape loadGLB uses so playAnimUrl
+// can call either function transparently.
+function loadFBX(url) {
+  if (!fbxLoader) return Promise.resolve({ ok: false, err: "FBXLoader unavailable" });
+  return new Promise((resolve) => {
+    fbxLoader.load(
+      url,
+      (fbx) => resolve({ ok: true, gltf: { animations: fbx.animations || [] } }),
+      undefined,
+      (err) => resolve({ ok: false, err })
+    );
+  });
+}
+
 function loadTextureAsync(url) {
   return new Promise((resolve) => {
     textureLoader.load(
@@ -1487,12 +1507,13 @@ class AnimController {
     if (!loop) clearTimeout(this._timer);
   }
 
-  /** Look up whether a URL should loop (from preloaded cache, then library fallback). */
+  /** Look up whether a URL should loop (preload cache → library → FBX hints → false). */
   loopForUrl(url) {
     const name = this._urlMap[url];
     if (name && this._clips[name]) return this._clips[name].loop;
     const entry = ANIM_LIBRARY.find(e => e.url === url);
-    return entry ? entry.loop : false;
+    if (entry) return entry.loop;
+    return ANIM_LOOP_HINTS.get(url) ?? false;
   }
 
   _onFinished(event) {
@@ -2722,18 +2743,50 @@ function downloadRigGlb() {
 // ----------------------------
 // Anim presets
 // ----------------------------
+const _AC1 = "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/";
+const _AC2 = "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/";
+
 let ANIM_PRESETS = [
-  ["Walk",          "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk.glb"],
-  ["Walk Arms Low", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk-arms-low.glb"],
-  ["Dance Rumba",   "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/dance-rumba.glb"],
-  ["Joy Jump",      "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/joy-jump.glb"],
-  ["WalkStart",     "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/WalkStart.glb"],
-  ["StartWalking",  "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/StartWalking.glb"],
-  ["FrostCloud",    "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/FrostCloud_Mixamo.glb"]
+  // ── GLB: animation_collection2 ──────────────────────────────────────────────
+  ["Walk",                _AC2 + "walk.glb"],
+  ["Walk Arms Low",       _AC2 + "walk-arms-low.glb"],
+  ["Dance Rumba",         _AC2 + "dance-rumba.glb"],
+  ["Joy Jump",            _AC2 + "joy-jump.glb"],
+  // ── GLB: animation_collection ───────────────────────────────────────────────
+  ["WalkStart",           _AC1 + "WalkStart.glb"],
+  ["StartWalking",        _AC1 + "StartWalking.glb"],
+  ["FrostCloud",          _AC1 + "FrostCloud_Mixamo.glb"],
+  // ── FBX: animation_collection (garden actions) ──────────────────────────────
+  ["Box Idle",            _AC1 + "box%20idle.fbx"],
+  ["Box Turn",            _AC1 + "box%20turn.fbx"],
+  ["Box Turn Alt",        _AC1 + "box%20turn%20%282%29.fbx"],
+  ["Box Walk Arc",        _AC1 + "box%20walk%20arc.fbx"],
+  ["Cow Milking",         _AC1 + "cow%20milking.fbx"],
+  ["Dig & Plant Seeds",   _AC1 + "dig%20and%20plant%20seeds.fbx"],
+  ["Holding Idle",        _AC1 + "holding%20idle.fbx"],
+  ["Holding Turn Left",   _AC1 + "holding%20turn%20left.fbx"],
+  ["Holding Turn Right",  _AC1 + "holding%20turn%20right.fbx"],
+  ["Holding Walk",        _AC1 + "holding%20walk.fbx"],
+  ["Kneeling Idle",       _AC1 + "kneeling%20idle.fbx"],
+  ["Pick Fruit",          _AC1 + "pick%20fruit.fbx"],
+  ["Pick Fruit Alt",      _AC1 + "pick%20fruit%20%282%29.fbx"],
+  ["Pick Fruit Alt 2",    _AC1 + "pick%20fruit%20%283%29.fbx"],
+  ["Plant A Plant",       _AC1 + "plant%20a%20plant.fbx"],
+  ["Plant Tree",          _AC1 + "plant%20tree.fbx"],
+  ["Pull Plant",          _AC1 + "pull%20plant.fbx"],
+  ["Pull Plant Alt",      _AC1 + "pull%20plant%20%282%29.fbx"],
+  ["Watering",            _AC1 + "watering.fbx"],
+  ["Wheelbarrow Dump",    _AC1 + "wheelbarrow%20dump.fbx"],
+  ["Wheelbarrow Idle",    _AC1 + "wheelbarrow%20idle.fbx"],
+  ["Wheelbarrow Walk",    _AC1 + "wheelbarrow%20walk.fbx"],
+  ["Wheelbarrow Walk Alt",_AC1 + "wheelbarrow%20walk%20%282%29.fbx"],
+  ["Wheelbarrow Turn",    _AC1 + "wheelbarrow%20walk%20turn.fbx"],
+  ["Wheelbarrow Turn Alt",_AC1 + "wheelbarrow%20walk%20turn%20%282%29.fbx"],
 ];
 
 // Typed catalog used by AnimController for preloading and auto-cycle logic.
 // walk.glb is used as the calm base loop (idle category) since no standalone idle clip exists.
+// FBX files are not preloaded here — they're only in ANIM_PRESETS for manual selection.
 const ANIM_LIBRARY = [
   { name: "Walk",          url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk.glb",          loop: true,  category: "idle"  },
   { name: "Walk Arms Low", url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk-arms-low.glb", loop: true,  category: "walk"  },
@@ -2742,6 +2795,19 @@ const ANIM_LIBRARY = [
   { name: "Dance Rumba",   url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/dance-rumba.glb",   loop: false, category: "emote" },
   { name: "Joy Jump",      url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/joy-jump.glb",      loop: false, category: "emote" }
 ];
+
+// Loop hints for FBX files that aren't in ANIM_LIBRARY (not preloaded).
+// All absent URLs default to loop: false (one-shot).
+const ANIM_LOOP_HINTS = new Map([
+  [_AC1 + "box%20idle.fbx",                      true],
+  [_AC1 + "box%20walk%20arc.fbx",                true],
+  [_AC1 + "holding%20idle.fbx",                  true],
+  [_AC1 + "holding%20walk.fbx",                  true],
+  [_AC1 + "kneeling%20idle.fbx",                 true],
+  [_AC1 + "wheelbarrow%20idle.fbx",              true],
+  [_AC1 + "wheelbarrow%20walk.fbx",              true],
+  [_AC1 + "wheelbarrow%20walk%20%282%29.fbx",    true],
+]);
 
 const ANIM_MANIFEST_URL =
   "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/animations.json";
@@ -3115,13 +3181,15 @@ function loadToken(tokenId) {
 // ----------------------------
 // External animation
 // ----------------------------
-async function playAnimUrl(url, loadIdGuard = currentLoadId) {
+// hint: "fbx" | "glb" | null — overrides URL extension detection (used for local blob URLs)
+async function playAnimUrl(url, loadIdGuard = currentLoadId, hint = null) {
   if (!url) return setStatus("pick an animation");
   if (!mixer || !bodyRoot) return setStatus("load a fRiENDSiES asset first");
 
   setStatus("loading anim…");
 
-  const res = await loadGLB(url);
+  const isFbx = hint === "fbx" || (!hint && /\.fbx($|\?)/i.test(url));
+  const res = await (isFbx ? loadFBX(url) : loadGLB(url));
   if (loadIdGuard !== currentLoadId) return;
 
   if (!res.ok) {
@@ -4322,6 +4390,30 @@ controlAnimSelect?.addEventListener("change", async () => {
   if (onboardingAnimSelect) onboardingAnimSelect.value = controlAnimSelect.value;
   if (!mixer || !bodyRoot) return;
   await playAnimUrl(getSelectedAnimUrl());
+});
+
+// ── Custom URL import ─────────────────────────────────────────────────────────
+animLoadUrlBtn?.addEventListener("click", async () => {
+  const url = animCustomUrl?.value?.trim();
+  if (!url) return setStatus("enter a URL first");
+  await playAnimUrl(url);
+});
+
+animCustomUrl?.addEventListener("keydown", async (e) => {
+  if (e.key !== "Enter") return;
+  const url = animCustomUrl.value.trim();
+  if (url) await playAnimUrl(url);
+});
+
+// ── Local file import ─────────────────────────────────────────────────────────
+animFileInput?.addEventListener("change", async () => {
+  const file = animFileInput.files?.[0];
+  if (!file) return;
+  const ext = file.name.split(".").pop().toLowerCase();
+  const objectUrl = URL.createObjectURL(file);
+  await playAnimUrl(objectUrl, currentLoadId, ext === "fbx" ? "fbx" : "glb");
+  URL.revokeObjectURL(objectUrl);
+  animFileInput.value = "";
 });
 
 openConsoleModalBtn?.addEventListener("click", () => {
