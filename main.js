@@ -1353,6 +1353,160 @@ function sanitizeClip(clip) {
   return out;
 }
 
+// ----------------------------
+// Animation state machine with crossfade and auto-idle-cycling
+// ----------------------------
+class AnimController {
+  constructor() {
+    this._mixer     = null;
+    this._active    = null;   // THREE.AnimationAction currently blending in
+    this._clips     = {};     // name → { clip: THREE.AnimationClip, loop: boolean }
+    this._urlMap    = {};     // url  → name (reverse lookup for playAnimUrl)
+    this._idleNames = [];
+    this._idleIdx   = 0;
+    this._state     = "none"; // "none" | "idle" | "walk" | "emote"
+    this._retToIdle = false;
+    this._timer     = null;
+    this._guard     = 0;      // increments on detach so stale preload callbacks abort
+    this._onFinished = this._onFinished.bind(this);
+  }
+
+  /** Bind to a freshly created AnimationMixer. */
+  attach(mixer) {
+    this._guard++;
+    this._mixer = mixer;
+    this._active = null;
+    this._state = "none";
+    this._retToIdle = false;
+    clearTimeout(this._timer);
+    this._timer = null;
+    mixer.addEventListener("finished", this._onFinished);
+  }
+
+  /** Unbind before clearing a character. */
+  detach() {
+    this._guard++;
+    clearTimeout(this._timer);
+    this._timer = null;
+    if (this._mixer) this._mixer.removeEventListener("finished", this._onFinished);
+    this._mixer = null;
+    this._active = null;
+    this._state = "none";
+    this._retToIdle = false;
+  }
+
+  /**
+   * Background-preload every clip in the library.
+   * Safe to call multiple times; skips already-loaded names.
+   */
+  async preload(library) {
+    const g = this._guard;
+    for (const entry of library) {
+      if (this._clips[entry.name]) continue;
+      try {
+        const res = await loadGLB(entry.url);
+        if (g !== this._guard) return;
+        if (!res.ok) continue;
+        const anims = res.gltf.animations || [];
+        if (!anims.length) continue;
+        this._clips[entry.name] = { clip: sanitizeClip(anims[0]), loop: entry.loop };
+        this._urlMap[entry.url]  = entry.name;
+      } catch (_) { /* non-fatal */ }
+    }
+    this._idleNames = library
+      .filter(e => e.category === "idle" && this._clips[e.name])
+      .map(e => e.name);
+  }
+
+  _action(name) {
+    const entry = this._clips[name];
+    if (!entry || !this._mixer) return null;
+    const a = this._mixer.clipAction(entry.clip);
+    a.setLoop(entry.loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+    a.clampWhenFinished = !entry.loop;
+    return a;
+  }
+
+  _crossFade(newAction, fadeDur) {
+    if (!newAction) return;
+    newAction.reset().play();
+    if (this._active && this._active !== newAction) {
+      this._active.crossFadeTo(newAction, fadeDur, false);
+    }
+    this._active = newAction;
+    currentAction = setAvatarRuntimeField("currentAction", newAction);
+  }
+
+  /** Transition to idle, then schedule periodic random emotes. */
+  goIdle(fadeDur = 0.6) {
+    clearTimeout(this._timer);
+    this._timer = null;
+    this._state = "idle";
+    this._retToIdle = false;
+    if (this._idleNames.length) {
+      const name = this._idleNames[this._idleIdx % this._idleNames.length];
+      this._crossFade(this._action(name), fadeDur);
+    }
+    this._scheduleEmote();
+  }
+
+  _scheduleEmote() {
+    clearTimeout(this._timer);
+    const delay = 12000 + Math.random() * 16000; // 12–28 s
+    this._timer = setTimeout(() => {
+      if (this._state !== "idle") return;
+      const emoteNames = Object.keys(this._clips).filter(n => !this._clips[n].loop);
+      if (!emoteNames.length) { this._scheduleEmote(); return; }
+      const pick = emoteNames[Math.floor(Math.random() * emoteNames.length)];
+      this.playByName(pick, 0.4);
+    }, delay);
+  }
+
+  /** Play a clip from the preloaded cache by name. */
+  playByName(name, fadeDur = 0.4) {
+    const entry = this._clips[name];
+    if (!entry) return false;
+    const action = this._action(name);
+    if (!action) return false;
+    this._crossFade(action, fadeDur);
+    this._state = entry.loop ? "walk" : "emote";
+    this._retToIdle = !entry.loop;
+    if (!entry.loop) clearTimeout(this._timer);
+    return true;
+  }
+
+  /** Play any THREE.AnimationClip directly (used by playAnimUrl for ad-hoc clips). */
+  playRaw(clip, loop = false, fadeDur = 0.4) {
+    if (!this._mixer) return;
+    const action = this._mixer.clipAction(clip);
+    action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+    action.clampWhenFinished = !loop;
+    this._crossFade(action, fadeDur);
+    this._state = loop ? "walk" : "emote";
+    this._retToIdle = !loop;
+    if (!loop) clearTimeout(this._timer);
+  }
+
+  /** Look up whether a URL should loop (from preloaded cache, then library fallback). */
+  loopForUrl(url) {
+    const name = this._urlMap[url];
+    if (name && this._clips[name]) return this._clips[name].loop;
+    const entry = ANIM_LIBRARY.find(e => e.url === url);
+    return entry ? entry.loop : false;
+  }
+
+  _onFinished(event) {
+    if (event.action === this._active && this._retToIdle) {
+      this._retToIdle = false;
+      this.goIdle(0.5);
+    }
+  }
+
+  get state() { return this._state; }
+}
+
+const animCtrl = new AnimController();
+
 // ---- face overlay ----
 function clearFaceOverlay({
   protectedTextures = new Set(),
@@ -1545,6 +1699,8 @@ function clearAvatar() {
     disposeStats.textures += 1;
   }
   lastFaceTexture = setAvatarRuntimeField("lastFaceTexture", null);
+
+  animCtrl.detach();
 
   if (mixer) {
     mixer.stopAllAction();
@@ -2567,10 +2723,26 @@ function downloadRigGlb() {
 // Anim presets
 // ----------------------------
 let ANIM_PRESETS = [
-  ["WalkStart", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/WalkStart.glb"],
-  ["Idle", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Idle.glb"],
-  ["Wave", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Wave.glb"],
-  ["Jump", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Jump.glb"]
+  ["Idle",          "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Idle.glb"],
+  ["Walk",          "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk.glb"],
+  ["Walk Arms Low", "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk-arms-low.glb"],
+  ["WalkStart",     "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/WalkStart.glb"],
+  ["Wave",          "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Wave.glb"],
+  ["Jump",          "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Jump.glb"],
+  ["Dance Rumba",   "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/dance-rumba.glb"],
+  ["Joy Jump",      "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/joy-jump.glb"]
+];
+
+// Typed catalog used by AnimController for preloading and auto-cycle logic.
+const ANIM_LIBRARY = [
+  { name: "Idle",          url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Idle.glb",          loop: true,  category: "idle"  },
+  { name: "Walk",          url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk.glb",          loop: true,  category: "walk"  },
+  { name: "Walk Arms Low", url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/walk-arms-low.glb", loop: true,  category: "walk"  },
+  { name: "WalkStart",     url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/WalkStart.glb",      loop: false, category: "walk"  },
+  { name: "Wave",          url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Wave.glb",           loop: false, category: "emote" },
+  { name: "Jump",          url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection@main/Jump.glb",           loop: false, category: "emote" },
+  { name: "Dance Rumba",   url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/dance-rumba.glb",   loop: false, category: "emote" },
+  { name: "Joy Jump",      url: "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/joy-jump.glb",      loop: false, category: "emote" }
 ];
 
 const ANIM_MANIFEST_URL =
@@ -2600,7 +2772,11 @@ async function loadAnimationManifest() {
     if (!Array.isArray(data)) throw new Error("manifest must be an array");
     const parsed = data.map(normalizeAnimManifestItem).filter(Boolean);
     if (parsed.length) {
-      ANIM_PRESETS = parsed;
+      // Merge: add manifest entries not already present by URL so all library clips stay available
+      const knownUrls = new Set(ANIM_PRESETS.map(([, url]) => url));
+      for (const item of parsed) {
+        if (!knownUrls.has(item[1])) ANIM_PRESETS.push(item);
+      }
       logLine(`Loaded animation manifest (${parsed.length} items)`, "dim");
     }
   } catch (err) {
@@ -2844,13 +3020,12 @@ async function loadFriendsies(id) {
   avatarGroup.updateMatrixWorld(true);
 
   mixer = setAvatarRuntimeField("mixer", new THREE.AnimationMixer(bodyRoot));
+  animCtrl.attach(mixer);
 
-  // if body has built-in clip (idle), start it until we play external anim
+  // if body has built-in clip (idle), play it through the controller as a temporary placeholder
   const bodyClips = bodyRes.gltf.animations || [];
   if (bodyClips.length) {
-    const clip = sanitizeClip(bodyClips[0]);
-    currentAction = setAvatarRuntimeField("currentAction", mixer.clipAction(clip));
-    currentAction.reset().play();
+    animCtrl.playRaw(sanitizeClip(bodyClips[0]), true, 0);
   }
 
   // (bodyRoot already tracked/added above)
@@ -2913,6 +3088,14 @@ async function loadFriendsies(id) {
 
   // Auto-play selected animation after load
   await playAnimUrl(getSelectedAnimUrl(), loadId);
+
+  // Preload all library clips in background; once ready, start idle-cycle if uninterrupted
+  animCtrl.preload(ANIM_LIBRARY).then(() => {
+    if (loadId !== currentLoadId) return;
+    if (animCtrl.state === "none" || animCtrl.state === "idle") {
+      animCtrl.goIdle(0.6);
+    }
+  });
 }
 
 function loadToken(tokenId) {
@@ -2941,7 +3124,7 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
   setStatus("loading anim…");
 
   const res = await loadGLB(url);
-  if (loadIdGuard !== currentLoadId) return; // user loaded a new character mid-load
+  if (loadIdGuard !== currentLoadId) return;
 
   if (!res.ok) {
     logLine(`anim load failed ❌ ${url}`, "err");
@@ -2952,10 +3135,10 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId) {
   if (!clips.length) return setStatus("anim has 0 clips ❌");
 
   const clip = sanitizeClip(clips[0]);
+  const loop = animCtrl.loopForUrl(url);
 
-  mixer.stopAllAction();
-  currentAction = setAvatarRuntimeField("currentAction", mixer.clipAction(clip));
-  currentAction.reset().play();
+  // Crossfade into the new clip; non-looping clips return to idle automatically
+  animCtrl.playRaw(clip, loop, 0.4);
 
   setStatus(`playing anim ✅ ${clip.name || "unnamed"}`);
   logLine(`▶ Playing: ${clip.name || "unnamed"} (${url})`);
