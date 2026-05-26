@@ -429,6 +429,23 @@ canvas {
   gap: 8px;
 }
 
+/* Animate panel: URL row (input + button side by side) */
+.animImportRow {
+  display: flex;
+  gap: 6px;
+}
+.animImportRow .searchInput {
+  flex: 1;
+  min-width: 0;
+}
+.animImportHeading {
+  margin-top: 4px;
+  opacity: 0.55;
+  font-size: var(--text-xs, 11px);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 /* Inline console viewer (compact height) */
 .consoleViewHeader {
   display: flex;

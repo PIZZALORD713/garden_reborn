@@ -15,7 +15,7 @@
     <meta property="og:title" content="fRiENEMiES Studio — View • Animate • Export" />
     <meta property="og:description" content="Community-built studio for viewing, previewing animations, and exporting rig-ready .glb assets." />
     <meta property="og:type" content="website" />
-    <link rel="stylesheet" href="/style.css?v=2026-03-02-prismatic-refactor-v2" />
+    <link rel="stylesheet" href="/style.css?v=2026-05-26a" />
   </head>
 
   <body>
@@ -134,9 +134,17 @@
 
             <!-- ANIMATE view -->
             <section id="view-animate" class="shelfView" data-view="animate">
-              <label class="fieldLabel" for="controlAnimSelect">Animation</label>
+              <label class="fieldLabel" for="controlAnimSelect">Animation library</label>
               <select id="controlAnimSelect" class="searchInput"></select>
-              <button id="controlPlayAnimBtn" class="sheetAction" type="button">Play selected animation</button>
+              <button id="controlPlayAnimBtn" class="sheetAction" type="button">Play selected</button>
+              <label class="fieldLabel animImportHeading">Import animation</label>
+              <label class="fieldLabel" for="animCustomUrl">From URL <small>(.glb or .fbx)</small></label>
+              <div class="animImportRow">
+                <input id="animCustomUrl" type="url" class="searchInput" placeholder="https://…" autocomplete="off">
+                <button id="animLoadUrlBtn" class="sheetAction" type="button">Load</button>
+              </div>
+              <label class="fieldLabel" for="animFileInput">From local file</label>
+              <input id="animFileInput" type="file" accept=".glb,.gltf,.fbx" class="searchInput">
             </section>
 
             <!-- LOOK view -->
@@ -305,7 +313,7 @@
       }
     }
     </script>
-    <script type="module" src="/three-imports.js"></script>
+    <script type="module" src="/three-imports.js?v=2026-05-26a"></script>
     <script type="module" src="/scene-bootstrap.js?v=2026-02-18a"></script>
     <script type="module" src="/identifier-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/routing-utils.js?v=2026-02-18a"></script>
@@ -329,6 +337,6 @@
     <script type="module" src="/control-shell-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/interaction-shell-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/app-state-store.js?v=2026-02-18a"></script>
-    <script type="module" src="/main.js?v=2026-02-18o"></script>
+    <script type="module" src="/main.js?v=2026-05-26a"></script>
   </body>
 </html>
