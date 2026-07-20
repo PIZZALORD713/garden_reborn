@@ -9,27 +9,7 @@
 // - Gear button toggles ALL UI (controls + transcript)
 // - Transcript panel can collapse independently
 // - Trait URLs / Rig Bones print into transcript (not dev console)
-//
-// UPDATE (2026-01-27):
-// - Panorama sphere fix: avoid double-inverting (scale(-1...) + BackSide).
-//   We keep geo.scale(-1,1,1) and switch material side to FrontSide.
-//   Also force pano to render as true background.
 // ------------------------------------------------------------
-
-// ----------------------------
-// Cache busting for static assets (update this when you replace files)
-// ----------------------------
-const ASSET_VERSION = "2026-02-13a";
-
-// ----------------------------
-// Assets in your repo root
-// ----------------------------
-const PANORAMA_URL = `/garden-cotton-clouds.png?v=${encodeURIComponent(
-  ASSET_VERSION
-)}`;
-const EXR_ENV_URL = `/friendsies_cloud_overcast_studio_v1.exr?v=${encodeURIComponent(
-  ASSET_VERSION
-)}`;
 
 // ----------------------------
 // Metadata
@@ -304,14 +284,6 @@ function initCharacterLoader() {
   return { dracoLoader, gltfLoader, fbxLoader, textureLoader };
 }
 
-const initEnvironment =
-  sceneBootstrapUtils.initEnvironment ||
-  function initEnvironmentFallback(scene) {
-    const panoGroup = new THREE.Group();
-    scene.add(panoGroup);
-    return { panoGroup };
-  };
-
 const sceneBoot = initScene();
 const scene = sceneBoot.scene;
 const camera = sceneBoot.camera;
@@ -329,9 +301,6 @@ const hemisphereLight = lighting.hemisphereLight;
 const ambientLight = lighting.ambientLight;
 const keyLight = lighting.keyLight;
 const rim = lighting.rim;
-
-const environment = initEnvironment(scene);
-const panoGroup = environment.panoGroup;
 
 // ----------------------------
 // Look controls + presets
@@ -939,72 +908,6 @@ function copyCurrentLook() {
 // are fixed in world-space. Make them loosely follow the camera to keep a consistent fill.
 const MOBILE_CAMERA_FOLLOW_LIGHTS = isMobileLike();
 const tmpV3 = new THREE.Vector3();
-
-async function loadPanoramaSphere() {
-  return new Promise((resolve) => {
-    textureLoader.load(
-      PANORAMA_URL,
-      (panoTex) => {
-        panoTex.colorSpace = THREE.SRGBColorSpace;
-        panoTex.flipY = true;
-
-        const geo = new THREE.SphereGeometry(80, 64, 32);
-
-        // ✅ Keep this inversion (camera is inside the sphere)
-        geo.scale(-1, 1, 1);
-
-        // ✅ FIX: do NOT use BackSide when you've already inverted the geometry.
-        // Also force background-ish behavior.
-        const mat = new THREE.MeshBasicMaterial({
-          map: panoTex,
-          side: THREE.FrontSide,
-          depthWrite: false,
-          depthTest: false
-        });
-        mat.toneMapped = false;
-
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.name = "PANORAMA_SPHERE";
-
-        // Ensure it renders first (so it never covers the avatar)
-        mesh.renderOrder = -1000;
-
-        panoGroup.clear();
-        panoGroup.add(mesh);
-
-        resolve(true);
-      },
-      undefined,
-      () => resolve(false)
-    );
-  });
-}
-
-async function loadExrEnvironment() {
-  return new Promise((resolve) => {
-    const exrLoader = new THREE.EXRLoader();
-    exrLoader.load(
-      EXR_ENV_URL,
-      (tex) => {
-        const pmrem = new THREE.PMREMGenerator(renderer);
-        pmrem.compileEquirectangularShader();
-
-        const envRT = pmrem.fromEquirectangular(tex);
-        const envMap = envRT.texture;
-
-        scene.environment = envMap;
-        scene.environmentIntensity = 1 / Math.PI; // compensate for r175 PMREM intensity change
-
-        tex.dispose();
-        pmrem.dispose();
-
-        resolve(true);
-      },
-      undefined,
-      () => resolve(false)
-    );
-  });
-}
 
 // ----------------------------
 // Avatar group
@@ -1717,15 +1620,6 @@ function getProtectedTextureSet() {
 
   if (scene?.environment?.isTexture) protectedTextures.add(scene.environment);
   if (scene?.background?.isTexture) protectedTextures.add(scene.background);
-
-  panoGroup?.traverse?.((node) => {
-    if (!node?.material) return;
-    const mats = Array.isArray(node.material) ? node.material : [node.material];
-    mats.forEach((mat) => {
-      if (mat?.map?.isTexture) protectedTextures.add(mat.map);
-      if (mat?.envMap?.isTexture) protectedTextures.add(mat.envMap);
-    });
-  });
 
   return protectedTextures;
 }
@@ -4928,14 +4822,6 @@ window.addEventListener("popstate", (event) => {
     `Preset: ${DEFAULT_LOOK_PRESET}`,
     { isDev: IS_DEV, logLine }
   );
-  setStatus("loading pano/env…");
-
-  const panoOk = await loadPanoramaSphere();
-  const envOk = await loadExrEnvironment();
-
-  logLine(`🖼 pano: ${panoOk ? "ok" : "failed"} (${PANORAMA_URL})`);
-  logLine(`🌫 env: ${envOk ? "ok" : "failed"} (${EXR_ENV_URL})`);
-
   setStatus("fetching metadata…");
 
   fetch(METADATA_URL)
@@ -5026,8 +4912,6 @@ window.addEventListener("resize", () => {
     });
   }
 });
-
-
 
 
 
