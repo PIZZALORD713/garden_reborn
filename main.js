@@ -605,6 +605,8 @@ const controlPlayAnimBtn = document.getElementById("controlPlayAnimBtn");
 const animCustomUrl = document.getElementById("animCustomUrl");
 const animLoadUrlBtn = document.getElementById("animLoadUrlBtn");
 const animFileInput = document.getElementById("animFileInput");
+const sceneModeBtn = document.getElementById("sceneModeBtn");
+const animSceneHint = document.getElementById("animSceneHint");
 const consoleModal = document.getElementById("consoleModal");
 const consoleViewer = document.getElementById("consoleViewer");
 const consoleModalViewer = document.getElementById("consoleModalViewer");
@@ -1387,6 +1389,9 @@ class AnimController {
     this._state     = "none"; // "none" | "idle" | "walk" | "emote"
     this._retToIdle = false;
     this._timer     = null;
+    this._sceneTimer = null;
+    this._sceneMode = false;
+    this._lastSceneUrl = "";
     this._guard     = 0;      // increments on detach so stale preload callbacks abort
     this._onFinished = this._onFinished.bind(this);
   }
@@ -1400,6 +1405,8 @@ class AnimController {
     this._retToIdle = false;
     clearTimeout(this._timer);
     this._timer = null;
+    clearTimeout(this._sceneTimer);
+    this._sceneTimer = null;
     mixer.addEventListener("finished", this._onFinished);
   }
 
@@ -1408,6 +1415,9 @@ class AnimController {
     this._guard++;
     clearTimeout(this._timer);
     this._timer = null;
+    clearTimeout(this._sceneTimer);
+    this._sceneTimer = null;
+    this._sceneMode = false;
     if (this._mixer) this._mixer.removeEventListener("finished", this._onFinished);
     this._mixer = null;
     this._active = null;
@@ -1449,9 +1459,15 @@ class AnimController {
 
   _crossFade(newAction, fadeDur) {
     if (!newAction) return;
-    newAction.reset().play();
-    if (this._active && this._active !== newAction) {
-      this._active.crossFadeTo(newAction, fadeDur, false);
+    const previous = this._active;
+    newAction.enabled = true;
+    newAction.reset();
+    newAction.setEffectiveTimeScale(1);
+    newAction.setEffectiveWeight(1);
+    newAction.fadeIn(Math.max(0.05, fadeDur || 0.01));
+    newAction.play();
+    if (previous && previous !== newAction) {
+      previous.crossFadeTo(newAction, Math.max(0.05, fadeDur || 0.01), true);
     }
     this._active = newAction;
     currentAction = setAvatarRuntimeField("currentAction", newAction);
@@ -1469,6 +1485,29 @@ class AnimController {
     }
     this._scheduleEmote();
   }
+
+  setSceneMode(enabled, { playNext = null } = {}) {
+    this._sceneMode = Boolean(enabled);
+    clearTimeout(this._sceneTimer);
+    this._sceneTimer = null;
+    if (this._sceneMode && typeof playNext === "function") {
+      this._queueSceneBeat(playNext, 900);
+    }
+  }
+
+  _queueSceneBeat(playNext, delayMs = null) {
+    clearTimeout(this._sceneTimer);
+    if (!this._sceneMode || typeof playNext !== "function") return;
+    const delay = delayMs ?? (7000 + Math.random() * 9000);
+    this._sceneTimer = setTimeout(() => playNext(), delay);
+  }
+
+  noteSceneUrl(url) {
+    this._lastSceneUrl = String(url || "");
+  }
+
+  get sceneMode() { return this._sceneMode; }
+  get lastSceneUrl() { return this._lastSceneUrl; }
 
   _scheduleEmote() {
     clearTimeout(this._timer);
@@ -2812,6 +2851,91 @@ const ANIM_LOOP_HINTS = new Map([
 const ANIM_MANIFEST_URL =
   "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/animations.json";
 
+const SESSION_ANIM_OBJECT_URLS = new Set();
+
+function inferAnimationCategory(name = "", url = "") {
+  const text = `${name} ${url}`.toLowerCase();
+  if (/idle|stand|breath|wait|hold|kneel/.test(text)) return "idle";
+  if (/walk|run|jog|locomotion|turn|strafe/.test(text)) return "move";
+  if (/dance|jump|gesture|wave|pick|plant|water|dig|pull|dump|milk|action|attack|emote/.test(text)) return "emote";
+  return "emote";
+}
+
+function getAnimationPresetMeta(url) {
+  const libraryEntry = ANIM_LIBRARY.find((entry) => entry.url === url);
+  const preset = ANIM_PRESETS.find(([, presetUrl]) => presetUrl === url);
+  const name = libraryEntry?.name || preset?.[0] || "Animation";
+  const loop = animCtrl?.loopForUrl?.(url) ?? /idle|walk|run|loop/i.test(name);
+  const category = libraryEntry?.category || inferAnimationCategory(name, url);
+  return { name, url, loop, category };
+}
+
+function chooseSceneAnimationUrl() {
+  const candidates = ANIM_PRESETS
+    .map(([, url]) => getAnimationPresetMeta(url))
+    .filter((entry) => entry.url);
+  if (!candidates.length) return "";
+
+  const roll = Math.random();
+  const preferredCategory = roll < 0.42 ? "idle" : roll < 0.72 ? "move" : "emote";
+  let pool = candidates.filter((entry) => entry.category === preferredCategory);
+  if (!pool.length) pool = candidates.filter((entry) => entry.loop === (preferredCategory !== "emote"));
+  if (!pool.length) pool = candidates;
+
+  const freshPool = pool.filter((entry) => entry.url !== animCtrl.lastSceneUrl);
+  const pickPool = freshPool.length ? freshPool : pool;
+  return pickPool[Math.floor(Math.random() * pickPool.length)]?.url || "";
+}
+
+function updateSceneModeUi() {
+  const enabled = animCtrl.sceneMode;
+  sceneModeBtn?.setAttribute("aria-pressed", enabled ? "true" : "false");
+  sceneModeBtn?.classList.toggle("is-active", enabled);
+  if (sceneModeBtn) sceneModeBtn.textContent = enabled ? "Scene mode on" : "Scene mode";
+  if (animSceneHint) {
+    animSceneHint.textContent = enabled
+      ? "Scene mode is chaining animation beats with longer blends for a more natural preview."
+      : "Scene mode chains idles, walks, and emotes so previews feel like an in-game moment.";
+  }
+}
+
+async function playNextSceneBeat() {
+  if (!animCtrl.sceneMode) return;
+  const url = chooseSceneAnimationUrl();
+  if (!url) return;
+  animCtrl.noteSceneUrl(url);
+  await playAnimUrl(url, currentLoadId, null, { fadeDur: 0.85, sceneBeat: true });
+  const { loop, category } = getAnimationPresetMeta(url);
+  const nextDelay = loop || category !== "emote" ? 8500 + Math.random() * 9000 : 3500 + Math.random() * 5000;
+  animCtrl._queueSceneBeat(playNextSceneBeat, nextDelay);
+}
+
+window.addEventListener("beforeunload", () => {
+  for (const objectUrl of SESSION_ANIM_OBJECT_URLS) URL.revokeObjectURL(objectUrl);
+  SESSION_ANIM_OBJECT_URLS.clear();
+});
+
+function registerSessionAnimationFiles(files = []) {
+  const added = [];
+  for (const file of files) {
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["glb", "gltf", "fbx"].includes(ext)) continue;
+    const objectUrl = URL.createObjectURL(file);
+    SESSION_ANIM_OBJECT_URLS.add(objectUrl);
+    const baseName = file.name.replace(/\.(glb|gltf|fbx)$/i, "").replace(/[_-]+/g, " ").trim() || file.name;
+    const name = `Local • ${baseName}`;
+    ANIM_PRESETS.push([name, objectUrl]);
+    if (/idle|walk|run|loop|hold/i.test(baseName)) ANIM_LOOP_HINTS.set(objectUrl, true);
+    added.push([name, objectUrl, ext]);
+  }
+  if (added.length) {
+    populateOnboardingAnimSelect();
+    if (controlAnimSelect) controlAnimSelect.value = added[0][1];
+    if (onboardingAnimSelect) onboardingAnimSelect.value = added[0][1];
+  }
+  return added;
+}
+
 const animUtils = window.FrienemiesAnimUtils || {};
 const animSelectUtils = window.FrienemiesAnimSelectUtils || {};
 const normalizeAnimManifestItem =
@@ -3182,7 +3306,7 @@ function loadToken(tokenId) {
 // External animation
 // ----------------------------
 // hint: "fbx" | "glb" | null — overrides URL extension detection (used for local blob URLs)
-async function playAnimUrl(url, loadIdGuard = currentLoadId, hint = null) {
+async function playAnimUrl(url, loadIdGuard = currentLoadId, hint = null, options = {}) {
   if (!url) return setStatus("pick an animation");
   if (!mixer || !bodyRoot) return setStatus("load a fRiENDSiES asset first");
 
@@ -3202,12 +3326,13 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId, hint = null) {
 
   const clip = sanitizeClip(clips[0]);
   const loop = animCtrl.loopForUrl(url);
+  const fadeDur = Number.isFinite(options.fadeDur) ? options.fadeDur : 0.65;
 
   // Crossfade into the new clip; non-looping clips return to idle automatically
-  animCtrl.playRaw(clip, loop, 0.4);
+  animCtrl.playRaw(clip, loop, fadeDur);
 
   setStatus(`playing anim ✅ ${clip.name || "unnamed"}`);
-  logLine(`▶ Playing: ${clip.name || "unnamed"} (${url})`);
+  logLine(`${options.sceneBeat ? "🎬 Scene beat" : "▶ Playing"}: ${clip.name || "unnamed"} (${url})`);
 }
 
 // ----------------------------
@@ -4383,11 +4508,27 @@ document.querySelectorAll("[data-control-preset]").forEach((btn) => {
 });
 
 controlPlayAnimBtn?.addEventListener("click", async () => {
+  animCtrl.setSceneMode(false);
+  updateSceneModeUi();
   await playAnimUrl(getSelectedAnimUrl());
+});
+
+sceneModeBtn?.addEventListener("click", async () => {
+  const enabled = !animCtrl.sceneMode;
+  animCtrl.setSceneMode(enabled, { playNext: playNextSceneBeat });
+  updateSceneModeUi();
+  if (enabled) {
+    setStatus("scene mode: watching the character act naturally 🎬");
+    await playNextSceneBeat();
+  } else {
+    setStatus("scene mode off");
+  }
 });
 
 controlAnimSelect?.addEventListener("change", async () => {
   if (onboardingAnimSelect) onboardingAnimSelect.value = controlAnimSelect.value;
+  animCtrl.setSceneMode(false);
+  updateSceneModeUi();
   if (!mixer || !bodyRoot) return;
   await playAnimUrl(getSelectedAnimUrl());
 });
@@ -4396,23 +4537,36 @@ controlAnimSelect?.addEventListener("change", async () => {
 animLoadUrlBtn?.addEventListener("click", async () => {
   const url = animCustomUrl?.value?.trim();
   if (!url) return setStatus("enter a URL first");
+  animCtrl.setSceneMode(false);
+  updateSceneModeUi();
   await playAnimUrl(url);
 });
 
 animCustomUrl?.addEventListener("keydown", async (e) => {
   if (e.key !== "Enter") return;
   const url = animCustomUrl.value.trim();
-  if (url) await playAnimUrl(url);
+  if (url) {
+    animCtrl.setSceneMode(false);
+    updateSceneModeUi();
+    await playAnimUrl(url);
+  }
 });
 
 // ── Local file import ─────────────────────────────────────────────────────────
 animFileInput?.addEventListener("change", async () => {
-  const file = animFileInput.files?.[0];
-  if (!file) return;
-  const ext = file.name.split(".").pop().toLowerCase();
-  const objectUrl = URL.createObjectURL(file);
-  await playAnimUrl(objectUrl, currentLoadId, ext === "fbx" ? "fbx" : "glb");
-  URL.revokeObjectURL(objectUrl);
+  const files = Array.from(animFileInput.files || []);
+  if (!files.length) return;
+  const added = registerSessionAnimationFiles(files);
+  if (!added.length) {
+    animFileInput.value = "";
+    return setStatus("no supported animation files selected");
+  }
+  animCtrl.setSceneMode(false);
+  updateSceneModeUi();
+  setStatus(`added ${added.length} local animation${added.length === 1 ? "" : "s"} ✅`);
+  const firstUrl = added[0][1];
+  const ext = added[0]?.[2];
+  await playAnimUrl(firstUrl, currentLoadId, ext === "fbx" ? "fbx" : "glb");
   animFileInput.value = "";
 });
 
@@ -4489,6 +4643,8 @@ downloadGlbBtn?.addEventListener("click", () => {
 // "Enter Studio" — submits input if filled, otherwise just dismisses
 onboardingAnimSelect?.addEventListener("change", async () => {
   if (controlAnimSelect) controlAnimSelect.value = onboardingAnimSelect.value;
+  animCtrl.setSceneMode(false);
+  updateSceneModeUi();
   if (!mixer || !bodyRoot) return;
   await playAnimUrl(getSelectedAnimUrl());
 });

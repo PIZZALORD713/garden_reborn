@@ -136,7 +136,11 @@
             <section id="view-animate" class="shelfView" data-view="animate">
               <label class="fieldLabel" for="controlAnimSelect">Animation library</label>
               <select id="controlAnimSelect" class="searchInput"></select>
-              <button id="controlPlayAnimBtn" class="sheetAction" type="button">Play selected</button>
+              <div class="animActionRow">
+                <button id="controlPlayAnimBtn" class="sheetAction" type="button">Play selected</button>
+                <button id="sceneModeBtn" class="sheetAction sheetActionSecondary" type="button" aria-pressed="false">Scene mode</button>
+              </div>
+              <p id="animSceneHint" class="fieldHint">Scene mode chains idles, walks, and emotes so previews feel like an in-game moment.</p>
               <label class="fieldLabel animImportHeading">Import animation</label>
               <label class="fieldLabel" for="animCustomUrl">From URL <small>(.glb or .fbx)</small></label>
               <div class="animImportRow">
@@ -144,7 +148,8 @@
                 <button id="animLoadUrlBtn" class="sheetAction" type="button">Load</button>
               </div>
               <label class="fieldLabel" for="animFileInput">From local file</label>
-              <input id="animFileInput" type="file" accept=".glb,.gltf,.fbx" class="searchInput">
+              <input id="animFileInput" type="file" accept=".glb,.gltf,.fbx" class="searchInput" multiple>
+              <p class="fieldHint">Tip: select many unpacked animation files at once to add them to the library for this session.</p>
             </section>
 
             <!-- LOOK view -->
