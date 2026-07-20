@@ -2294,6 +2294,7 @@ function registerSessionAnimationFiles(files = []) {
   return added;
 }
 
+const animUtils = window.FrienemiesAnimUtils || {};
 const animSelectUtils = window.FrienemiesAnimSelectUtils || {};
 
 async function loadAnimationManifest() {
