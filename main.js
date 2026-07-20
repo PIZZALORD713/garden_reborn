@@ -30,7 +30,20 @@ import { normalizeSearchInput, parseTokenIdInput } from "./search-utils.js";
 // - Gear button toggles ALL UI (controls + transcript)
 // - Transcript panel can collapse independently
 // - Trait URLs / Rig Bones print into transcript (not dev console)
+//
+// The PNG is a composed background plate; the EXR remains the lighting environment.
 // ------------------------------------------------------------
+
+// ----------------------------
+// Local environment assets
+// ----------------------------
+const ASSET_VERSION = "2026-07-20a";
+const PANORAMA_URL = `/garden-cotton-clouds.png?v=${encodeURIComponent(
+  ASSET_VERSION
+)}`;
+const EXR_ENV_URL = `/friendsies_cloud_overcast_studio_v1.exr?v=${encodeURIComponent(
+  ASSET_VERSION
+)}`;
 
 // ----------------------------
 // Metadata
@@ -891,6 +904,73 @@ function copyCurrentLook() {
 // are fixed in world-space. Make them loosely follow the camera to keep a consistent fill.
 const MOBILE_CAMERA_FOLLOW_LIGHTS = isMobileLike();
 const tmpV3 = new THREE.Vector3();
+let panoramaTexture = null;
+
+function updatePanoramaCover() {
+  const image = panoramaTexture?.image;
+  const width = renderer.domElement.clientWidth || window.innerWidth;
+  const height = renderer.domElement.clientHeight || window.innerHeight;
+  if (!image?.width || !image?.height || !width || !height) return;
+
+  const imageAspect = image.width / image.height;
+  const viewportAspect = width / height;
+  let repeatX = 1;
+  let repeatY = 1;
+
+  if (viewportAspect > imageAspect) {
+    repeatY = imageAspect / viewportAspect;
+  } else {
+    repeatX = viewportAspect / imageAspect;
+  }
+
+  panoramaTexture.repeat.set(repeatX, repeatY);
+  panoramaTexture.offset.set((1 - repeatX) / 2, (1 - repeatY) / 2);
+  panoramaTexture.updateMatrix();
+}
+
+async function loadPanoramaBackground() {
+  return new Promise((resolve) => {
+    textureLoader.load(
+      PANORAMA_URL,
+      (panoTex) => {
+        panoTex.colorSpace = THREE.SRGBColorSpace;
+        panoTex.matrixAutoUpdate = false;
+        panoramaTexture = panoTex;
+        scene.background = panoTex;
+        scene.backgroundIntensity = 0.86;
+        updatePanoramaCover();
+
+        resolve(true);
+      },
+      undefined,
+      () => resolve(false)
+    );
+  });
+}
+
+async function loadExrEnvironment() {
+  return new Promise((resolve) => {
+    const exrLoader = new THREE.EXRLoader();
+    exrLoader.load(
+      EXR_ENV_URL,
+      (tex) => {
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        pmrem.compileEquirectangularShader();
+
+        const envRT = pmrem.fromEquirectangular(tex);
+        scene.environment = envRT.texture;
+        scene.environmentIntensity = 1 / Math.PI;
+
+        tex.dispose();
+        pmrem.dispose();
+
+        resolve(true);
+      },
+      undefined,
+      () => resolve(false)
+    );
+  });
+}
 
 // ----------------------------
 // Avatar group
@@ -4190,6 +4270,14 @@ window.addEventListener("popstate", (event) => {
     `Preset: ${DEFAULT_LOOK_PRESET}`,
     { isDev: IS_DEV, logLine }
   );
+  setStatus("loading pano/env…");
+
+  const panoOk = await loadPanoramaBackground();
+  const envOk = await loadExrEnvironment();
+
+  logLine(`🖼 pano: ${panoOk ? "ok" : "failed"} (${PANORAMA_URL})`);
+  logLine(`🌫 env: ${envOk ? "ok" : "failed"} (${EXR_ENV_URL})`);
+
   setStatus("fetching metadata…");
 
   fetch(METADATA_URL)
@@ -4261,6 +4349,7 @@ window.addEventListener("resize", () => {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+  updatePanoramaCover();
 
   // Recalculate carousel spacers and re-center on active card
   if (activeCarouselIndex != null && carouselTokenIds.length && ui.slides) {
