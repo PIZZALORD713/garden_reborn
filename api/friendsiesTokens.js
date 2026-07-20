@@ -7,9 +7,43 @@
 //
 // ENV:
 // - MORALIS_API_KEY (required)
+// - FRIENDSIES_ALLOWED_ORIGINS (optional, comma-separated additional origins)
 //
 // Notes:
 // - Keep this dependency-free (no package.json). Use fetch + simple JSON-RPC.
+
+const FRIENDSIES_CHAIN = "eth";
+const FRIENDSIES_CONTRACT = "0xe5af63234f93afd72a8b9114803e33f6d9766956";
+
+function allowedOrigins(req) {
+  const origins = new Set();
+  const host = String(req.headers?.["x-forwarded-host"] || req.headers?.host || "")
+    .split(",")[0]
+    .trim();
+  const proto = String(req.headers?.["x-forwarded-proto"] || "https")
+    .split(",")[0]
+    .trim();
+
+  if (host) origins.add(`${proto}://${host}`);
+
+  for (const hostname of [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL]) {
+    if (hostname) origins.add(`https://${hostname}`);
+  }
+
+  for (const origin of String(process.env.FRIENDSIES_ALLOWED_ORIGINS || "").split(",")) {
+    const normalized = origin.trim().replace(/\/$/, "");
+    if (normalized) origins.add(normalized);
+  }
+
+  return origins;
+}
+
+function isAllowedRequestOrigin(req) {
+  const origin = String(req.headers?.origin || "").trim().replace(/\/$/, "");
+  // Origin is absent for direct navigation, same-origin requests in some clients, and curl.
+  if (!origin) return true;
+  return allowedOrigins(req).has(origin);
+}
 
 function json(res, status, obj) {
   res.statusCode = status;
@@ -101,18 +135,19 @@ async function moralisGetWalletNfts({ owner, chain, contract }) {
 
 export default async function handler(req, res) {
   try {
+    if (req.method !== "GET") {
+      res.setHeader("Allow", "GET");
+      return json(res, 405, { error: "method_not_allowed" });
+    }
+
+    if (!isAllowedRequestOrigin(req)) {
+      return json(res, 403, { error: "origin_not_allowed" });
+    }
+
     const ownerInput = String(req.query.owner || "").trim();
-    const chain = String(req.query.chain || "eth").trim();
-    const contract = String(req.query.contract || "").trim();
 
     if (!ownerInput) {
       return json(res, 400, { error: "missing_owner" });
-    }
-    if (!contract || !/^0x[0-9a-fA-F]{40}$/.test(contract)) {
-      return json(res, 400, { error: "missing_or_invalid_contract" });
-    }
-    if (chain !== "eth") {
-      return json(res, 400, { error: "unsupported_chain", chain });
     }
 
     let ownerResolved = null;
@@ -136,23 +171,23 @@ export default async function handler(req, res) {
 
     const tokenIds = await moralisGetWalletNfts({
       owner: ownerResolved,
-      chain,
-      contract
+      chain: FRIENDSIES_CHAIN,
+      contract: FRIENDSIES_CONTRACT
     });
 
     return json(res, 200, {
       ownerInput,
       ownerResolved,
-      chain,
-      contract,
+      chain: FRIENDSIES_CHAIN,
+      contract: FRIENDSIES_CONTRACT,
       tokenIds,
       tokenCount: tokenIds.length,
       fetchedAt: new Date().toISOString()
     });
   } catch (err) {
+    console.error("friendsiesTokens request failed", err);
     return json(res, 500, {
-      error: "server_error",
-      message: String(err?.message || err)
+      error: "server_error"
     });
   }
 }

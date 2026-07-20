@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import { extractAnimationTracksFromGlbBuffer } from "./glb-animation-tracks.mjs";
 
 const require = createRequire(import.meta.url);
-const { validateAnimationPack } = require("../animation-pack-validator.js");
+const { validateAnimationPack } = require("./animation-pack-validator.js");
 
 const schema = JSON.parse(await readFile("schemas/animation.pack.schema.json", "utf8"));
 const contract = JSON.parse(await readFile("schemas/skeleton.contract.v1.json", "utf8"));

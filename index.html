@@ -4,22 +4,30 @@
     <meta charset="utf-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <title>fRiENEMiES Studio — View • Animate • Export</title>
+    <title>fRiENEMiES Studio — 3D Character Viewer, Animation &amp; GLB Export</title>
     <meta
       name="description"
-      content="Community-built studio for viewing, previewing animations, and exporting rig-ready .glb assets."
+      content="Independent browser-based 3D fRiENDSiES studio: load by token ID or read-only wallet lookup, preview animations, and export a rig-ready .glb. No wallet connection; not officially affiliated."
     />
 
-    <meta property="og:title" content="fRiENEMiES Studio — View • Animate • Export" />
-    <meta property="og:description" content="Community-built studio for viewing, previewing animations, and exporting rig-ready .glb assets." />
+    <meta property="og:title" content="fRiENEMiES Studio — 3D Character Viewer, Animation &amp; GLB Export" />
+    <meta property="og:description" content="Load by token ID or read-only wallet lookup, preview animations, and export a rig-ready .glb. No wallet connection; not officially affiliated." />
     <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="fRiENEMiES Studio — 3D Character Viewer, Animation &amp; GLB Export" />
+    <meta name="twitter:description" content="Load by token ID or read-only wallet lookup, preview animations, and export a rig-ready .glb. No wallet connection; not officially affiliated." />
     <link rel="stylesheet" href="/style.css?v=2026-05-26a" />
   </head>
 
   <body>
     <div id="ui" class="ui">
+      <section class="studioBadge" aria-label="Studio summary">
+        <h1>fRiENEMiES Studio</h1>
+        <p>Load fRiENDSiES by token or read-only wallet/ENS lookup.</p>
+        <p>Preview animations and export rig-ready .glb files.</p>
+      </section>
 
       <!-- Shelf: unified bottom surface with cloud toggle + gear view picker -->
       <div id="shelf" class="shelf is-closed" aria-expanded="false">
@@ -234,12 +242,12 @@
           <!-- Branded header band -->
           <div class="onboardingHeader">
             <h2 id="onboardingTitle" class="onboardingTitle">Welcome to fRiENEMiES Studio</h2>
-            <p class="onboardingSubtitle">Load &bull; Preview &bull; Export</p>
+            <p class="onboardingSubtitle">Load &bull; Animate &bull; Export</p>
           </div>
 
           <!-- Body content -->
           <div class="onboardingContent">
-            <p id="onboardingBody" class="onboardingBody">A community-built workshop for characters and motion.</p>
+            <p id="onboardingBody" class="onboardingBody">An independent browser-based 3D studio for fRiENDSiES characters. Load by token ID or read-only wallet lookup, preview animations, and export a rig-ready .glb.</p>
 
             <!-- Wallet/ENS input -->
             <div class="onboardingInputGroup">
@@ -254,7 +262,7 @@
               />
               <div class="onboardingTrustPill" aria-hidden="true">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                Read-only &bull; No wallet connect
+                Read-only lookup &bull; No wallet connection
               </div>
             </div>
 
@@ -267,7 +275,7 @@
                 </svg>
                 <div class="tileText">
                   <strong>Load a character</strong>
-                  <span>Token ID, wallet address, or ENS name</span>
+                  <span>Token ID, wallet address, or ENS name; lookup only</span>
                 </div>
               </div>
               <div class="onboardingTile" role="listitem">
@@ -286,14 +294,14 @@
                   <path d="M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                 </svg>
                 <div class="tileText">
-                  <strong>Export rig-ready .glb</strong>
-                  <span>Clean export for games and tools</span>
+                  <strong>Export a rig-ready .glb</strong>
+                  <span>For games and 3D tools</span>
                 </div>
               </div>
             </div>
 
             <!-- Trust line -->
-            <p class="onboardingTrustLine">No wallet connect. We don't move anything. Ever.</p>
+            <p class="onboardingTrustLine">Independent and not affiliated with the original fRiENDSiES creators. No wallet connection.</p>
           </div>
 
           <!-- Actions -->
@@ -320,20 +328,14 @@
     </script>
     <script type="module" src="/three-imports.js?v=2026-05-26a"></script>
     <script type="module" src="/scene-bootstrap.js?v=2026-02-18a"></script>
-    <script type="module" src="/identifier-utils.js?v=2026-02-18a"></script>
-    <script type="module" src="/routing-utils.js?v=2026-02-18a"></script>
-    <script type="module" src="/search-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/search-ui-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/load-queue-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/image-load-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/look-utils.js?v=2026-02-18a"></script>
-    <script type="module" src="/anim-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/anim-select-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/carousel-query-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/drag-physics-utils.js?v=2026-02-18a"></script>
-    <script type="module" src="/carousel-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/console-utils.js?v=2026-02-18a"></script>
-    <script type="module" src="/export-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/rig-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/token-utils.js?v=2026-02-18a"></script>
     <script type="module" src="/avatar-runtime-utils.js?v=2026-02-18a"></script>
