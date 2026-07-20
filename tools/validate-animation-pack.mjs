@@ -5,7 +5,7 @@ import path from "node:path";
 import { scanClipAnimationTracks } from "./glb-animation-tracks.mjs";
 
 const require = createRequire(import.meta.url);
-const { validateAnimationPack } = require("../animation-pack-validator.js");
+const { validateAnimationPack } = require("./animation-pack-validator.js");
 
 function usage() {
   return [
