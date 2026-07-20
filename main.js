@@ -4,6 +4,7 @@ import {
   buildOwnerPath,
   getWalletOwnerFromUrl
 } from "./routing-utils.js";
+import { normalizeSearchInput, parseTokenIdInput } from "./search-utils.js";
 
 // ------------------------------------------------------------
 // fRiENEMiES Studio - Viewer + Animation Test
@@ -76,7 +77,6 @@ const MASCOT_CONFIG = {
     "https://i.seadn.io/s/raw/files/e1ed6c4df4dfe488f3cd8045f741f3eb.png"
 };
 
-const searchUtils = window.FrienemiesSearchUtils || {};
 const searchUiUtils = window.FrienemiesSearchUiUtils || {};
 const loadQueueUtils = window.FrienemiesLoadQueueUtils || {};
 const carouselQueryUtils = window.FrienemiesCarouselQueryUtils || {};
@@ -84,21 +84,6 @@ const dragPhysicsUtils = window.FrienemiesDragPhysicsUtils || {};
 const avatarRuntimeUtils = window.FrienemiesAvatarRuntimeUtils || {};
 const avatarCleanupUtils = window.FrienemiesAvatarCleanupUtils || {};
 const mascotUtils = window.FrienemiesMascotUtils || {};
-const normalizeSearchInput =
-  searchUtils.normalizeSearchInput ||
-  ((value) => String(value ?? "").trim());
-const parseTokenIdInput =
-  searchUtils.parseTokenIdInput ||
-  ((value, options = {}) => {
-    const min = Number.isInteger(options.min) ? options.min : 1;
-    const max = Number.isInteger(options.max) ? options.max : 10000;
-    const normalized = normalizeSearchInput(value).replace(/^#/, "");
-    if (!normalized) return null;
-    const tokenId = Number(normalized);
-    if (!Number.isInteger(tokenId)) return null;
-    if (tokenId < min || tokenId > max) return null;
-    return tokenId;
-  });
 const updateResetCollectionVisibilityFromUtils =
   searchUiUtils.updateResetCollectionVisibility ||
   ((button, tokenIds, defaultTokenIds) => {
@@ -4897,5 +4882,4 @@ window.addEventListener("resize", () => {
     });
   }
 });
-
 
