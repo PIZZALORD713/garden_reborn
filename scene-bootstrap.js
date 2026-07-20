@@ -55,15 +55,8 @@
     return { hemisphereLight, ambientLight, keyLight, rim };
   }
 
-  function initEnvironment(scene) {
-    const panoGroup = new THREE.Group();
-    scene.add(panoGroup);
-    return { panoGroup };
-  }
-
   globalObject.FrienemiesSceneBootstrap = {
     initScene,
-    initLighting,
-    initEnvironment
+    initLighting
   };
 })(typeof window !== "undefined" ? window : this);
