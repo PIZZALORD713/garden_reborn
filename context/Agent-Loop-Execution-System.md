@@ -64,7 +64,7 @@ Before merge, all must pass:
 - [ ] Mobile sanity check (reachability + layout)
 - [ ] No duplicate logic introduced for presets/search handlers
 - [ ] No new global mutable state unless documented
-- [ ] Docs updated (`Decisions.md` + `TODO.md`)
+- [ ] Docs updated (`docs/decisions.md` + `TODO.md`)
 
 ---
 
@@ -111,7 +111,7 @@ Task:
 3) Reuse existing utilities/patterns where possible.
 4) Add or adjust comments only where clarity is needed.
 5) Update docs:
-   - Decisions.md (what + why)
+   - docs/decisions.md (what + why)
    - TODO.md (mark completed / next)
 
 Output:

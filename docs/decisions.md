@@ -16,13 +16,13 @@
   - Browser smoke passed on `http://127.0.0.1:4188/index.html`: rapid token switching `1 -> 5 -> 8521 -> 8448`, wallet lookup through the Studio search UI, animation playback (`Walk Arms Low`), and `.glb` export all completed.
   - Mobile sanity passed at `390x844` with `scrollWidth=390` and shelf/search controls visible.
   - Playwright observed no page errors, unexpected console warnings/errors, or unexpected request failures.
-  - Evidence screenshots refreshed as `slice-057-smoke-desktop.png` and `slice-057-smoke-mobile.png`.
+  - Evidence screenshots refreshed as `docs/smoke/slice-057-smoke-desktop.png` and `docs/smoke/slice-057-smoke-mobile.png`.
 - **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API contract, or architecture changes.
 
 ## 2026-05-04 — Issue 066 animation pack validation hardening
 - **Decision:** Add a reusable animation-pack validator, CLI, GLB animation-channel scanner, and validation docs before expanding animation pack/runtime behavior.
 - **Why:** Studio and Blender both depend on BODY-compatible animation inputs; bad manifests, unknown bones, unsafe location tracks, scale tracks, and rest-pose mismatches should be caught before playback/export.
-- **Implementation:** Added `animation-pack-validator.js`, `tools/validate-animation-pack.mjs`, `tools/glb-animation-tracks.mjs`, and `tools/test-animation-pack-validator.mjs`; extended animation pack schema metadata for track validation; expanded documented skeleton aliases in `schemas/skeleton.contract.v1.json`.
+- **Implementation:** Added `tools/animation-pack-validator.js`, `tools/validate-animation-pack.mjs`, `tools/glb-animation-tracks.mjs`, and `tools/test-animation-pack-validator.mjs`; extended animation pack schema metadata for track validation; expanded documented skeleton aliases in `schemas/skeleton.contract.v1.json`.
 - **Validation evidence:** `node tools/test-animation-pack-validator.mjs` covers existing pack compatibility, missing clips, unknown bones, scale/location hazards, strict-track gates, rest-pose mismatch, and GLB channel extraction.
 - **Scope guard:** Validation tooling/docs only; no changes to Studio animation selection, playback semantics, retargeting behavior, or GLB export runtime.
 
@@ -42,7 +42,7 @@
   - Animation playback passed with `Walk Arms Low`; `.glb` export triggered successfully and reported `Download started. If no file appears, use “Open saved export link”.`
   - Mobile sanity passed at `390x844` with `scrollWidth=390` and shelf/search controls visible.
   - Playwright observed no page errors, unexpected console warnings/errors, or unexpected request failures in the static smoke.
-  - Evidence screenshots captured as `slice-057-smoke-desktop.png` and `slice-057-smoke-mobile.png`.
+  - Evidence screenshots captured as `docs/smoke/slice-057-smoke-desktop.png` and `docs/smoke/slice-057-smoke-mobile.png`.
 - **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API contract, or architecture changes.
 
 ## 2026-02-17 — Slice 001 copy unification
@@ -333,7 +333,7 @@
   - Wallet/ENS lookup verified against live API runtime by loading `vitalik.eth` (no static-host 404; search path executed with expected no-token response state).
   - Animation play exercised via mascot quick action (`Wave`) with no runtime failures.
   - `.glb` export path exercised via `Download .glb` control (`Export started — your .glb is downloading.`).
-  - Mobile sanity verified by resizing active browser to `390x844` and capturing screenshot evidence (`slice-033-smoke-desktop.png` for desktop + browser mobile capture evidence).
+  - Mobile sanity verified by resizing active browser to `390x844` and capturing screenshot evidence (`docs/smoke/slice-033-smoke-desktop.png` for desktop + browser mobile capture evidence).
 - **Scope guard:** Verification/docs only; no runtime behavior, UX, or architecture changes.
 
 ## 2026-02-18 — Slice 034 app-state boundary plan
@@ -389,7 +389,7 @@
 - **Why:** Prevents the accessibility warning where a focused button remains inside a hidden share panel.
 - **Decision:** Intercept repeated `THREE.GLTFExporter` normalScale warning spam during export and replace it with one explanatory in-app console note after completion.
 - **Why:** Warning is known/noisy in this pipeline and can confuse users into thinking export failed; reducing repetition preserves signal without changing model semantics.
-- **Validation evidence:** `node --check main.js` passes; browser smoke capture saved as `slice-040-export-hardening-smoke.png`.
+- **Validation evidence:** `node --check main.js` passes; browser smoke capture saved as `docs/smoke/slice-040-export-hardening-smoke.png`.
 - **Execution note:** Smoke screenshot captured from local host `http://127.0.0.1:4180` using Playwright desktop Chrome profile.
 - **Scope guard:** Focused hardening only (export feedback/fallback + panel focus stability + warning-noise handling); no token search/load, animation, routing, or bottom-surface behavior changes.
 
@@ -415,7 +415,7 @@
   - Animation trigger verified via quick action `Wave`.
   - `.glb` export trigger + UX fallback verified: status surfaced `Download started. If no file appears, use �Open saved export link�.` and fallback link became active (`aria-hidden="false"`) with blob URL + filename.
   - Mobile sanity verified at `390x844` after resize.
-  - Smoke evidence captured as `slice-042-smoke-desktop.png` and `slice-042-smoke-mobile.png`.
+  - Smoke evidence captured as `docs/smoke/slice-042-smoke-desktop.png` and `docs/smoke/slice-042-smoke-mobile.png`.
 - **Caveats:** Browser console showed only a benign `favicon.ico` 404 under local dev; no runtime flow errors observed.
 - **Scope guard:** Verification/docs/evidence only; no feature or runtime code-path changes.
 
@@ -459,7 +459,7 @@
 - **Why:** Confirms carousel drag/fling surfaces still boot/render cleanly after drag-state modularization and keeps queue drift low.
 - **Validation evidence:**
   - `Get-ChildItem -Filter *.js | ForEach-Object { node --check $_.Name }` passes for all root runtime modules.
-  - Browser smoke check succeeds on local host (`python -m http.server 4175`) and screenshot evidence captured in `slice-047-smoke.png`.
+  - Browser smoke check succeeds on local host (`python -m http.server 4175`) and screenshot evidence captured in `docs/smoke/slice-047-smoke.png`.
   - In-browser drag interaction exercised against token picker surface with no runtime console errors.
 - **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API, or architecture changes.
 
@@ -505,7 +505,7 @@
   - API-backed runtime launched with `npx vercel dev --yes --token $VERCEL_TOKEN --listen 4175`.
   - API route check succeeded: `GET /api/friendsiesTokens?owner=0x28af3356c6aaf449d20c59d2531941ddfb94d713&contract=0xe5af63234f93afd72a8b9114803e33f6d9766956` -> `200`, `tokenCount=62`.
   - Route checks succeeded: `GET /fren/8448` and `GET /fren/vitalik.eth` both return `200` on the API-backed runtime.
-  - Desktop/mobile smoke captures succeeded via Playwright CLI (`slice-052-smoke-desktop.png`, `slice-052-smoke-mobile.png`).
+  - Desktop/mobile smoke captures succeeded via Playwright CLI (`docs/smoke/slice-052-smoke-desktop.png`, `docs/smoke/slice-052-smoke-mobile.png`).
 - **Scope guard:** Verification/docs/evidence only; no runtime behavior, UX, API contract, or architecture changes.
 
 ## 2026-02-18 - Slice 053 carousel-query state sync hardening
