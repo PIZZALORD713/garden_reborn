@@ -1,3 +1,9 @@
+import {
+  getWalletOwnerFromUrl as getIdentifierWalletOwnerFromUrl,
+  isEnsName,
+  isHexAddress
+} from "./identifier-utils.js";
+
 // ------------------------------------------------------------
 // fRiENEMiES Studio - Viewer + Animation Test
 // - BODY is the master rig (skeleton source)
@@ -69,23 +75,10 @@ const MASCOT_CONFIG = {
     "https://i.seadn.io/s/raw/files/e1ed6c4df4dfe488f3cd8045f741f3eb.png"
 };
 
-const identifierUtils = window.FrienemiesIdentifierUtils || {};
 const routingUtils = window.FrienemiesRoutingUtils || {};
-const isHexAddress = identifierUtils.isHexAddress || ((value) => typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value.trim()));
-const isEnsName = identifierUtils.isEnsName || ((value) => typeof value === "string" && value.trim().toLowerCase().endsWith(".eth"));
 const getWalletOwnerFromUrl =
   routingUtils.getWalletOwnerFromUrl ||
-  identifierUtils.getWalletOwnerFromUrl ||
-  (() => {
-    const params = new URLSearchParams(window.location.search);
-    const queryOwner = params.get("owner");
-    const rawPath = decodeURIComponent(window.location.pathname || "/");
-    const pathOwner = rawPath.replace(/^\/+/, "").split("/").filter(Boolean)[0] || "";
-    const candidate = (queryOwner || pathOwner || "").trim();
-    if (!candidate) return null;
-    if (isHexAddress(candidate) || isEnsName(candidate)) return candidate;
-    return null;
-  });
+  getIdentifierWalletOwnerFromUrl;
 const buildCollectionPath = routingUtils.buildCollectionPath || (() => "/");
 const buildOwnerPath =
   routingUtils.buildOwnerPath ||
@@ -4912,7 +4905,6 @@ window.addEventListener("resize", () => {
     });
   }
 });
-
 
 
 
