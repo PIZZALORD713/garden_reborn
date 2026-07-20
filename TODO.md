@@ -86,3 +86,9 @@
 - [x] slice-053-carousel-query-state-sync-hardening - route remaining carousel-query state writes (`loadDebounceTimer`, `imageObserver`, `carouselListenersBound`) through shared update helper so `appState.carouselQuery` stays synchronized.
 - [x] slice-054-post-slice-053-verification-pass - run syntax + browser smoke checks after carousel-query sync hardening to confirm carousel/search/load surfaces still render without runtime errors.
 - [x] slice-055-post-slice-054-verification-pass - run syntax + browser smoke checks after slice-054 verification before starting the next extraction/hardening task, confirming core UI shells still render without runtime errors.
+
+## Completed through slice 061
+- [x] slice-058-mcp-gitignore-and-docs-sync - ignored MCP npm/build artifacts and updated root README wording so the buildless frontend contract coexists with optional MCP tooling.
+- [x] slice-059-mcp-verification-pass - verified the MCP package with dependency install, TypeScript build checks, and an SDK client smoke for tool listing/token resolution/pack listing.
+- [x] slice-060-static-avatar-runner-follow-up-plan - preserved Static Avatar Render Pack V1 as the next implementation target and confirmed docs/examples remain the source of truth before runner work.
+- [x] slice-061-core-flow-regression-pass - reran syntax checks for the browser studio and a local static-host smoke probe to confirm the core app shell serves successfully after docs/gitignore cleanup.

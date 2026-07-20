@@ -1,3 +1,5 @@
+declare const process: { env: Record<string, string | undefined> };
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {

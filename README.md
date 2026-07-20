@@ -67,6 +67,19 @@ Open `http://localhost:3000/`
 
 > **Note:** Wallet/ENS lookup requires the serverless API (`/api/friendsiesTokens`), which needs `MORALIS_API_KEY` in your environment. Without it, you can still load tokens by ID.
 
+### Optional MCP server
+
+The MCP package exposes helper tools for token resolution, animation pack discovery, asset validation, and starter template generation. It is isolated under `mcp/` so the frontend remains buildless.
+
+```bash
+cd mcp
+npm install
+npm run build
+npm start
+```
+
+See `mcp/README.md` for the tool list and runtime notes.
+
 ### Animation pack validation
 
 ```bash
@@ -258,7 +271,7 @@ Designed for **Vercel** (static hosting + serverless API).
 
 ## Contributing
 
-PRs welcome. No build tools required -- edit the files and test with `npx serve .`
+PRs welcome. For core web changes, no build tools are required -- edit the files and test with `npx serve .`. For MCP changes, use the isolated npm workflow in `mcp/README.md`.
 
 ### Good first areas
 
