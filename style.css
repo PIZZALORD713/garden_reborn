@@ -1479,3 +1479,28 @@ canvas {
   }
 
 }
+
+.animActionRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sheetActionSecondary {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sheetActionSecondary.is-active,
+.sheetActionSecondary[aria-pressed="true"] {
+  background: linear-gradient(135deg, rgba(255, 203, 112, 0.32), rgba(255, 112, 166, 0.26));
+  border-color: rgba(255, 224, 158, 0.65);
+  box-shadow: 0 0 20px rgba(255, 193, 92, 0.22);
+}
+
+.fieldHint {
+  margin: 6px 0 10px;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
