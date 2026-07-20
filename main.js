@@ -1,3 +1,8 @@
+import {
+  getAnimUrlByName as getAnimUrlByNameFromPresets,
+  normalizeAnimManifestItem,
+  populateAnimationSelect as populateAnimationSelectWithPresets
+} from "./anim-utils.js";
 import { isEnsName, isHexAddress } from "./identifier-utils.js";
 import {
   buildCollectionPath,
@@ -2800,21 +2805,7 @@ function registerSessionAnimationFiles(files = []) {
   return added;
 }
 
-const animUtils = window.FrienemiesAnimUtils || {};
 const animSelectUtils = window.FrienemiesAnimSelectUtils || {};
-const normalizeAnimManifestItem =
-  animUtils.normalizeAnimManifestItem ||
-  function normalizeAnimManifestItemFallback(item) {
-    if (Array.isArray(item) && item.length >= 2) {
-      return [String(item[0]), String(item[1])];
-    }
-    if (item && typeof item === "object" && item.url) {
-      const url = String(item.url);
-      const fallbackName = url.split("/").pop()?.replace(/\.glb$/i, "") || "Animation";
-      return [String(item.name || fallbackName), url];
-    }
-    return null;
-  };
 
 async function loadAnimationManifest() {
   try {
@@ -2835,20 +2826,6 @@ async function loadAnimationManifest() {
     logLine(`Animation manifest unavailable, using fallback presets (${err?.message || err})`, "dim");
   }
 }
-
-const populateAnimationSelectWithPresets =
-  animUtils.populateAnimationSelect ||
-  function populateAnimationSelectWithPresetsFallback(selectEl, presets = []) {
-    if (!selectEl) return;
-    selectEl.innerHTML = "";
-    presets.forEach(([name, url], idx) => {
-      const opt = document.createElement("option");
-      opt.value = url;
-      opt.textContent = name;
-      if (idx === 0) opt.selected = true;
-      selectEl.appendChild(opt);
-    });
-  };
 
 function populateAnimationSelect(selectEl) {
   populateAnimationSelectWithPresets(selectEl, ANIM_PRESETS);
@@ -2885,14 +2862,6 @@ const getSelectedAnimUrlFromInputs =
 function getSelectedAnimUrl() {
   return getSelectedAnimUrlFromInputs(controlAnimSelect, onboardingAnimSelect, ANIM_PRESETS);
 }
-
-const getAnimUrlByNameFromPresets =
-  animUtils.getAnimUrlByName ||
-  function getAnimUrlByNameFromPresetsFallback(name, presets = []) {
-    const target = String(name || "").toLowerCase();
-    const hit = presets.find(([animName]) => String(animName).toLowerCase() === target);
-    return hit?.[1] || "";
-  };
 
 function getAnimUrlByName(name) {
   return getAnimUrlByNameFromPresets(name, ANIM_PRESETS);
@@ -4882,4 +4851,3 @@ window.addEventListener("resize", () => {
     });
   }
 });
-
