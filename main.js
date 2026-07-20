@@ -1,8 +1,9 @@
+import { isEnsName, isHexAddress } from "./identifier-utils.js";
 import {
-  getWalletOwnerFromUrl as getIdentifierWalletOwnerFromUrl,
-  isEnsName,
-  isHexAddress
-} from "./identifier-utils.js";
+  buildCollectionPath,
+  buildOwnerPath,
+  getWalletOwnerFromUrl
+} from "./routing-utils.js";
 
 // ------------------------------------------------------------
 // fRiENEMiES Studio - Viewer + Animation Test
@@ -74,15 +75,6 @@ const MASCOT_CONFIG = {
   mascotOpenSeaImage:
     "https://i.seadn.io/s/raw/files/e1ed6c4df4dfe488f3cd8045f741f3eb.png"
 };
-
-const routingUtils = window.FrienemiesRoutingUtils || {};
-const getWalletOwnerFromUrl =
-  routingUtils.getWalletOwnerFromUrl ||
-  getIdentifierWalletOwnerFromUrl;
-const buildCollectionPath = routingUtils.buildCollectionPath || (() => "/");
-const buildOwnerPath =
-  routingUtils.buildOwnerPath ||
-  ((ownerSlug) => `/${encodeURIComponent(String(ownerSlug ?? "").trim())}`);
 
 const searchUtils = window.FrienemiesSearchUtils || {};
 const searchUiUtils = window.FrienemiesSearchUiUtils || {};
@@ -4905,6 +4897,5 @@ window.addEventListener("resize", () => {
     });
   }
 });
-
 
 
