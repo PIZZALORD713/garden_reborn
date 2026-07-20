@@ -48,9 +48,7 @@ If the official studio went quiet, the community studio didn’t.
 | Animations | GitHub CDN via jsDelivr (animation manifest + `.glb` clips) |
 | Hosting | Vercel (static + serverless) |
 
-The browser studio stays dependency-light: no root `package.json`, no root `node_modules`, and no frontend build step. Clone and serve the static app directly.
-
-> Optional MCP tooling lives in `mcp/` and uses its own `package.json`; run npm commands from that directory only when developing the MCP server.
+The browser app has no build step or root `package.json`; clone and serve it directly. The optional `mcp/` tooling is a separate Node package.
 
 ---
 
@@ -109,7 +107,7 @@ See `docs/render-packs/static-avatar-render-pack-v1.md` and `examples/render-pac
 ```
 garden_reborn/
 ├── index.html                  # Entry point: HTML structure + CDN script tags
-├── main.js                     # Core application (~3,500 lines)
+├── main.js                     # Core application orchestration (~5,000 lines)
 │   ├── Configuration           # Metadata URL, contract address, defaults
 │   ├── Scene bootstrap         # Three.js scene, camera, renderer, controls
 │   ├── Lighting system         # Presets, mobile detection, material intensity
@@ -121,19 +119,30 @@ garden_reborn/
 │   ├── Search + wallet flow    # Token/ENS/address lookup and routing
 │   ├── Boot sequence           # URL parsing, metadata fetch, carousel init
 │   └── Render loop             # Animation mixer, bone stabilization, lights
-├── style.css                   # Glassmorphism UI (~1,165 lines)
+├── style.css                   # Glassmorphism UI (~1,500 lines)
 │   ├── CSS custom properties   # Glass effects, radii, shadows, typography
 │   ├── Carousel component      # Token cards, spacers, snap scrolling
-│   ├── Menu system             # Hamburger FAB, icon buttons, sheet panels
+│   ├── Shelf navigation        # Search, view switcher, and tool panels
 │   ├── Onboarding modal        # Welcome card, input group, action tiles
-│   ├── Control panel           # Gear button, tabs, sections
 │   ├── Console modal           # Log viewer overlay
 │   └── Responsive breakpoints  # 720px + 780px mobile layouts
+├── scene-bootstrap.js          # Three.js scene/bootstrap helpers
+├── *-utils.js                  # Extracted runtime helpers loaded before main.js
+├── app-state-store.js          # Grouped application-state seam
 ├── api/
 │   └── friendsiesTokens.js     # Serverless: ENS resolve + Moralis NFT lookup
-├── vercel.json                 # URL rewrites for holder routes
-├── garden-cotton-clouds.png    # Panorama background (~3.9 MB)
-└── friendsies_cloud_overcast_studio_v1.exr  # HDR environment map (~7.6 MB)
+├── docs/
+│   ├── decisions.md            # Historical implementation decisions
+│   ├── design-review.md        # Visual-system audit
+│   └── smoke/                  # Archived browser verification captures
+├── tools/
+│   ├── animation-pack-validator.js
+│   ├── validate-animation-pack.mjs
+│   └── test-animation-pack-validator.mjs
+├── schemas/                    # Character, animation, skeleton, render contracts
+├── packs/                      # Animation pack registry and example pack
+├── mcp/                        # Optional MCP package for tooling integrations
+└── vercel.json                 # URL rewrites for holder routes
 ```
 
 ---
@@ -199,8 +208,8 @@ Resolves a wallet address or ENS name to fRiENDSiES token IDs.
 | Param | Required | Description |
 |-------|----------|-------------|
 | `owner` | Yes | `0x...` address or `.eth` name |
-| `chain` | No | Blockchain (default: `eth`) |
-| `contract` | Yes | ERC-721 contract address |
+
+The endpoint fixes the Ethereum chain and canonical fRiENDSiES contract server-side; callers cannot use it to query arbitrary NFT contracts. Only `GET` is accepted. Browser requests with an `Origin` header must match the active deployment or an explicitly allowed origin.
 
 **Response:**
 
@@ -219,6 +228,7 @@ Resolves a wallet address or ENS name to fRiENDSiES token IDs.
 **Environment variables:**
 
 - `MORALIS_API_KEY` (required) -- Moralis Web3 API key for NFT lookups
+- `FRIENDSIES_ALLOWED_ORIGINS` (optional) -- comma-separated additional browser origins
 
 ---
 
@@ -228,7 +238,7 @@ Designed for **Vercel** (static hosting + serverless API).
 
 1. Push the repo to GitHub
 2. Import into Vercel
-3. Set `MORALIS_API_KEY` in Vercel environment variables
+3. Set `MORALIS_API_KEY` in Vercel environment variables; add `FRIENDSIES_ALLOWED_ORIGINS` only for additional trusted frontends
 4. Deploy -- Vercel serves static files and runs `api/friendsiesTokens.js` as a serverless function
 
 **URL rewrites** (`vercel.json`): routes like `/pizzalord.eth` and `/0x28af...d713` are rewritten to `/index.html` for client-side handling.
@@ -243,20 +253,19 @@ Designed for **Vercel** (static hosting + serverless API).
 |------|-----|
 | **Browse by token** | Scroll the carousel or type a token ID in search |
 | **Load a wallet** | Enter an ENS name or `0x...` address in the search or onboarding input |
-| **Preview animation** | Select from the animation dropdown in the control panel or onboarding |
-| **Change lighting** | Open the gear menu > Lighting/Scene tab > pick a preset |
-| **Export GLB** | Hamburger menu > Share panel > Download .glb |
-| **Share a link** | Hamburger menu > Share panel > Copy link (or share the URL directly) |
-| **View console** | Gear menu > Console tab > Open console viewer |
+| **Preview animation** | Open the shelf view switcher > Animate, then select and play a clip |
+| **Change lighting** | Open the shelf view switcher > Look, then pick a preset |
+| **Export GLB** | Open the shelf view switcher > Share > Download .glb |
+| **Share a link** | Open the shelf view switcher > Share > Copy link (or share the URL directly) |
+| **View console** | Open the shelf view switcher > Console |
 
 ---
 
 ## Known Limitations
 
 - **Wallet lookup requires the API** -- local dev without `MORALIS_API_KEY` limits you to token ID browsing
-- **No GPU resource disposal** -- switching tokens many times may accumulate GPU memory
-- **Large assets in repo** -- the EXR environment map (7.6 MB) and panorama PNG (3.9 MB) are committed directly
-- **Single-file JS** -- `main.js` at ~3,500 lines works but is approaching the maintainability threshold
+- **Remote runtime dependencies** -- metadata, token parts, animations, and environment textures require their external hosts to be available
+- **Large orchestration module** -- helper seams exist, but `main.js` still coordinates roughly 5,000 lines of runtime behavior
 
 ---
 
@@ -271,7 +280,7 @@ PRs welcome. For core web changes, no build tools are required -- edit the files
 - Export validation and test fixtures
 - Animation retargeting quality
 - Animation pack validation fixtures
-- GPU resource cleanup (geometry/material/texture disposal)
+- GPU cleanup regression coverage and long-session profiling
 
 ### PR guidelines
 

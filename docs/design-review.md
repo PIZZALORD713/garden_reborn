@@ -253,4 +253,4 @@ Status messages (`.is-warn`, `.is-ok`) snap instantly between colors. A subtle `
 ## Files Changed
 
 - `style.css` — Fixed undefined CSS variables, added focus-visible states, improved control tab interactivity, tokenized console card radius, consolidated blur to 2-tier system, standardized durations to 3 tokens, created z-index layer map
-- `DESIGN_REVIEW.md` — This file (new)
+- `docs/design-review.md` — This file (new)

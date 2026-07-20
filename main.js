@@ -1,3 +1,24 @@
+import {
+  getAnimUrlByName as getAnimUrlByNameFromPresets,
+  normalizeAnimManifestItem,
+  populateAnimationSelect as populateAnimationSelectWithPresets
+} from "./anim-utils.js";
+import {
+  getCardMetrics,
+  getSpacerWidths,
+  getViewportMetrics,
+  indexToScrollLeft as indexToScrollLeftByMetrics,
+  scrollLeftToIndex as scrollLeftToIndexByMetrics
+} from "./carousel-utils.js";
+import { optimizeGlbForWindows } from "./export-utils.js";
+import { isEnsName, isHexAddress } from "./identifier-utils.js";
+import {
+  buildCollectionPath,
+  buildOwnerPath,
+  getWalletOwnerFromUrl
+} from "./routing-utils.js";
+import { normalizeSearchInput, parseTokenIdInput } from "./search-utils.js";
+
 // ------------------------------------------------------------
 // fRiENEMiES Studio - Viewer + Animation Test
 // - BODY is the master rig (skeleton source)
@@ -9,27 +30,7 @@
 // - Gear button toggles ALL UI (controls + transcript)
 // - Transcript panel can collapse independently
 // - Trait URLs / Rig Bones print into transcript (not dev console)
-//
-// UPDATE (2026-01-27):
-// - Panorama sphere fix: avoid double-inverting (scale(-1...) + BackSide).
-//   We keep geo.scale(-1,1,1) and switch material side to FrontSide.
-//   Also force pano to render as true background.
 // ------------------------------------------------------------
-
-// ----------------------------
-// Cache busting for static assets (update this when you replace files)
-// ----------------------------
-const ASSET_VERSION = "2026-02-13a";
-
-// ----------------------------
-// Assets in your repo root
-// ----------------------------
-const PANORAMA_URL = `/garden-cotton-clouds.png?v=${encodeURIComponent(
-  ASSET_VERSION
-)}`;
-const EXR_ENV_URL = `/friendsies_cloud_overcast_studio_v1.exr?v=${encodeURIComponent(
-  ASSET_VERSION
-)}`;
 
 // ----------------------------
 // Metadata
@@ -89,29 +90,6 @@ const MASCOT_CONFIG = {
     "https://i.seadn.io/s/raw/files/e1ed6c4df4dfe488f3cd8045f741f3eb.png"
 };
 
-const identifierUtils = window.FrienemiesIdentifierUtils || {};
-const routingUtils = window.FrienemiesRoutingUtils || {};
-const isHexAddress = identifierUtils.isHexAddress || ((value) => typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value.trim()));
-const isEnsName = identifierUtils.isEnsName || ((value) => typeof value === "string" && value.trim().toLowerCase().endsWith(".eth"));
-const getWalletOwnerFromUrl =
-  routingUtils.getWalletOwnerFromUrl ||
-  identifierUtils.getWalletOwnerFromUrl ||
-  (() => {
-    const params = new URLSearchParams(window.location.search);
-    const queryOwner = params.get("owner");
-    const rawPath = decodeURIComponent(window.location.pathname || "/");
-    const pathOwner = rawPath.replace(/^\/+/, "").split("/").filter(Boolean)[0] || "";
-    const candidate = (queryOwner || pathOwner || "").trim();
-    if (!candidate) return null;
-    if (isHexAddress(candidate) || isEnsName(candidate)) return candidate;
-    return null;
-  });
-const buildCollectionPath = routingUtils.buildCollectionPath || (() => "/");
-const buildOwnerPath =
-  routingUtils.buildOwnerPath ||
-  ((ownerSlug) => `/${encodeURIComponent(String(ownerSlug ?? "").trim())}`);
-
-const searchUtils = window.FrienemiesSearchUtils || {};
 const searchUiUtils = window.FrienemiesSearchUiUtils || {};
 const loadQueueUtils = window.FrienemiesLoadQueueUtils || {};
 const carouselQueryUtils = window.FrienemiesCarouselQueryUtils || {};
@@ -119,21 +97,6 @@ const dragPhysicsUtils = window.FrienemiesDragPhysicsUtils || {};
 const avatarRuntimeUtils = window.FrienemiesAvatarRuntimeUtils || {};
 const avatarCleanupUtils = window.FrienemiesAvatarCleanupUtils || {};
 const mascotUtils = window.FrienemiesMascotUtils || {};
-const normalizeSearchInput =
-  searchUtils.normalizeSearchInput ||
-  ((value) => String(value ?? "").trim());
-const parseTokenIdInput =
-  searchUtils.parseTokenIdInput ||
-  ((value, options = {}) => {
-    const min = Number.isInteger(options.min) ? options.min : 1;
-    const max = Number.isInteger(options.max) ? options.max : 10000;
-    const normalized = normalizeSearchInput(value).replace(/^#/, "");
-    if (!normalized) return null;
-    const tokenId = Number(normalized);
-    if (!Number.isInteger(tokenId)) return null;
-    if (tokenId < min || tokenId > max) return null;
-    return tokenId;
-  });
 const updateResetCollectionVisibilityFromUtils =
   searchUiUtils.updateResetCollectionVisibility ||
   ((button, tokenIds, defaultTokenIds) => {
@@ -304,14 +267,6 @@ function initCharacterLoader() {
   return { dracoLoader, gltfLoader, fbxLoader, textureLoader };
 }
 
-const initEnvironment =
-  sceneBootstrapUtils.initEnvironment ||
-  function initEnvironmentFallback(scene) {
-    const panoGroup = new THREE.Group();
-    scene.add(panoGroup);
-    return { panoGroup };
-  };
-
 const sceneBoot = initScene();
 const scene = sceneBoot.scene;
 const camera = sceneBoot.camera;
@@ -329,9 +284,6 @@ const hemisphereLight = lighting.hemisphereLight;
 const ambientLight = lighting.ambientLight;
 const keyLight = lighting.keyLight;
 const rim = lighting.rim;
-
-const environment = initEnvironment(scene);
-const panoGroup = environment.panoGroup;
 
 // ----------------------------
 // Look controls + presets
@@ -605,6 +557,8 @@ const controlPlayAnimBtn = document.getElementById("controlPlayAnimBtn");
 const animCustomUrl = document.getElementById("animCustomUrl");
 const animLoadUrlBtn = document.getElementById("animLoadUrlBtn");
 const animFileInput = document.getElementById("animFileInput");
+const sceneModeBtn = document.getElementById("sceneModeBtn");
+const animSceneHint = document.getElementById("animSceneHint");
 const consoleModal = document.getElementById("consoleModal");
 const consoleViewer = document.getElementById("consoleViewer");
 const consoleModalViewer = document.getElementById("consoleModalViewer");
@@ -937,72 +891,6 @@ function copyCurrentLook() {
 // are fixed in world-space. Make them loosely follow the camera to keep a consistent fill.
 const MOBILE_CAMERA_FOLLOW_LIGHTS = isMobileLike();
 const tmpV3 = new THREE.Vector3();
-
-async function loadPanoramaSphere() {
-  return new Promise((resolve) => {
-    textureLoader.load(
-      PANORAMA_URL,
-      (panoTex) => {
-        panoTex.colorSpace = THREE.SRGBColorSpace;
-        panoTex.flipY = true;
-
-        const geo = new THREE.SphereGeometry(80, 64, 32);
-
-        // ✅ Keep this inversion (camera is inside the sphere)
-        geo.scale(-1, 1, 1);
-
-        // ✅ FIX: do NOT use BackSide when you've already inverted the geometry.
-        // Also force background-ish behavior.
-        const mat = new THREE.MeshBasicMaterial({
-          map: panoTex,
-          side: THREE.FrontSide,
-          depthWrite: false,
-          depthTest: false
-        });
-        mat.toneMapped = false;
-
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.name = "PANORAMA_SPHERE";
-
-        // Ensure it renders first (so it never covers the avatar)
-        mesh.renderOrder = -1000;
-
-        panoGroup.clear();
-        panoGroup.add(mesh);
-
-        resolve(true);
-      },
-      undefined,
-      () => resolve(false)
-    );
-  });
-}
-
-async function loadExrEnvironment() {
-  return new Promise((resolve) => {
-    const exrLoader = new THREE.EXRLoader();
-    exrLoader.load(
-      EXR_ENV_URL,
-      (tex) => {
-        const pmrem = new THREE.PMREMGenerator(renderer);
-        pmrem.compileEquirectangularShader();
-
-        const envRT = pmrem.fromEquirectangular(tex);
-        const envMap = envRT.texture;
-
-        scene.environment = envMap;
-        scene.environmentIntensity = 1 / Math.PI; // compensate for r175 PMREM intensity change
-
-        tex.dispose();
-        pmrem.dispose();
-
-        resolve(true);
-      },
-      undefined,
-      () => resolve(false)
-    );
-  });
-}
 
 // ----------------------------
 // Avatar group
@@ -1387,6 +1275,9 @@ class AnimController {
     this._state     = "none"; // "none" | "idle" | "walk" | "emote"
     this._retToIdle = false;
     this._timer     = null;
+    this._sceneTimer = null;
+    this._sceneMode = false;
+    this._lastSceneUrl = "";
     this._guard     = 0;      // increments on detach so stale preload callbacks abort
     this._onFinished = this._onFinished.bind(this);
   }
@@ -1400,6 +1291,8 @@ class AnimController {
     this._retToIdle = false;
     clearTimeout(this._timer);
     this._timer = null;
+    clearTimeout(this._sceneTimer);
+    this._sceneTimer = null;
     mixer.addEventListener("finished", this._onFinished);
   }
 
@@ -1408,6 +1301,9 @@ class AnimController {
     this._guard++;
     clearTimeout(this._timer);
     this._timer = null;
+    clearTimeout(this._sceneTimer);
+    this._sceneTimer = null;
+    this._sceneMode = false;
     if (this._mixer) this._mixer.removeEventListener("finished", this._onFinished);
     this._mixer = null;
     this._active = null;
@@ -1449,9 +1345,15 @@ class AnimController {
 
   _crossFade(newAction, fadeDur) {
     if (!newAction) return;
-    newAction.reset().play();
-    if (this._active && this._active !== newAction) {
-      this._active.crossFadeTo(newAction, fadeDur, false);
+    const previous = this._active;
+    newAction.enabled = true;
+    newAction.reset();
+    newAction.setEffectiveTimeScale(1);
+    newAction.setEffectiveWeight(1);
+    newAction.fadeIn(Math.max(0.05, fadeDur || 0.01));
+    newAction.play();
+    if (previous && previous !== newAction) {
+      previous.crossFadeTo(newAction, Math.max(0.05, fadeDur || 0.01), true);
     }
     this._active = newAction;
     currentAction = setAvatarRuntimeField("currentAction", newAction);
@@ -1469,6 +1371,29 @@ class AnimController {
     }
     this._scheduleEmote();
   }
+
+  setSceneMode(enabled, { playNext = null } = {}) {
+    this._sceneMode = Boolean(enabled);
+    clearTimeout(this._sceneTimer);
+    this._sceneTimer = null;
+    if (this._sceneMode && typeof playNext === "function") {
+      this._queueSceneBeat(playNext, 900);
+    }
+  }
+
+  _queueSceneBeat(playNext, delayMs = null) {
+    clearTimeout(this._sceneTimer);
+    if (!this._sceneMode || typeof playNext !== "function") return;
+    const delay = delayMs ?? (7000 + Math.random() * 9000);
+    this._sceneTimer = setTimeout(() => playNext(), delay);
+  }
+
+  noteSceneUrl(url) {
+    this._lastSceneUrl = String(url || "");
+  }
+
+  get sceneMode() { return this._sceneMode; }
+  get lastSceneUrl() { return this._lastSceneUrl; }
 
   _scheduleEmote() {
     clearTimeout(this._timer);
@@ -1678,15 +1603,6 @@ function getProtectedTextureSet() {
 
   if (scene?.environment?.isTexture) protectedTextures.add(scene.environment);
   if (scene?.background?.isTexture) protectedTextures.add(scene.background);
-
-  panoGroup?.traverse?.((node) => {
-    if (!node?.material) return;
-    const mats = Array.isArray(node.material) ? node.material : [node.material];
-    mats.forEach((mat) => {
-      if (mat?.map?.isTexture) protectedTextures.add(mat.map);
-      if (mat?.envMap?.isTexture) protectedTextures.add(mat.envMap);
-    });
-  });
 
   return protectedTextures;
 }
@@ -1983,525 +1899,6 @@ function pruneExportHelpers(exportRoot) {
 
   return toRemove.length;
 }
-
-// ----------------------------
-// Export post-processing
-// Goal: Improve Windows 3D Viewer compatibility without breaking Blender.
-// This is intentionally conservative: if anything looks off, we fall back to raw GLB.
-// ----------------------------
-const exportUtils = window.FrienemiesExportUtils || {};
-
-function parseGlb(arrayBuffer) {
-  const u8 = new Uint8Array(arrayBuffer);
-  const dv = new DataView(arrayBuffer);
-
-  const magic = dv.getUint32(0, true);
-  if (magic !== 0x46546c67) throw new Error("Not a GLB (bad magic)");
-
-  const version = dv.getUint32(4, true);
-  if (version !== 2) throw new Error(`Unsupported GLB version: ${version}`);
-
-  let offset = 12;
-  let jsonChunk = null;
-  let binChunk = null;
-
-  while (offset + 8 <= u8.byteLength) {
-    const chunkLength = dv.getUint32(offset, true);
-    const chunkType = dv.getUint32(offset + 4, true);
-    const chunkStart = offset + 8;
-    const chunkEnd = chunkStart + chunkLength;
-
-    if (chunkEnd > u8.byteLength) break;
-
-    if (chunkType === 0x4e4f534a) {
-      // JSON
-      jsonChunk = u8.slice(chunkStart, chunkEnd);
-    } else if (chunkType === 0x004e4942) {
-      // BIN
-      binChunk = u8.slice(chunkStart, chunkEnd);
-    }
-
-    offset = chunkEnd;
-  }
-
-  if (!jsonChunk) throw new Error("GLB missing JSON chunk");
-
-  const jsonText = new TextDecoder("utf-8").decode(jsonChunk);
-  const json = JSON.parse(jsonText);
-
-  return { json, binChunk };
-}
-
-function buildGlb(json, binChunk) {
-  const enc = new TextEncoder();
-  let jsonBytes = enc.encode(JSON.stringify(json));
-
-  // 4-byte alignment
-  const pad4 = (n) => (4 - (n % 4)) % 4;
-  const jsonPad = pad4(jsonBytes.byteLength);
-  const binPad = binChunk ? pad4(binChunk.byteLength) : 0;
-
-  const jsonChunkLen = jsonBytes.byteLength + jsonPad;
-  const binChunkLen = binChunk ? binChunk.byteLength + binPad : 0;
-
-  const totalLen = 12 + 8 + jsonChunkLen + (binChunk ? 8 + binChunkLen : 0);
-
-  const out = new ArrayBuffer(totalLen);
-  const dv = new DataView(out);
-  const u8 = new Uint8Array(out);
-
-  // header
-  dv.setUint32(0, 0x46546c67, true);
-  dv.setUint32(4, 2, true);
-  dv.setUint32(8, totalLen, true);
-
-  let offset = 12;
-
-  // JSON chunk header
-  dv.setUint32(offset, jsonChunkLen, true);
-  dv.setUint32(offset + 4, 0x4e4f534a, true);
-  offset += 8;
-  u8.set(jsonBytes, offset);
-  offset += jsonBytes.byteLength;
-  for (let i = 0; i < jsonPad; i++) u8[offset++] = 0x20; // spaces
-
-  if (binChunk) {
-    dv.setUint32(offset, binChunkLen, true);
-    dv.setUint32(offset + 4, 0x004e4942, true);
-    offset += 8;
-    u8.set(binChunk, offset);
-    offset += binChunk.byteLength;
-    for (let i = 0; i < binPad; i++) u8[offset++] = 0;
-  }
-
-  return out;
-}
-
-function deepEqualJson(a, b) {
-  // only for small objects like samplers
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
-function dedupeSamplers(gltf) {
-  const samplers = gltf.samplers;
-  const textures = gltf.textures;
-  if (!Array.isArray(samplers) || !Array.isArray(textures) || samplers.length < 2)
-    return { changed: false };
-
-  const newSamplers = [];
-  const remap = new Map(); // old -> new
-
-  for (let i = 0; i < samplers.length; i++) {
-    const s = samplers[i] || {};
-    let found = -1;
-    for (let j = 0; j < newSamplers.length; j++) {
-      if (deepEqualJson(newSamplers[j], s)) {
-        found = j;
-        break;
-      }
-    }
-    if (found === -1) {
-      found = newSamplers.length;
-      newSamplers.push(s);
-    }
-    remap.set(i, found);
-  }
-
-  let texChanged = false;
-  for (const t of textures) {
-    if (!t) continue;
-    const old = t.sampler;
-    if (typeof old === "number" && remap.has(old)) {
-      const nu = remap.get(old);
-      if (nu !== old) {
-        t.sampler = nu;
-        texChanged = true;
-      }
-    }
-  }
-
-  const changed = texChanged || newSamplers.length !== samplers.length;
-  if (changed) gltf.samplers = newSamplers;
-  return { changed, before: samplers.length, after: newSamplers.length };
-}
-
-function dedupeSkins(gltf, binChunk) {
-  // THREE.GLTFExporter tends to emit one skin per SkinnedMesh even when they all share
-  // the same skeleton/joints. Windows 3D Viewer seems especially unhappy with that.
-  //
-  // We dedupe aggressively but safely:
-  // - If joints[] and skeleton match, we treat skins as equivalent.
-  // - Prefer the first skin as canonical.
-  // - If inverseBindMatrices accessors differ but are byte-identical MAT4 buffers,
-  //   we also treat them as equivalent.
-  const skins = gltf.skins;
-  const nodes = gltf.nodes;
-  if (!Array.isArray(skins) || skins.length < 2 || !Array.isArray(nodes))
-    return { changed: false };
-
-  const accessors = gltf.accessors;
-  const bufferViews = gltf.bufferViews;
-  const bin = binChunk
-    ? new Uint8Array(binChunk.buffer, binChunk.byteOffset, binChunk.byteLength)
-    : null;
-
-  const getAccessorByteSliceKey = (accessorIndex) => {
-    if (!bin || !Array.isArray(accessors) || !Array.isArray(bufferViews)) return null;
-    const acc = accessors[accessorIndex];
-    if (!acc) return null;
-    const bv = bufferViews[acc.bufferView];
-    if (!bv) return null;
-
-    // Only bother with the common IBM shape (MAT4, float)
-    if (acc.componentType !== 5126 || acc.type !== "MAT4") return null;
-
-    const byteOffset = (bv.byteOffset || 0) + (acc.byteOffset || 0);
-    const byteLength = (bv.byteStride || 64) * (acc.count || 0);
-    if (byteLength <= 0) return null;
-    const end = byteOffset + byteLength;
-    if (byteOffset < 0 || end > bin.byteLength) return null;
-
-    // Create a cheap hash (not cryptographic) for comparison.
-    // Sample a few bytes + length.
-    const view = bin.subarray(byteOffset, end);
-    let h = 2166136261;
-    const step = Math.max(1, Math.floor(view.length / 64));
-    for (let i = 0; i < view.length; i += step) {
-      h ^= view[i];
-      h = Math.imul(h, 16777619);
-    }
-    return `${view.length}:${h >>> 0}`;
-  };
-
-  const keyForSkin = (s) => {
-    if (!s) return "null";
-
-    const joints = Array.isArray(s.joints) ? s.joints : null;
-    const skeleton = typeof s.skeleton === "number" ? s.skeleton : null;
-
-    // Prefer to match by actual IBM buffer content when possible.
-    const ibm = typeof s.inverseBindMatrices === "number" ? s.inverseBindMatrices : null;
-    const ibmKey = ibm !== null ? getAccessorByteSliceKey(ibm) : null;
-
-    return JSON.stringify({ joints, skeleton, ibmKey: ibmKey || ibm });
-  };
-
-  const mapKeyToNew = new Map();
-  const remap = new Map();
-  const newSkins = [];
-
-  for (let i = 0; i < skins.length; i++) {
-    const s = skins[i];
-    const k = keyForSkin(s);
-    if (!mapKeyToNew.has(k)) {
-      mapKeyToNew.set(k, newSkins.length);
-      newSkins.push(s);
-    }
-    remap.set(i, mapKeyToNew.get(k));
-  }
-
-  let nodeChanged = false;
-  for (const n of nodes) {
-    if (!n) continue;
-    const old = n.skin;
-    if (typeof old === "number" && remap.has(old)) {
-      const nu = remap.get(old);
-      if (nu !== old) {
-        n.skin = nu;
-        nodeChanged = true;
-      }
-    }
-  }
-
-  // Also unify inverseBindMatrices indices for the merged skins, picking the first one.
-  // (This is conservative: we only unify within the deduped skin list.)
-  for (const s of newSkins) {
-    if (!s) continue;
-    // no-op, but keeps structure stable
-  }
-
-  const changed = nodeChanged || newSkins.length !== skins.length;
-  if (changed) gltf.skins = newSkins;
-  return { changed, before: skins.length, after: gltf.skins.length };
-}
-
-function bakeAndRemoveKHRTextureTransform_FlipYOnly(gltf, binChunk) {
-  // Windows 3D Viewer is often picky; KHR_texture_transform might be a culprit.
-  // We handle ONLY the common flipY pattern: offset [0,1], scale [1,-1], rotation 0.
-  if (!gltf?.materials || !gltf?.meshes || !gltf?.accessors || !gltf?.bufferViews)
-    return { changed: false };
-
-  const materials = gltf.materials;
-  const meshes = gltf.meshes;
-
-  const flipYTextures = new Set();
-
-  for (let mi = 0; mi < materials.length; mi++) {
-    const m = materials[mi];
-    const tex = m?.pbrMetallicRoughness?.baseColorTexture;
-    const ext = tex?.extensions?.KHR_texture_transform;
-    if (!ext) continue;
-
-    const off = ext.offset || [0, 0];
-    const sc = ext.scale || [1, 1];
-    const rot = ext.rotation || 0;
-
-    const isFlipY =
-      rot === 0 &&
-      off[0] === 0 &&
-      off[1] === 1 &&
-      sc[0] === 1 &&
-      sc[1] === -1;
-
-    if (!isFlipY) continue;
-
-    const ti = tex.index;
-    if (typeof ti === "number") {
-      flipYTextures.add(ti);
-    }
-  }
-
-  if (!flipYTextures.size) return { changed: false };
-
-  // Build a mapping from material index -> needsFlipY (based on baseColorTexture index)
-  const materialNeedsFlip = new Set();
-  for (let mi = 0; mi < materials.length; mi++) {
-    const m = materials[mi];
-    const tex = m?.pbrMetallicRoughness?.baseColorTexture;
-    const ti = tex?.index;
-    if (typeof ti === "number" && flipYTextures.has(ti)) materialNeedsFlip.add(mi);
-  }
-
-  // Flip V in-place for TEXCOORD_0 accessors on primitives that use those materials.
-  const bin = binChunk
-    ? new Uint8Array(binChunk.buffer, binChunk.byteOffset, binChunk.byteLength)
-    : null;
-  if (!bin) return { changed: false };
-
-  const accessors = gltf.accessors;
-  const bufferViews = gltf.bufferViews;
-
-  const flipAccessor = (accessorIndex) => {
-    const acc = accessors[accessorIndex];
-    if (!acc) return false;
-    if (acc.componentType !== 5126) return false; // FLOAT
-    if (acc.type !== "VEC2") return false;
-
-    const bv = bufferViews[acc.bufferView];
-    if (!bv) return false;
-
-    const baseOffset = (bv.byteOffset || 0) + (acc.byteOffset || 0);
-    const stride = bv.byteStride || 8;
-    const count = acc.count || 0;
-
-    // Safety checks
-    const lastByte = baseOffset + stride * (count - 1) + 8;
-    if (count <= 0 || baseOffset < 0 || lastByte > bin.byteLength) return false;
-
-    const dv = new DataView(bin.buffer, bin.byteOffset, bin.byteLength);
-    for (let i = 0; i < count; i++) {
-      const yOff = baseOffset + i * stride + 4;
-      const y = dv.getFloat32(yOff, true);
-      dv.setFloat32(yOff, 1.0 - y, true);
-    }
-
-    // Update accessor min/max if present
-    if (Array.isArray(acc.min) && acc.min.length === 2) {
-      const minY = acc.min[1];
-      const maxY = Array.isArray(acc.max) ? acc.max[1] : undefined;
-      if (typeof minY === "number" && typeof maxY === "number") {
-        acc.min[1] = 1.0 - maxY;
-        if (Array.isArray(acc.max) && acc.max.length === 2) {
-          acc.max[1] = 1.0 - minY;
-        }
-      }
-    }
-
-    return true;
-  };
-
-  const flippedAccessors = new Set();
-  let changed = false;
-
-  for (const mesh of meshes) {
-    for (const prim of mesh?.primitives || []) {
-      if (!prim) continue;
-      const matIndex = prim.material;
-      if (typeof matIndex !== "number" || !materialNeedsFlip.has(matIndex)) continue;
-
-      const uvAccessor = prim.attributes?.TEXCOORD_0;
-      if (typeof uvAccessor !== "number") continue;
-      if (flippedAccessors.has(uvAccessor)) continue;
-
-      if (flipAccessor(uvAccessor)) {
-        flippedAccessors.add(uvAccessor);
-        changed = true;
-      }
-    }
-  }
-
-  if (!changed) return { changed: false };
-
-  // Remove the extension from materials (only those flipY ones)
-  for (const m of materials) {
-    const tex = m?.pbrMetallicRoughness?.baseColorTexture;
-    const ext = tex?.extensions?.KHR_texture_transform;
-    if (!ext) continue;
-
-    const off = ext.offset || [0, 0];
-    const sc = ext.scale || [1, 1];
-    const rot = ext.rotation || 0;
-    const isFlipY =
-      rot === 0 && off[0] === 0 && off[1] === 1 && sc[0] === 1 && sc[1] === -1;
-
-    if (!isFlipY) continue;
-
-    delete tex.extensions.KHR_texture_transform;
-    if (Object.keys(tex.extensions).length === 0) delete tex.extensions;
-  }
-
-  // Clean up extensionsUsed if possible
-  if (Array.isArray(gltf.extensionsUsed)) {
-    const stillUsed = new Set();
-    // crude scan
-    const scan = (obj) => {
-      if (!obj || typeof obj !== "object") return;
-      if (obj.extensions && typeof obj.extensions === "object") {
-        for (const k of Object.keys(obj.extensions)) stillUsed.add(k);
-      }
-      for (const v of Object.values(obj)) scan(v);
-    };
-    scan(gltf);
-    gltf.extensionsUsed = gltf.extensionsUsed.filter((k) => stillUsed.has(k));
-    if (!gltf.extensionsUsed.length) delete gltf.extensionsUsed;
-  }
-
-  return {
-    changed: true,
-    flippedAccessors: flippedAccessors.size,
-    textures: flipYTextures.size
-  };
-}
-
-function sanitizeMaterialsForWindows(gltf) {
-  // Windows 3D Viewer can fail hard on certain material edge-cases.
-  // Keep this conservative: clamp factors into spec ranges and strip nonstandard extras.
-  const mats = gltf.materials;
-  if (!Array.isArray(mats) || !mats.length) return { changed: false };
-
-  const clamp01 = (x) => {
-    const n = Number(x);
-    if (!Number.isFinite(n)) return x;
-    return Math.min(1, Math.max(0, n));
-  };
-
-  let changed = false;
-  let clamped = 0;
-  let strippedExtras = 0;
-
-  for (const m of mats) {
-    if (!m) continue;
-
-    if (m.extras && typeof m.extras === "object") {
-      // Strip material extras produced by our viewer-only look system.
-      delete m.extras;
-      strippedExtras++;
-      changed = true;
-    }
-
-    // emissiveFactor must be [0..1] per component in glTF 2.0.
-    if (Array.isArray(m.emissiveFactor) && m.emissiveFactor.length === 3) {
-      const before = m.emissiveFactor.slice();
-      m.emissiveFactor = [
-        clamp01(m.emissiveFactor[0]),
-        clamp01(m.emissiveFactor[1]),
-        clamp01(m.emissiveFactor[2])
-      ];
-      if (JSON.stringify(before) !== JSON.stringify(m.emissiveFactor)) {
-        clamped++;
-        changed = true;
-      }
-    }
-
-    // Clamp PBR factors into spec too.
-    const pbr = m.pbrMetallicRoughness;
-    if (pbr && typeof pbr === "object") {
-      if (typeof pbr.metallicFactor === "number") {
-        const v = clamp01(pbr.metallicFactor);
-        if (v !== pbr.metallicFactor) {
-          pbr.metallicFactor = v;
-          clamped++;
-          changed = true;
-        }
-      }
-      if (typeof pbr.roughnessFactor === "number") {
-        const v = clamp01(pbr.roughnessFactor);
-        if (v !== pbr.roughnessFactor) {
-          pbr.roughnessFactor = v;
-          clamped++;
-          changed = true;
-        }
-      }
-      if (Array.isArray(pbr.baseColorFactor) && pbr.baseColorFactor.length === 4) {
-        const before = pbr.baseColorFactor.slice();
-        pbr.baseColorFactor = [
-          clamp01(pbr.baseColorFactor[0]),
-          clamp01(pbr.baseColorFactor[1]),
-          clamp01(pbr.baseColorFactor[2]),
-          clamp01(pbr.baseColorFactor[3])
-        ];
-        if (JSON.stringify(before) !== JSON.stringify(pbr.baseColorFactor)) {
-          clamped++;
-          changed = true;
-        }
-      }
-    }
-  }
-
-  return { changed, clamped, strippedExtras };
-}
-
-function optimizeGlbForWindows(rawGlb) {
-  // Returns { glb, report } or throws.
-  const { json, binChunk } = parseGlb(rawGlb);
-
-  const report = { steps: [] };
-
-  const bakeRes = bakeAndRemoveKHRTextureTransform_FlipYOnly(json, binChunk);
-  if (bakeRes.changed) report.steps.push({ step: "bakeFlipY", ...bakeRes });
-
-  const sampRes = dedupeSamplers(json);
-  if (sampRes.changed) report.steps.push({ step: "dedupeSamplers", ...sampRes });
-
-  const skinRes = dedupeSkins(json, binChunk);
-  if (skinRes.changed) report.steps.push({ step: "dedupeSkins", ...skinRes });
-
-  const matRes = sanitizeMaterialsForWindows(json);
-  if (matRes.changed) report.steps.push({ step: "sanitizeMaterials", ...matRes });
-
-  // Basic sanity checks (avoid exporting a broken file)
-  const matCount = Array.isArray(json.materials) ? json.materials.length : 0;
-  const imgCount = Array.isArray(json.images) ? json.images.length : 0;
-  const texCount = Array.isArray(json.textures) ? json.textures.length : 0;
-
-  if (!matCount) throw new Error("Optimize sanity check failed: 0 materials");
-  if (!imgCount && texCount) throw new Error("Optimize sanity check failed: textures but 0 images");
-
-  return { glb: buildGlb(json, binChunk), report };
-}
-
-if (exportUtils.parseGlb) parseGlb = exportUtils.parseGlb;
-if (exportUtils.buildGlb) buildGlb = exportUtils.buildGlb;
-if (exportUtils.deepEqualJson) deepEqualJson = exportUtils.deepEqualJson;
-if (exportUtils.dedupeSamplers) dedupeSamplers = exportUtils.dedupeSamplers;
-if (exportUtils.dedupeSkins) dedupeSkins = exportUtils.dedupeSkins;
-if (exportUtils.bakeAndRemoveKHRTextureTransform_FlipYOnly) {
-  bakeAndRemoveKHRTextureTransform_FlipYOnly = exportUtils.bakeAndRemoveKHRTextureTransform_FlipYOnly;
-}
-if (exportUtils.sanitizeMaterialsForWindows) {
-  sanitizeMaterialsForWindows = exportUtils.sanitizeMaterialsForWindows;
-}
-if (exportUtils.optimizeGlbForWindows) optimizeGlbForWindows = exportUtils.optimizeGlbForWindows;
 
 function downloadRigGlb() {
   if (!loadedParts?.length || !bodyRoot) {
@@ -2812,21 +2209,93 @@ const ANIM_LOOP_HINTS = new Map([
 const ANIM_MANIFEST_URL =
   "https://cdn.jsdelivr.net/gh/PIZZALORD713/animation_collection2@main/animations.json";
 
+const SESSION_ANIM_OBJECT_URLS = new Set();
+
+function inferAnimationCategory(name = "", url = "") {
+  const text = `${name} ${url}`.toLowerCase();
+  if (/idle|stand|breath|wait|hold|kneel/.test(text)) return "idle";
+  if (/walk|run|jog|locomotion|turn|strafe/.test(text)) return "move";
+  if (/dance|jump|gesture|wave|pick|plant|water|dig|pull|dump|milk|action|attack|emote/.test(text)) return "emote";
+  return "emote";
+}
+
+function getAnimationPresetMeta(url) {
+  const libraryEntry = ANIM_LIBRARY.find((entry) => entry.url === url);
+  const preset = ANIM_PRESETS.find(([, presetUrl]) => presetUrl === url);
+  const name = libraryEntry?.name || preset?.[0] || "Animation";
+  const loop = animCtrl?.loopForUrl?.(url) ?? /idle|walk|run|loop/i.test(name);
+  const category = libraryEntry?.category || inferAnimationCategory(name, url);
+  return { name, url, loop, category };
+}
+
+function chooseSceneAnimationUrl() {
+  const candidates = ANIM_PRESETS
+    .map(([, url]) => getAnimationPresetMeta(url))
+    .filter((entry) => entry.url);
+  if (!candidates.length) return "";
+
+  const roll = Math.random();
+  const preferredCategory = roll < 0.42 ? "idle" : roll < 0.72 ? "move" : "emote";
+  let pool = candidates.filter((entry) => entry.category === preferredCategory);
+  if (!pool.length) pool = candidates.filter((entry) => entry.loop === (preferredCategory !== "emote"));
+  if (!pool.length) pool = candidates;
+
+  const freshPool = pool.filter((entry) => entry.url !== animCtrl.lastSceneUrl);
+  const pickPool = freshPool.length ? freshPool : pool;
+  return pickPool[Math.floor(Math.random() * pickPool.length)]?.url || "";
+}
+
+function updateSceneModeUi() {
+  const enabled = animCtrl.sceneMode;
+  sceneModeBtn?.setAttribute("aria-pressed", enabled ? "true" : "false");
+  sceneModeBtn?.classList.toggle("is-active", enabled);
+  if (sceneModeBtn) sceneModeBtn.textContent = enabled ? "Scene mode on" : "Scene mode";
+  if (animSceneHint) {
+    animSceneHint.textContent = enabled
+      ? "Scene mode is chaining animation beats with longer blends for a more natural preview."
+      : "Scene mode chains idles, walks, and emotes so previews feel like an in-game moment.";
+  }
+}
+
+async function playNextSceneBeat() {
+  if (!animCtrl.sceneMode) return;
+  const url = chooseSceneAnimationUrl();
+  if (!url) return;
+  animCtrl.noteSceneUrl(url);
+  await playAnimUrl(url, currentLoadId, null, { fadeDur: 0.85, sceneBeat: true });
+  const { loop, category } = getAnimationPresetMeta(url);
+  const nextDelay = loop || category !== "emote" ? 8500 + Math.random() * 9000 : 3500 + Math.random() * 5000;
+  animCtrl._queueSceneBeat(playNextSceneBeat, nextDelay);
+}
+
+window.addEventListener("beforeunload", () => {
+  for (const objectUrl of SESSION_ANIM_OBJECT_URLS) URL.revokeObjectURL(objectUrl);
+  SESSION_ANIM_OBJECT_URLS.clear();
+});
+
+function registerSessionAnimationFiles(files = []) {
+  const added = [];
+  for (const file of files) {
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (!["glb", "gltf", "fbx"].includes(ext)) continue;
+    const objectUrl = URL.createObjectURL(file);
+    SESSION_ANIM_OBJECT_URLS.add(objectUrl);
+    const baseName = file.name.replace(/\.(glb|gltf|fbx)$/i, "").replace(/[_-]+/g, " ").trim() || file.name;
+    const name = `Local • ${baseName}`;
+    ANIM_PRESETS.push([name, objectUrl]);
+    if (/idle|walk|run|loop|hold/i.test(baseName)) ANIM_LOOP_HINTS.set(objectUrl, true);
+    added.push([name, objectUrl, ext]);
+  }
+  if (added.length) {
+    populateOnboardingAnimSelect();
+    if (controlAnimSelect) controlAnimSelect.value = added[0][1];
+    if (onboardingAnimSelect) onboardingAnimSelect.value = added[0][1];
+  }
+  return added;
+}
+
 const animUtils = window.FrienemiesAnimUtils || {};
 const animSelectUtils = window.FrienemiesAnimSelectUtils || {};
-const normalizeAnimManifestItem =
-  animUtils.normalizeAnimManifestItem ||
-  function normalizeAnimManifestItemFallback(item) {
-    if (Array.isArray(item) && item.length >= 2) {
-      return [String(item[0]), String(item[1])];
-    }
-    if (item && typeof item === "object" && item.url) {
-      const url = String(item.url);
-      const fallbackName = url.split("/").pop()?.replace(/\.glb$/i, "") || "Animation";
-      return [String(item.name || fallbackName), url];
-    }
-    return null;
-  };
 
 async function loadAnimationManifest() {
   try {
@@ -2847,20 +2316,6 @@ async function loadAnimationManifest() {
     logLine(`Animation manifest unavailable, using fallback presets (${err?.message || err})`, "dim");
   }
 }
-
-const populateAnimationSelectWithPresets =
-  animUtils.populateAnimationSelect ||
-  function populateAnimationSelectWithPresetsFallback(selectEl, presets = []) {
-    if (!selectEl) return;
-    selectEl.innerHTML = "";
-    presets.forEach(([name, url], idx) => {
-      const opt = document.createElement("option");
-      opt.value = url;
-      opt.textContent = name;
-      if (idx === 0) opt.selected = true;
-      selectEl.appendChild(opt);
-    });
-  };
 
 function populateAnimationSelect(selectEl) {
   populateAnimationSelectWithPresets(selectEl, ANIM_PRESETS);
@@ -2897,14 +2352,6 @@ const getSelectedAnimUrlFromInputs =
 function getSelectedAnimUrl() {
   return getSelectedAnimUrlFromInputs(controlAnimSelect, onboardingAnimSelect, ANIM_PRESETS);
 }
-
-const getAnimUrlByNameFromPresets =
-  animUtils.getAnimUrlByName ||
-  function getAnimUrlByNameFromPresetsFallback(name, presets = []) {
-    const target = String(name || "").toLowerCase();
-    const hit = presets.find(([animName]) => String(animName).toLowerCase() === target);
-    return hit?.[1] || "";
-  };
 
 function getAnimUrlByName(name) {
   return getAnimUrlByNameFromPresets(name, ANIM_PRESETS);
@@ -3182,7 +2629,7 @@ function loadToken(tokenId) {
 // External animation
 // ----------------------------
 // hint: "fbx" | "glb" | null — overrides URL extension detection (used for local blob URLs)
-async function playAnimUrl(url, loadIdGuard = currentLoadId, hint = null) {
+async function playAnimUrl(url, loadIdGuard = currentLoadId, hint = null, options = {}) {
   if (!url) return setStatus("pick an animation");
   if (!mixer || !bodyRoot) return setStatus("load a fRiENDSiES asset first");
 
@@ -3202,12 +2649,13 @@ async function playAnimUrl(url, loadIdGuard = currentLoadId, hint = null) {
 
   const clip = sanitizeClip(clips[0]);
   const loop = animCtrl.loopForUrl(url);
+  const fadeDur = Number.isFinite(options.fadeDur) ? options.fadeDur : 0.65;
 
   // Crossfade into the new clip; non-looping clips return to idle automatically
-  animCtrl.playRaw(clip, loop, 0.4);
+  animCtrl.playRaw(clip, loop, fadeDur);
 
   setStatus(`playing anim ✅ ${clip.name || "unnamed"}`);
-  logLine(`▶ Playing: ${clip.name || "unnamed"} (${url})`);
+  logLine(`${options.sceneBeat ? "🎬 Scene beat" : "▶ Playing"}: ${clip.name || "unnamed"} (${url})`);
 }
 
 // ----------------------------
@@ -3406,67 +2854,6 @@ const SNAP_BUFFER = 5;
 // ---------------------
 // Carousel geometry helpers
 // ---------------------
-const carouselUtils = window.FrienemiesCarouselUtils || {};
-
-const getCardMetrics =
-  carouselUtils.getCardMetrics ||
-  function getCardMetricsFallback() {
-    const style = getComputedStyle(document.documentElement);
-    const cardWidth = parseFloat(style.getPropertyValue("--card-width")) || 120;
-    const cardGap = parseFloat(style.getPropertyValue("--card-gap")) || 14;
-    return { cardWidth, cardGap, step: cardWidth + cardGap };
-  };
-
-const getViewportMetrics =
-  carouselUtils.getViewportMetrics ||
-  function getViewportMetricsFallback(viewport, step) {
-    const vpWidth = viewport?.clientWidth || 0;
-    const visibleCount = Math.max(1, Math.floor(vpWidth / (step || 1)));
-    return { vpWidth, visibleCount };
-  };
-
-const indexToScrollLeftByMetrics =
-  carouselUtils.indexToScrollLeft ||
-  function indexToScrollLeftByMetricsFallback(index, metrics) {
-    const { vpWidth = 0, step = 1, cardWidth = 0 } = metrics || {};
-    const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
-    return edgePad + index * step + cardWidth / 2 - vpWidth / 2;
-  };
-
-const scrollLeftToIndexByMetrics =
-  carouselUtils.scrollLeftToIndex ||
-  function scrollLeftToIndexByMetricsFallback(scrollLeft, metrics) {
-    const { vpWidth = 0, step = 1, cardWidth = 0, totalCount = 0 } = metrics || {};
-    if (!totalCount) return 0;
-    const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
-    const centerPixel = scrollLeft + vpWidth / 2;
-    const index = Math.round((centerPixel - edgePad - cardWidth / 2) / step);
-    return Math.max(0, Math.min(totalCount - 1, index));
-  };
-
-const getSpacerWidths =
-  carouselUtils.getSpacerWidths ||
-  function getSpacerWidthsFallback(params) {
-    const {
-      renderStart = 0,
-      renderEnd = 0,
-      totalCount = 0,
-      vpWidth = 0,
-      step = 1,
-      cardWidth = 0
-    } = params || {};
-
-    const edgePad = Math.max(0, (vpWidth - cardWidth) / 2);
-    const leftWidth = edgePad + renderStart * step;
-    const rightTokens = totalCount - renderEnd;
-    const rightWidth = rightTokens * step + edgePad;
-
-    return {
-      leftWidth: Math.max(0, leftWidth),
-      rightWidth: Math.max(0, rightWidth)
-    };
-  };
-
 function indexToScrollLeft(index) {
   const { step, cardWidth } = getCardMetrics();
   const { vpWidth } = getViewportMetrics(ui.carouselViewport, step);
@@ -4383,11 +3770,27 @@ document.querySelectorAll("[data-control-preset]").forEach((btn) => {
 });
 
 controlPlayAnimBtn?.addEventListener("click", async () => {
+  animCtrl.setSceneMode(false);
+  updateSceneModeUi();
   await playAnimUrl(getSelectedAnimUrl());
+});
+
+sceneModeBtn?.addEventListener("click", async () => {
+  const enabled = !animCtrl.sceneMode;
+  animCtrl.setSceneMode(enabled, { playNext: playNextSceneBeat });
+  updateSceneModeUi();
+  if (enabled) {
+    setStatus("scene mode: watching the character act naturally 🎬");
+    await playNextSceneBeat();
+  } else {
+    setStatus("scene mode off");
+  }
 });
 
 controlAnimSelect?.addEventListener("change", async () => {
   if (onboardingAnimSelect) onboardingAnimSelect.value = controlAnimSelect.value;
+  animCtrl.setSceneMode(false);
+  updateSceneModeUi();
   if (!mixer || !bodyRoot) return;
   await playAnimUrl(getSelectedAnimUrl());
 });
@@ -4396,23 +3799,36 @@ controlAnimSelect?.addEventListener("change", async () => {
 animLoadUrlBtn?.addEventListener("click", async () => {
   const url = animCustomUrl?.value?.trim();
   if (!url) return setStatus("enter a URL first");
+  animCtrl.setSceneMode(false);
+  updateSceneModeUi();
   await playAnimUrl(url);
 });
 
 animCustomUrl?.addEventListener("keydown", async (e) => {
   if (e.key !== "Enter") return;
   const url = animCustomUrl.value.trim();
-  if (url) await playAnimUrl(url);
+  if (url) {
+    animCtrl.setSceneMode(false);
+    updateSceneModeUi();
+    await playAnimUrl(url);
+  }
 });
 
 // ── Local file import ─────────────────────────────────────────────────────────
 animFileInput?.addEventListener("change", async () => {
-  const file = animFileInput.files?.[0];
-  if (!file) return;
-  const ext = file.name.split(".").pop().toLowerCase();
-  const objectUrl = URL.createObjectURL(file);
-  await playAnimUrl(objectUrl, currentLoadId, ext === "fbx" ? "fbx" : "glb");
-  URL.revokeObjectURL(objectUrl);
+  const files = Array.from(animFileInput.files || []);
+  if (!files.length) return;
+  const added = registerSessionAnimationFiles(files);
+  if (!added.length) {
+    animFileInput.value = "";
+    return setStatus("no supported animation files selected");
+  }
+  animCtrl.setSceneMode(false);
+  updateSceneModeUi();
+  setStatus(`added ${added.length} local animation${added.length === 1 ? "" : "s"} ✅`);
+  const firstUrl = added[0][1];
+  const ext = added[0]?.[2];
+  await playAnimUrl(firstUrl, currentLoadId, ext === "fbx" ? "fbx" : "glb");
   animFileInput.value = "";
 });
 
@@ -4489,6 +3905,8 @@ downloadGlbBtn?.addEventListener("click", () => {
 // "Enter Studio" — submits input if filled, otherwise just dismisses
 onboardingAnimSelect?.addEventListener("change", async () => {
   if (controlAnimSelect) controlAnimSelect.value = onboardingAnimSelect.value;
+  animCtrl.setSceneMode(false);
+  updateSceneModeUi();
   if (!mixer || !bodyRoot) return;
   await playAnimUrl(getSelectedAnimUrl());
 });
@@ -4772,14 +4190,6 @@ window.addEventListener("popstate", (event) => {
     `Preset: ${DEFAULT_LOOK_PRESET}`,
     { isDev: IS_DEV, logLine }
   );
-  setStatus("loading pano/env…");
-
-  const panoOk = await loadPanoramaSphere();
-  const envOk = await loadExrEnvironment();
-
-  logLine(`🖼 pano: ${panoOk ? "ok" : "failed"} (${PANORAMA_URL})`);
-  logLine(`🌫 env: ${envOk ? "ok" : "failed"} (${EXR_ENV_URL})`);
-
   setStatus("fetching metadata…");
 
   fetch(METADATA_URL)
@@ -4870,9 +4280,3 @@ window.addEventListener("resize", () => {
     });
   }
 });
-
-
-
-
-
-

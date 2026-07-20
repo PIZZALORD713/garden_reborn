@@ -1,5 +1,4 @@
-(() => {
-  function parseGlb(arrayBuffer) {
+  export function parseGlb(arrayBuffer) {
     const u8 = new Uint8Array(arrayBuffer);
     const dv = new DataView(arrayBuffer);
 
@@ -38,7 +37,7 @@
     return { json, binChunk };
   }
 
-  function buildGlb(json, binChunk) {
+  export function buildGlb(json, binChunk) {
     const enc = new TextEncoder();
     const jsonBytes = enc.encode(JSON.stringify(json));
 
@@ -80,11 +79,11 @@
     return out;
   }
 
-  function deepEqualJson(a, b) {
+  export function deepEqualJson(a, b) {
     return JSON.stringify(a) === JSON.stringify(b);
   }
 
-  function dedupeSamplers(gltf) {
+  export function dedupeSamplers(gltf) {
     const samplers = gltf.samplers;
     const textures = gltf.textures;
     if (!Array.isArray(samplers) || !Array.isArray(textures) || samplers.length < 2) {
@@ -128,7 +127,7 @@
     return { changed, before: samplers.length, after: newSamplers.length };
   }
 
-  function dedupeSkins(gltf, binChunk) {
+  export function dedupeSkins(gltf, binChunk) {
     const skins = gltf.skins;
     const nodes = gltf.nodes;
     if (!Array.isArray(skins) || skins.length < 2 || !Array.isArray(nodes)) {
@@ -210,7 +209,7 @@
     return { changed, before: skins.length, after: gltf.skins.length };
   }
 
-  function bakeAndRemoveKHRTextureTransform_FlipYOnly(gltf, binChunk) {
+  export function bakeAndRemoveKHRTextureTransform_FlipYOnly(gltf, binChunk) {
     if (!gltf?.materials || !gltf?.meshes || !gltf?.accessors || !gltf?.bufferViews) {
       return { changed: false };
     }
@@ -347,7 +346,7 @@
     };
   }
 
-  function sanitizeMaterialsForWindows(gltf) {
+  export function sanitizeMaterialsForWindows(gltf) {
     const mats = gltf.materials;
     if (!Array.isArray(mats) || !mats.length) return { changed: false };
 
@@ -420,7 +419,7 @@
     return { changed, clamped, strippedExtras };
   }
 
-  function optimizeGlbForWindows(rawGlb) {
+  export function optimizeGlbForWindows(rawGlb) {
     const { json, binChunk } = parseGlb(rawGlb);
 
     const report = { steps: [] };
@@ -448,15 +447,3 @@
 
     return { glb: buildGlb(json, binChunk), report };
   }
-
-  window.FrienemiesExportUtils = {
-    parseGlb,
-    buildGlb,
-    deepEqualJson,
-    dedupeSamplers,
-    dedupeSkins,
-    bakeAndRemoveKHRTextureTransform_FlipYOnly,
-    sanitizeMaterialsForWindows,
-    optimizeGlbForWindows
-  };
-})();
