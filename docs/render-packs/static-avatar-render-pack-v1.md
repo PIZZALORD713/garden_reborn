@@ -327,3 +327,14 @@ The V1 manifest leaves room for:
 - `voiceOrPersonaRefs`
 - collector/token page integration
 - batch render jobs across many token IDs
+
+
+## Runner Follow-Up Checklist
+
+Use this checklist for the next implementation pass before generating committed fixtures or public assets:
+
+1. Keep generated PNGs, `.blend` files, and large intermediate assets outside `garden_reborn` unless a small fixture is intentionally selected for review.
+2. Use `examples/render-packs/sauce-0x-token-8521.static-avatar-v1.json` as the canonical #8521 input manifest for runner validation.
+3. Validate the generated `render-pack-manifest.json` against `schemas/static-avatar.render-pack.v1.schema.json` before publishing a pack.
+4. Record Blender version, pipeline version, input manifest hash, output file hashes, and any non-goal limitations in the generated manifest.
+5. Treat the local Blender script path above as an operator-owned integration point; repo changes should keep the manifest/schema contract stable even when that external runner changes.

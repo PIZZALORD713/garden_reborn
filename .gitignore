@@ -1,7 +1,16 @@
-﻿################################################################################
+################################################################################
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
 /.vs
 .vercel
 .env*.local
+# Local development artifacts
+node_modules/
+/mcp/node_modules/
+/mcp/dist/
+/mcp/.env*.local
+/mcp/*.tsbuildinfo
+
+# Verification screenshots
+/slice-*-smoke*.png

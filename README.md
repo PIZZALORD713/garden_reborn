@@ -48,7 +48,9 @@ If the official studio went quiet, the community studio didn’t.
 | Animations | GitHub CDN via jsDelivr (animation manifest + `.glb` clips) |
 | Hosting | Vercel (static + serverless) |
 
-No build tools, no `package.json`, no node_modules. Clone and serve.
+The browser studio stays dependency-light: no root `package.json`, no root `node_modules`, and no frontend build step. Clone and serve the static app directly.
+
+> Optional MCP tooling lives in `mcp/` and uses its own `package.json`; run npm commands from that directory only when developing the MCP server.
 
 ---
 
@@ -66,6 +68,19 @@ Open `http://localhost:3000/`
 - `http://localhost:3000/0x28af3356c6aaf449d20c59d2531941ddfb94d713` -- holder page via address
 
 > **Note:** Wallet/ENS lookup requires the serverless API (`/api/friendsiesTokens`), which needs `MORALIS_API_KEY` in your environment. Without it, you can still load tokens by ID.
+
+### Optional MCP server
+
+The MCP package exposes helper tools for token resolution, animation pack discovery, asset validation, and starter template generation. It is isolated under `mcp/` so the frontend remains buildless.
+
+```bash
+cd mcp
+npm install
+npm run build
+npm start
+```
+
+See `mcp/README.md` for the tool list and runtime notes.
 
 ### Animation pack validation
 
@@ -247,7 +262,7 @@ Designed for **Vercel** (static hosting + serverless API).
 
 ## Contributing
 
-PRs welcome. No build tools required -- edit the files and test with `npx serve .`
+PRs welcome. For core web changes, no build tools are required -- edit the files and test with `npx serve .`. For MCP changes, use the isolated npm workflow in `mcp/README.md`.
 
 ### Good first areas
 
