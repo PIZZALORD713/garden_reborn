@@ -1,0 +1,109 @@
+name: Tracked work item
+description: Create executable work that will produce a branch, PR, deployment, or delegated task.
+title: ""
+labels:
+  - kanban
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every executable change starts as a real repository issue on the canonical fRiENEMiES Roadmap. Complete the sections below before moving the item to Ready.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: Explain why this work matters and what outcome it should create.
+      placeholder: One concise paragraph describing the desired outcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: grounding-sources
+    attributes:
+      label: Grounding Sources
+      description: Link the files, runtime evidence, decisions, designs, or prior issues that define the work.
+      placeholder: |
+        - Repository path or URL
+        - Runtime, design, or product evidence
+    validations:
+      required: true
+
+  - type: input
+    id: initiative
+    attributes:
+      label: Initiative / View
+      description: Name an existing initiative label such as initiative:review-fixes-loop, or enter none.
+      placeholder: initiative:<slug> or none
+    validations:
+      required: true
+
+  - type: dropdown
+    id: change-type
+    attributes:
+      label: Change Type
+      options:
+        - Feature
+        - Fix
+        - Refactor
+        - Research
+        - Documentation
+        - QA / Operations
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope-ownership
+    attributes:
+      label: Scope / Ownership
+      description: Identify the files, systems, and ownership boundaries. Call out shared integration files that require serialization.
+      placeholder: |
+        In scope:
+        - ...
+
+        Out of scope:
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: List observable checks that prove the requested behavior exists.
+      placeholder: |
+        - [ ] Observable outcome one
+        - [ ] Observable outcome two
+    validations:
+      required: true
+
+  - type: textarea
+    id: definition-of-done
+    attributes:
+      label: Definition of Done
+      description: Define the merge, evidence, and handoff standard required before this issue can close.
+      placeholder: |
+        - [ ] PR merged
+        - [ ] Required checks and runtime proof recorded
+        - [ ] Board reconciled
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification-plan
+    attributes:
+      label: Verification Plan
+      description: Name the commands, browser flows, deployment checks, or physical-device evidence required.
+      placeholder: |
+        - Command or automated gate
+        - Browser/runtime/device acceptance flow
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: traceability
+    attributes:
+      label: Traceability Gate
+      options:
+        - label: I will use this issue URL—not chat numbering or a draft card—as the owning work item for branches, PRs, and delegated tasks.
+          required: true
