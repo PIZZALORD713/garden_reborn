@@ -1,23 +1,68 @@
 # fRiENEMiES Kanban Operating Model
 
-_Last updated: 2026-05-03_
+_Last updated: 2026-07-20_
 
-This model defines how to run the fRiENEMiES roadmap board from `PIZZALORD713/garden_reborn` issues.
+This model defines how executable work moves through the canonical
+[`fRiENEMiES Roadmap`](https://github.com/users/PIZZALORD713/projects/1) for
+`PIZZALORD713/garden_reborn`.
 
-## Board
+## Operating Principle: One Board, Many Views
 
-Board: [`fRiENEMiES Roadmap`](https://github.com/users/PIZZALORD713/projects/1) in GitHub Projects v2.
+`fRiENEMiES Roadmap` is the only GitHub Project for this product. Roadmap,
+delivery, review, track, and initiative perspectives are saved filtered views
+of that board, not separate projects.
 
-Issues are the source of truth. The project board is the planning view over those issues. The project is linked to `PIZZALORD713/garden_reborn` and seeded with issues #59-#70.
+Repository issues are the source of truth. Project views organize those issues;
+pull requests deliver them.
 
-## Cadence
+> **Tracked Work Item Gate:** Any change that will produce a branch, pull
+> request, deployment, or delegated agent task must begin with a real
+> `PIZZALORD713/garden_reborn` issue URL already present on the canonical board.
+> Draft project cards, chat numbering, and bare references such as “#2” do not
+> satisfy this gate.
 
-- Cycle length: 6 weeks.
-- Current milestones:
-  - `Cycle 01 - Foundation Audit and Board Bootstrap`, due 2026-06-14.
-  - `Cycle 02 - Studio Reliability and Blender Contract`, due 2026-07-26.
-  - `Cycle 03 - Render Packs and Scene Direction`, due 2026-09-06.
-- Every cycle starts with source/priority review and ends with verification notes.
+Read-only investigation, brainstorming, and idea jams are exempt until a
+decision becomes executable work.
+
+## Canonical Board
+
+- Board: [`fRiENEMiES Roadmap`](https://github.com/users/PIZZALORD713/projects/1)
+- Planning repository: [`PIZZALORD713/garden_reborn`](https://github.com/PIZZALORD713/garden_reborn)
+- Tracked item type: repository issue
+- Delivery link: pull request containing `Closes #<issue-number>`
+
+Do not create a second project for an initiative. Apply an
+`initiative:<slug>` label and save a filtered view on the canonical board.
+
+## Required Views
+
+| View | Layout | Filter | Purpose |
+| --- | --- | --- | --- |
+| `Roadmap` | Table | none | Full source-of-truth inventory, grouped or sorted by Horizon and Priority. |
+| `Delivery` | Board | `is:issue -status:Done` | Active work grouped by Status. |
+| `Triage` | Table | `status:Inbox,"Fact Finding"` | New work that is not ready to start. |
+| `Now` | Board | `horizon:Now -status:Done` | Current horizon only. |
+| `Review` | Table | `status:Review` | Pull requests and evidence waiting for acceptance. |
+| `Done` | Table | `status:Done` | Completed and superseded delivery history. |
+
+Create initiative views only while the initiative is active. Use the filter
+`label:"initiative:<slug>"`; delete the view after the initiative closes while
+retaining the label and issue history.
+
+## Status Lifecycle
+
+| Status | Entry condition | Exit condition |
+| --- | --- | --- |
+| `Inbox` | A `kanban` issue is automatically added to the board. | Goal, sources, acceptance criteria, and Definition of Done are complete. |
+| `Fact Finding` | Material scope or evidence is still unknown. | The issue can be estimated and verified without guessing. |
+| `Ready` | The issue is executable and has an owner. | A branch or delegated agent starts. |
+| `In Progress` | Implementation has started. | A pull request is opened or work becomes blocked. |
+| `Review` | A PR is open and linked with `Closes #<issue-number>`. | Required review, checks, and deployment/runtime proof pass. |
+| `Blocked` | Work cannot progress without an external decision or dependency. | The blocker is resolved and documented on the issue. |
+| `Done` | The issue is closed as completed after merge and required proof. | Terminal; later reversals use a superseding issue. |
+
+Only one issue should own a branch. When several agents are involved, use one
+issue and branch per agent and serialize changes to shared integration files.
 
 ## Project Fields
 
@@ -27,45 +72,86 @@ Issues are the source of truth. The project board is the planning view over thos
 - `Priority`: P0, P1, P2, P3.
 - `Source`: Context Pack, Garden Reborn, Local Blender, Agent Vault, Legacy DApp, New Idea.
 
-## Labels
+## Portable Labels
 
-Use labels as repo-portable metadata even when project fields exist.
+Use labels even when an equivalent project field exists so issue meaning remains
+portable outside the Project UI.
 
-- Tracks: `track:studio`, `track:blender`, `track:animation`, `track:agent-identity`, `track:web3`, `track:ecosystem`, `track:ops`.
+- Board intake: `kanban`.
+- Initiatives: `initiative:<slug>`.
+- Tracks: `track:studio`, `track:blender`, `track:animation`,
+  `track:agent-identity`, `track:web3`, `track:ecosystem`, `track:ops`.
 - Types: `type:research`, `type:feature`, `type:qa`, `type:docs`, `type:decision`.
 - Priorities: `priority:p0`, `priority:p1`, `priority:p2`.
-- Sources: `source:context-pack`, `source:garden-reborn`, `source:local-blender`, `source:agent-vault`, `source:legacy-dapp`.
+- Sources: `source:context-pack`, `source:garden-reborn`,
+  `source:local-blender`, `source:agent-vault`, `source:legacy-dapp`.
 - Risks/blockers: `risk:ip-legal`, `blocked`.
 
-## Issue Template Rules
+## Issue Contract
 
-Every roadmap issue should include:
+Executable work must use
+[`Tracked work item`](../../.github/ISSUE_TEMPLATE/work-item.yml) and include:
 
-- `Goal`: one paragraph explaining why the work matters.
-- `Grounding Sources`: links or paths to the evidence behind the issue.
+- `Goal`: why the work matters.
+- `Grounding Sources`: repository paths, live evidence, decisions, or references.
+- `Initiative / View`: an existing `initiative:<slug>` label or `none`.
+- `Scope / Ownership`: files, systems, and owner boundaries.
 - `Acceptance Criteria`: observable completion checks.
-- `Definition of Done`: final handoff standard.
+- `Definition of Done`: final merge, proof, and handoff standard.
+- `Verification Plan`: commands, browser flows, deployments, or device evidence.
 
-P0 and P1 issues must also include a source label and at least one acceptance criterion that can be verified without guessing.
+P0 and P1 issues must have a source label and at least one acceptance criterion
+that can be verified without guessing.
 
-## Guardrails
+## Pull Request Contract
+
+Every implementation PR must use
+[`pull_request_template.md`](../../.github/pull_request_template.md) and:
+
+- include `Closes #<issue-number>` for the real owning issue;
+- name the board/initiative view;
+- describe scope boundaries and any intentionally untouched files;
+- record exact verification and deployment/runtime evidence;
+- move the issue to `Review` when opened;
+- avoid closing or moving unrelated cards.
+
+PRs do not need separate board cards. Their linked issue is the tracked item.
+
+## Supersession
+
+Do not reopen completed work merely because product direction changes later.
+Create a new issue and PR, add reciprocal `Supersedes #<number>` links, and keep
+the original item in `Done`. This preserves both historical truth and the
+current product decision.
+
+## Board Automations
+
+The canonical Project must keep these built-in workflows enabled:
+
+1. **Auto-add to project**
+   - Repository: `PIZZALORD713/garden_reborn`
+   - Filter: `is:issue label:kanban`
+2. **Item added to project**
+   - Set `Status` to `Inbox`.
+3. **Item closed**
+   - Set `Status` to `Done`.
+
+Auto-add applies to newly created or newly updated matching issues; it does not
+backfill old matches. Add any historical matching issue manually when needed.
+
+## Cadence and Closeout
+
+- Cycle length: 6 weeks.
+- Start each cycle with source, priority, and Horizon review.
+- Review `Inbox`, `Fact Finding`, `Blocked`, and `Review` at each project check-in.
+- End each cycle with verification notes and a board reconciliation.
+- Before an agent reports completion, it must verify the issue URL, board
+  status, linked PR, merge state, and required runtime/deployment evidence.
+
+## Product Guardrails
 
 - Do not imply fRiENEMiES is official FriendsWithYou work.
-- Do not promise commercial rights, guaranteed rewards, guaranteed value, or finalized claim mechanics.
+- Do not promise commercial rights, guaranteed rewards, guaranteed value, or
+  finalized claim mechanics.
 - Treat Web3 claim/inventory items as research until separately approved.
 - Keep Studio + Blender delivery ahead of broader ecosystem expansion.
-
-## Seed Issues
-
-- [#59](https://github.com/PIZZALORD713/garden_reborn/issues/59) P0: Fact-finding source map for all fRiENEMiES artifacts
-- [#60](https://github.com/PIZZALORD713/garden_reborn/issues/60) P0: Refresh canonical fRiENEMiES strategy from context pack plus current repo evidence
-- [#61](https://github.com/PIZZALORD713/garden_reborn/issues/61) P0: Finish garden_reborn slice-057 verification pass
-- [#62](https://github.com/PIZZALORD713/garden_reborn/issues/62) P0: Triage open PRs #56 and #57 before new Studio UI work
-- [#63](https://github.com/PIZZALORD713/garden_reborn/issues/63) P1: Define Studio-to-Blender contract for token manifests, face overlays, animations, and GLB export
-- [#64](https://github.com/PIZZALORD713/garden_reborn/issues/64) P1: Promote the local Blender scene pipeline into the roadmap as the scene-generation track
-- [#65](https://github.com/PIZZALORD713/garden_reborn/issues/65) P1: Specify Static Avatar Render Pack V1 for agent identity outputs
-- [#66](https://github.com/PIZZALORD713/garden_reborn/issues/66) P1: Harden animation pack validation against skeleton contract rules
-- [#67](https://github.com/PIZZALORD713/garden_reborn/issues/67) P2: Research Web3 holder verification, claim, chain, and inventory mechanics without implementing contracts
-- [#68](https://github.com/PIZZALORD713/garden_reborn/issues/68) P2: Scope collector and AI identity pages as a later product track
-- [#69](https://github.com/PIZZALORD713/garden_reborn/issues/69) P2: Map gm.pizza and broader ecosystem ideas as non-blocking long-term opportunities
-- [#70](https://github.com/PIZZALORD713/garden_reborn/issues/70) P0: Complete GitHub Projects v2 board setup after project-scope auth
